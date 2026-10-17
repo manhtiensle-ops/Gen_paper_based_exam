@@ -1,0 +1,133 @@
+services:
+  postgres-db:
+    image: pgvector/pgvector:pg16
+    container_name: hsg_postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-hsg_math}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-hsg_math}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hsg_network
+
+  redis-broker:
+    image: redis:7-alpine
+    container_name: hsg_redis_broker
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hsg_network
+
+  minio-storage:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: hsg_minio_storage
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/9000'"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hsg_network
+
+  core-api:
+    build:
+      context: ./services/core-api
+      dockerfile: Dockerfile
+    container_name: hsg_core_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${CORE_API_PORT:-8000}:8000"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis-broker:
+        condition: service_healthy
+    networks:
+      - hsg_network
+
+  ingestion-worker:
+    build:
+      context: ./services/ingestion-worker
+      dockerfile: Dockerfile
+    container_name: hsg_ingestion_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis-broker:
+        condition: service_healthy
+      minio-storage:
+        condition: service_healthy
+    networks:
+      - hsg_network
+
+  export-service:
+    build:
+      context: ./services/export-service
+      dockerfile: Dockerfile
+    container_name: hsg_export_service
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${EXPORT_SERVICE_PORT:-8001}:8001"
+    depends_on:
+      minio-storage:
+        condition: service_healthy
+    networks:
+      - hsg_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hsg_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - core-api
+    networks:
+      - hsg_network
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+
+networks:
+  hsg_network:
+    driver: bridge
