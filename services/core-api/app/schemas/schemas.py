@@ -40,7 +40,11 @@ class QuestionBase(BaseModel):
     sub_topics: List[str] = Field(default_factory=list)
     solution_methods: List[str] = Field(default_factory=list)
     difficulty: str = "MEDIUM"
+    user_difficulty: Optional[str] = None
+    custom_tags: List[str] = Field(default_factory=list)
     semantic_summary: str
+    original_content_latex: Optional[str] = None
+    last_edited_at: Optional[datetime] = None
 
 class QuestionResponse(QuestionBase):
     id: UUID
@@ -50,6 +54,27 @@ class QuestionResponse(QuestionBase):
     is_verified: bool = False
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+class QuestionUpdatePayload(BaseModel):
+    content_latex: Optional[str] = None
+    sub_questions: Optional[List[Dict[str, Any]]] = None
+    solution_latex: Optional[str] = None
+    final_answer: Optional[str] = None
+    main_topic: Optional[str] = None
+    sub_topics: Optional[List[str]] = None
+    difficulty: Optional[str] = None
+    user_difficulty: Optional[str] = None
+    custom_tags: Optional[List[str]] = None
+    default_points: Optional[float] = None
+
+class QuestionDifficultyUpdate(BaseModel):
+    difficulty: Optional[str] = None
+    user_difficulty: Optional[str] = None
+
+class SolutionOCRResponse(BaseModel):
+    solution_latex: str
+    final_answer: Optional[str] = None
+    notes: Optional[str] = None
 
 class QuestionVerifyToggle(BaseModel):
     is_verified: bool

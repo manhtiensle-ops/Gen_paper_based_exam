@@ -49,6 +49,10 @@ class Question(Base):
     sub_topics = Column(JSONB, nullable=False, default=list)
     solution_methods = Column(JSONB, nullable=False, default=list)
     difficulty = Column(String(50), nullable=False, default="MEDIUM")
+    user_difficulty = Column(String(50), nullable=True)
+    custom_tags = Column(JSONB, nullable=False, default=list)
+    original_content_latex = Column(Text, nullable=True)
+    last_edited_at = Column(DateTime(timezone=True), nullable=True)
     
     semantic_summary = Column(Text, nullable=False)
     embedding = Column(Vector(768), nullable=True)

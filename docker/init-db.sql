@@ -76,6 +76,10 @@ CREATE TABLE IF NOT EXISTS questions (
     sub_topics JSONB NOT NULL DEFAULT '[]'::jsonb,
     solution_methods JSONB NOT NULL DEFAULT '[]'::jsonb,
     difficulty difficulty_enum NOT NULL DEFAULT 'MEDIUM',
+    user_difficulty VARCHAR(50),
+    custom_tags JSONB DEFAULT '[]'::jsonb,
+    original_content_latex TEXT,
+    last_edited_at TIMESTAMPTZ,
     
     semantic_summary TEXT NOT NULL,
     embedding vector(768),
