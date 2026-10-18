@@ -125,8 +125,23 @@ services:
 
 volumes:
   pgdata:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /second_disk/hsg_data/postgres
   redisdata:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /second_disk/hsg_data/redis
   miniodata:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /second_disk/hsg_data/minio
 
 networks:
   hsg_network:
