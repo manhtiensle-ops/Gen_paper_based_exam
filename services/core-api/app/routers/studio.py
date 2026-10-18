@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import requests
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Body
@@ -426,3 +427,171 @@ Trả về DUY NHẤT một JSON hợp lệ:
     except Exception as e:
         logger.error(f"Error running health check: {e}")
         raise HTTPException(status_code=500, detail=f"Lỗi AI thẩm định đề thi: {str(e)}")
+
+
+# ==================== LIVE LATEX PREVIEW & AI LAYOUT AGENT ====================
+
+EXPORT_SERVICE_URL = os.getenv("EXPORT_SERVICE_URL", "http://export-service:8001")
+
+@router.post("/exams/{exam_id}/preview")
+def get_exam_latex_preview(
+    exam_id: UUID,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db)
+):
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi")
+
+    items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
+    if not items:
+        items = sync_exam_slots_to_items(exam_id, db)
+
+    items_payload = [{
+        "id": str(it.id),
+        "display_label": it.display_label,
+        "max_points": float(it.max_points or 1.0),
+        "problem_snapshot": it.problem_snapshot,
+        "rubric_data": it.rubric_data
+    } for it in items]
+
+    header_cfg = payload.get("header_config") or exam.header_config or {}
+    layout_knobs = payload.get("layout_knobs") or {
+        "margin_top_cm": 1.8,
+        "margin_bottom_cm": 1.8,
+        "margin_left_cm": 2.0,
+        "margin_right_cm": 1.8,
+        "font_size_pt": 12,
+        "line_spread": 1.15,
+        "item_gap_pt": 10,
+        "math_skip_pt": 6
+    }
+    mode = payload.get("mode", "EXAM")
+
+    try:
+        resp = requests.post(
+            f"{EXPORT_SERVICE_URL}/api/export/latex/preview",
+            json={
+                "exam_id": str(exam.id),
+                "title": exam.title,
+                "header_config": header_cfg,
+                "layout_knobs": layout_knobs,
+                "items": items_payload,
+                "mode": mode
+            },
+            timeout=45
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            raise HTTPException(status_code=502, detail=f"Export service error: {resp.text}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi kết nối dịch vụ biên dịch LaTeX: {str(e)}")
+
+
+@router.post("/exams/{exam_id}/layout-agent")
+def run_layout_agent(
+    exam_id: UUID,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db)
+):
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi")
+
+    user_message = payload.get("user_message", "")
+    current_knobs = payload.get("current_layout_knobs") or {
+        "margin_top_cm": 1.8,
+        "margin_bottom_cm": 1.8,
+        "margin_left_cm": 2.0,
+        "margin_right_cm": 1.8,
+        "font_size_pt": 12,
+        "line_spread": 1.15,
+        "item_gap_pt": 10,
+        "math_skip_pt": 6
+    }
+    header_cfg = payload.get("header_config") or exam.header_config or {}
+    mode = payload.get("mode", "EXAM")
+
+    client = get_omniroute_client()
+    vision_model = os.getenv("OMNIROUTE_VISION_MODEL", "antigravity/gemini-3.8-flash-tiered")
+
+    prompt = f"""Bạn là Kỹ sư Chế bản LaTeX & Trợ lý Dàn trang Đề thi Toán học (Actionable Layout Agent).
+Nhiệm vụ: Nhận lệnh tự nhiên từ giáo viên và điều chỉnh các tham số bố cục (layout_knobs) để trang in A4 đạt thẩm mỹ tối ưu.
+
+CÁC NGUYÊN TẮC DÀN TRANG TOÁN:
+1. "Dồn trang / ép vào vừa 1 trang": Giảm margin (xuống 1.4-1.6cm), giảm line_spread (1.05-1.10), giảm item_gap_pt (4-6pt), giảm math_skip_pt (3-4pt).
+2. "Thưa dòng / giãn dòng": Tăng line_spread (1.20-1.25), tăng item_gap_pt (12-14pt).
+3. "Chữ nhỏ lại": font_size_pt = 11. "Chữ to chuẩn": font_size_pt = 12.
+4. "Thu nhỏ lề": margin_left_cm = 1.6, margin_right_cm = 1.4, margin_top_cm = 1.4, margin_bottom_cm = 1.4.
+
+THAM SỐ HIỆN TẠI:
+{json.dumps(current_knobs, indent=2)}
+
+LỆNH CỦA GIÁO VIÊN:
+"{user_message}"
+
+Trả về DUY NHẤT một JSON hợp lệ:
+{{
+  "ui_status_message": "Mô tả ngắn gọn hành động vừa thực hiện (dưới 25 từ, ví dụ: 'Đã giảm lề trang và co giãn dòng để dồn vừa vặn trang 1.')",
+  "updated_layout_knobs": {{
+    "margin_top_cm": 1.8,
+    "margin_bottom_cm": 1.8,
+    "margin_left_cm": 2.0,
+    "margin_right_cm": 1.8,
+    "font_size_pt": 12,
+    "line_spread": 1.15,
+    "item_gap_pt": 10,
+    "math_skip_pt": 6
+  }}
+}}"""
+
+    try:
+        response = client.chat.completions.create(
+            model=vision_model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+            response_format={"type": "json_object"}
+        )
+        raw_text = response.choices[0].message.content
+        if "```json" in raw_text:
+            raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw_text:
+            raw_text = raw_text.split("```")[1].split("```")[0].strip()
+        data = json.loads(raw_text)
+
+        ui_status = data.get("ui_status_message", "Đã cập nhật bố cục theo yêu cầu.")
+        new_knobs = data.get("updated_layout_knobs", current_knobs)
+
+        # Biên dịch lại xem trước
+        items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
+        items_payload = [{
+            "id": str(it.id),
+            "display_label": it.display_label,
+            "max_points": float(it.max_points or 1.0),
+            "problem_snapshot": it.problem_snapshot,
+            "rubric_data": it.rubric_data
+        } for it in items]
+
+        preview_res = requests.post(
+            f"{EXPORT_SERVICE_URL}/api/export/latex/preview",
+            json={
+                "exam_id": str(exam.id),
+                "title": exam.title,
+                "header_config": header_cfg,
+                "layout_knobs": new_knobs,
+                "items": items_payload,
+                "mode": mode
+            },
+            timeout=45
+        ).json()
+
+        return {
+            "status": "success",
+            "ui_status_message": ui_status,
+            "updated_layout_knobs": new_knobs,
+            "preview_data": preview_res
+        }
+    except Exception as e:
+        logger.error(f"Error in layout agent: {e}")
+        raise HTTPException(status_code=500, detail=f"Lỗi AI Layout Agent: {str(e)}")

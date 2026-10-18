@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
 from .compiler import compile_exam_document, get_minio_client
+from .latex_engine import compile_latex_to_preview
 
 app = FastAPI(
     title="HSG Math Exam Export Service",
@@ -24,6 +25,14 @@ class ExportRequest(BaseModel):
     title: str
     slots_state: List[Dict[str, Any]]
     export_type: Optional[str] = "docx"
+
+class LatexPreviewRequest(BaseModel):
+    exam_id: str
+    title: str = "ĐỀ THI HỌC SINH GIỎI"
+    header_config: Dict[str, Any] = {}
+    layout_knobs: Dict[str, Any] = {}
+    items: List[Dict[str, Any]] = []
+    mode: str = "EXAM"
 
 @app.on_event("startup")
 def on_startup():
@@ -50,5 +59,20 @@ def export_exam(payload: ExportRequest):
             "file_key": file_key,
             "export_type": payload.export_type
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/export/latex/preview")
+def preview_latex_exam(payload: LatexPreviewRequest):
+    try:
+        result = compile_latex_to_preview(
+            exam_id=payload.exam_id,
+            title=payload.title,
+            header_config=payload.header_config,
+            layout_knobs=payload.layout_knobs,
+            items=payload.items,
+            mode=payload.mode
+        )
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

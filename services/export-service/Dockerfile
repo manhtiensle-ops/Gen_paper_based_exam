@@ -7,6 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     pandoc \
     libreoffice-writer \
+    poppler-utils \
+    texlive-latex-base \
+    texlive-latex-recommended \
+    texlive-fonts-recommended \
+    texlive-lang-other \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
