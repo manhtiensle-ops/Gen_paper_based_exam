@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
+import ExamStudioView from "@/components/ExamStudioView";
 import {
   FileText,
   UploadCloud,
@@ -18,11 +19,12 @@ import {
   Eye,
   AlertCircle,
   Edit3,
-  Sparkles
+  Sparkles,
+  Scale
 } from "lucide-react";
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"generator" | "questions" | "ingestion" | "review">("generator");
+  const [activeTab, setActiveTab] = useState<"generator" | "questions" | "ingestion" | "review" | "studio">("generator");
   
   // Questions Bank State
   const [questions, setQuestions] = useState<any[]>([]);
@@ -419,6 +421,18 @@ export default function Dashboard() {
           <ShieldCheck className="w-4 h-4" />
           <span>Hàng đợi kiểm duyệt</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab("studio")}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+            activeTab === "studio"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+        >
+          <Scale className="w-4 h-4" />
+          <span>Exam Studio (Soạn & Barem 0.25đ)</span>
+        </button>
       </div>
 
       {/* TAB 1: EXAM GENERATOR */}
@@ -515,6 +529,14 @@ export default function Dashboard() {
                     <span>{exporting === "pdf" ? "Đang xuất..." : "Tải PDF In ấn"}</span>
                   </button>
                 </div>
+
+                <button
+                  onClick={() => setActiveTab("studio")}
+                  className="w-full mt-3 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-2 shadow-md transition-all"
+                >
+                  <Scale className="w-4 h-4" />
+                  <span>Mở Exam Studio (Soạn đề & Barem 0.25đ) ➔</span>
+                </button>
               </div>
             )}
           </div>
@@ -939,6 +961,14 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+      )}
+
+      {/* TAB 5: EXAM STUDIO (INTERACTIVE CANVAS & 0.25 RUBRIC) */}
+      {activeTab === "studio" && (
+        <ExamStudioView
+          examId={generatedExam?.id || "6122d749-249f-496b-9e41-ffbe43d420a9"}
+          onBack={() => setActiveTab("generator")}
+        />
       )}
 
       {/* QUESTION EDIT & SOLUTION OCR MODAL */}

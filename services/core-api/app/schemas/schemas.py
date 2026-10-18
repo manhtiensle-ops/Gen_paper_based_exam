@@ -118,7 +118,69 @@ class GeneratedExamResponse(BaseModel):
     title: str
     blueprint_id: Optional[UUID] = None
     slots_state: List[Dict[str, Any]]
+    header_config: Optional[Dict[str, Any]] = None
+    health_check_report: Optional[Dict[str, Any]] = None
+    total_target_score: Optional[float] = 20.00
     exported_docx_key: Optional[str] = None
     exported_pdf_key: Optional[str] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+# ==================== EXAM STUDIO SCHEMAS ====================
+
+class RubricStepSchema(BaseModel):
+    step_order: int
+    milestone_tag: str
+    latex_content: str
+    allocated_quanta: int = Field(ge=1, le=12, description="1 quantum = 0.25 điểm")
+    points: float = Field(default=0.25)
+    is_locked: bool = False
+
+
+class RubricSubPartSchema(BaseModel):
+    part_id: str
+    part_label: str
+    part_title: Optional[str] = None
+    sub_max_points: float = 1.0
+    steps: List[RubricStepSchema] = Field(default_factory=list)
+
+
+class ExamItemRubricData(BaseModel):
+    target_total_quanta: int
+    pedagogical_analysis: Optional[str] = None
+    sub_parts: List[RubricSubPartSchema] = Field(default_factory=list)
+    steps: List[RubricStepSchema] = Field(default_factory=list)
+
+
+class ExamItemResponse(BaseModel):
+    id: UUID
+    exam_id: UUID
+    source_question_id: Optional[UUID] = None
+    order_index: int
+    display_label: str
+    max_points: float
+    problem_snapshot: Dict[str, Any]
+    rubric_data: Dict[str, Any]
+    is_ai_variant: bool = False
+    variant_metadata: Optional[Dict[str, Any]] = None
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateExamHeaderRequest(BaseModel):
+    header_config: Dict[str, Any]
+
+
+class ReorderExamItemsRequest(BaseModel):
+    item_orders: List[Dict[str, Any]] # [{"item_id": UUID, "order_index": int}]
+
+
+class AutoSplitRubricRequest(BaseModel):
+    max_points: Optional[float] = None
+    force_recalculate: bool = False
+
+
+class GenerateVariantRequest(BaseModel):
+    instructions: Optional[str] = "Giữ nguyên phương pháp, đổi số liệu nghiệm nguyên đẹp"
+

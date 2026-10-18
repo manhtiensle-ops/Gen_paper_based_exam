@@ -68,21 +68,28 @@ def build_markdown_document(title: str, slots_state: list) -> str:
                 md.append(f"  {sq_label}{pts_str} {sq_content}\n")
         
     md.append("\n---\n")
-    md.append("### HƯỚNG DẪN CHẤM & ĐÁP ÁN CHI TIẾT\n")
+    md.append("### HƯỚNG DẪN CHẤM & BIỂU ĐIỂM CHI TIẾT (CHUẨN SỞ GD&ĐT)\n\n")
+    
+    # 2-column Markdown Table for Rubric
+    md.append("| Câu / Ý | Nội dung các bước giải & Lập luận | Điểm |\n")
+    md.append("| :---: | :--- | :---: |\n")
     
     for slot in slots_state:
         idx = slot.get("slot_index", 1)
+        pts = slot.get("points", 1.0)
         q = slot.get("question") or {}
-        sol = q.get("solution_latex")
-        ans = q.get("final_answer")
+        sol = q.get("solution_latex", "")
+        rubric_data = slot.get("rubric_data") or {}
+        steps = rubric_data.get("steps") or []
         
-        md.append(f"**Câu {idx}:**")
-        if ans:
-            md.append(f" - **Đáp số:** ${ans}$" if not ans.startswith("$") else f" - **Đáp số:** {ans}")
-        if sol:
-            md.append(f"\n*Lời giải chi tiết:*\n\n{sol}\n")
+        if steps:
+            # First row for question label
+            first_st = steps[0]
+            md.append(f"| **Câu {idx}** ({pts}đ) | **{first_st.get('milestone_tag', '')}:** {first_st.get('latex_content', '')} | **{first_st.get('points', 0.25)}** |\n")
+            for st in steps[1:]:
+                md.append(f"| | **{st.get('milestone_tag', '')}:** {st.get('latex_content', '')} | **{st.get('points', 0.25)}** |\n")
         else:
-            md.append("\n*(Lời giải chi tiết đang được cập nhật)*\n")
+            md.append(f"| **Câu {idx}** ({pts}đ) | {sol or '*(Đang cập nhật lời giải)*'} | **{pts}** |\n")
 
     return "\n".join(md)
 
