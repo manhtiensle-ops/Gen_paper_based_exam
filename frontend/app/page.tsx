@@ -296,6 +296,54 @@ export default function Dashboard() {
     }
   };
 
+  // Render question body with figure and sub_questions
+  const renderQuestionContent = (q: any) => {
+    if (!q) return null;
+    return (
+      <div className="space-y-3">
+        {/* 1. Shared Stem or Problem Content */}
+        <div className="text-sm text-slate-900 leading-relaxed">
+          <MathRenderer content={q.content_latex || "Đang cập nhật nội dung câu hỏi..."} />
+        </div>
+
+        {/* 2. Geometric Figure with aspect ratio preserved */}
+        {q.figures_meta && q.figures_meta.length > 0 && (
+          <div className="py-2 text-center bg-slate-50/80 rounded-xl p-3 border border-slate-100">
+            {q.figures_meta.map((fig: any, fIdx: number) => (
+              <div key={fIdx} className="space-y-1">
+                <img
+                  src={`/api/assets/${fig.figure_key}`}
+                  alt={fig.caption || "Hình vẽ hình học"}
+                  className="w-auto max-h-72 object-contain mx-auto my-2 rounded-lg border border-slate-200 shadow-sm"
+                />
+                {fig.caption && (
+                  <p className="text-[11px] text-slate-500 italic text-center">{fig.caption}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 3. Sub-questions (Parts a, b, c) */}
+        {q.sub_questions && q.sub_questions.length > 0 && (
+          <div className="space-y-2 pl-4 border-l-2 border-indigo-400 bg-indigo-50/30 p-2.5 rounded-r-xl">
+            {q.sub_questions.map((sq: any, sIdx: number) => (
+              <div key={sIdx} className="text-sm space-y-0.5">
+                <div className="font-bold text-indigo-900 flex items-center space-x-1">
+                  <span>{sq.label || `${sq.part_id})`}</span>
+                  {sq.points && <span className="text-xs font-normal text-indigo-700">({sq.points} điểm)</span>}
+                </div>
+                <div className="text-slate-800 pl-1">
+                  <MathRenderer content={sq.content_latex} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Navigation Tabs */}
@@ -486,18 +534,7 @@ export default function Dashboard() {
 
                       {slot.question ? (
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm">
-                          <MathRenderer content={slot.question.content_latex} />
-
-                          {slot.question.sub_questions && slot.question.sub_questions.length > 0 && (
-                            <div className="mt-3 space-y-2 pl-4 border-l-2 border-indigo-200">
-                              {slot.question.sub_questions.map((sq: any, sIdx: number) => (
-                                <div key={sIdx} className="text-xs">
-                                  <span className="font-bold">{sq.label} </span>
-                                  <MathRenderer content={sq.content_latex} />
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                          {renderQuestionContent(slot.question)}
                         </div>
                       ) : (
                         <div className="p-4 bg-amber-50 text-amber-700 text-xs rounded-lg">
@@ -609,8 +646,8 @@ export default function Dashboard() {
                     </span>
                   </div>
 
-                  <div className="text-sm text-slate-800 line-clamp-4">
-                    <MathRenderer content={q.content_latex} />
+                  <div className="text-sm text-slate-800">
+                    {renderQuestionContent(q)}
                   </div>
 
                   {q.final_answer && (
@@ -757,7 +794,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="text-sm">
-                  <MathRenderer content={q.content_latex} />
+                  {renderQuestionContent(q)}
                 </div>
 
                 {q.solution_latex && (
@@ -815,7 +852,7 @@ export default function Dashboard() {
                       <span className="text-indigo-600">Chọn câu này →</span>
                     </div>
                     <div className="text-xs text-slate-800">
-                      <MathRenderer content={c.content_latex} />
+                      {renderQuestionContent(c)}
                     </div>
                   </div>
                 ))}

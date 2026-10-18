@@ -86,6 +86,7 @@ class LLMExtractedQuestion(BaseModel):
     sub_questions: List[LLMSubQuestion] = Field(default_factory=list)
     solution_latex: Optional[str] = None
     final_answer: Optional[str] = None
+    has_figure: bool = Field(default=False, description="True nếu câu hỏi có hình vẽ hình học đính kèm")
     figures: List[LLMFigureBox] = Field(default_factory=list)
     main_topic: MainTopicEnum
     sub_topics: List[SubTopicEnum]

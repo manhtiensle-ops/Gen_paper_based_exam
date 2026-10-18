@@ -17,7 +17,7 @@ def update_exam_status(exam_id: str, status: str, page_images: list[str] = None,
             conn.execute(
                 text("""
                     UPDATE source_exams 
-                    SET status = :status, page_image_keys = :page_images::jsonb, updated_at = CURRENT_TIMESTAMP
+                    SET status = :status, page_image_keys = CAST(:page_images AS jsonb), updated_at = CURRENT_TIMESTAMP
                     WHERE id = :exam_id
                 """),
                 {"status": status, "page_images": str(page_images).replace("'", '"'), "exam_id": exam_id}
@@ -36,7 +36,7 @@ def update_exam_status(exam_id: str, status: str, page_images: list[str] = None,
             conn.execute(
                 text("""
                     UPDATE source_exams 
-                    SET processing_logs = processing_logs || :log::jsonb
+                    SET processing_logs = processing_logs || CAST(:log AS jsonb)
                     WHERE id = :exam_id
                 """),
                 {"log": f'["{log_entry}"]', "exam_id": exam_id}
@@ -75,10 +75,10 @@ def insert_extracted_question(
                     semantic_summary, embedding, is_verified
                 ) VALUES (
                     :source_exam_id, :original_question_number, :section_type, :structure_type,
-                    :default_points, :content_latex, :normalized_hash, :sub_questions::jsonb,
-                    :solution_latex, :final_answer, :has_figure, :figures_meta::jsonb, :grade,
-                    :main_topic, :sub_topics::jsonb, :solution_methods::jsonb, :difficulty,
-                    :semantic_summary, :embedding::vector, TRUE
+                    :default_points, :content_latex, :normalized_hash, CAST(:sub_questions AS jsonb),
+                    :solution_latex, :final_answer, :has_figure, CAST(:figures_meta AS jsonb), :grade,
+                    :main_topic, CAST(:sub_topics AS jsonb), CAST(:solution_methods AS jsonb), :difficulty,
+                    :semantic_summary, CAST(:embedding AS vector), TRUE
                 )
             """),
             {
