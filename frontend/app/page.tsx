@@ -57,7 +57,7 @@ export default function Dashboard() {
       if (filterDifficulty) params.append("difficulty", filterDifficulty);
       if (filterSection) params.append("section_type", filterSection);
 
-      const res = await fetch(`http://localhost:8000/api/questions?${params.toString()}`);
+      const res = await fetch(`/api/questions?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setQuestions(data);
@@ -72,7 +72,7 @@ export default function Dashboard() {
   // Fetch Source Exams
   const fetchSourceExams = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/exams");
+      const res = await fetch("/api/exams");
       if (res.ok) {
         const data = await res.json();
         setSourceExams(data);
@@ -85,7 +85,7 @@ export default function Dashboard() {
   // Fetch Blueprints
   const fetchBlueprints = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/generator/blueprints");
+      const res = await fetch("/api/generator/blueprints");
       if (res.ok) {
         const data = await res.json();
         setBlueprints(data);
@@ -120,7 +120,7 @@ export default function Dashboard() {
     formData.append("grade", "9");
 
     try {
-      const res = await fetch("http://localhost:8000/api/exams/upload", {
+      const res = await fetch("/api/exams/upload", {
         method: "POST",
         body: formData,
       });
@@ -168,7 +168,7 @@ export default function Dashboard() {
     };
 
     try {
-      const res = await fetch("http://localhost:8000/api/generator/blueprints", {
+      const res = await fetch("/api/generator/blueprints", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -193,7 +193,7 @@ export default function Dashboard() {
 
     setGenerating(true);
     try {
-      const res = await fetch("http://localhost:8000/api/generator/generate", {
+      const res = await fetch("/api/generator/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -219,7 +219,7 @@ export default function Dashboard() {
     setSwapModalOpen(true);
     setLoadingCandidates(true);
     try {
-      const res = await fetch("http://localhost:8000/api/generator/swap", {
+      const res = await fetch("/api/generator/swap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -264,7 +264,7 @@ export default function Dashboard() {
     if (!generatedExam) return;
     setExporting(type);
     try {
-      const res = await fetch(`http://localhost:8000/api/generator/exams/${generatedExam.id}/export?export_type=${type}`, {
+      const res = await fetch(`/api/generator/exams/${generatedExam.id}/export?export_type=${type}`, {
         method: "POST"
       });
       if (res.ok) {
@@ -283,7 +283,7 @@ export default function Dashboard() {
   // Toggle Verification State
   const handleToggleVerify = async (questionId: string, currentStatus: boolean) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/questions/${questionId}/verify`, {
+      const res = await fetch(`/api/questions/${questionId}/verify`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ is_verified: !currentStatus })
