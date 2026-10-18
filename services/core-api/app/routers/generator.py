@@ -231,7 +231,12 @@ def trigger_exam_export(exam_id: uuid.UUID, export_type: str = "docx", db: Sessi
 
 # Direct Streaming Download for Client (Option B)
 @router.get("/exams/{exam_id}/download")
-def download_exam_file(exam_id: uuid.UUID, format: str = "docx", db: Session = Depends(get_db)):
+def download_exam_file(
+    exam_id: uuid.UUID,
+    format: str = "docx",
+    mode: str = "EXAM",
+    db: Session = Depends(get_db)
+):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Không tìm thấy đề thi")
@@ -240,43 +245,95 @@ def download_exam_file(exam_id: uuid.UUID, format: str = "docx", db: Session = D
     if fmt not in ["docx", "pdf"]:
         fmt = "docx"
 
-    file_key = exam.exported_docx_key if fmt == "docx" else exam.exported_pdf_key
+    mode_str = mode.upper()
     minio_client = get_minio_client()
     bucket_name = os.getenv("MINIO_BUCKET_NAME", "hsg-math-assets")
 
-    need_compile = False
-    if not file_key:
-        need_compile = True
-    else:
-        try:
-            minio_client.stat_object(bucket_name, file_key)
-        except Exception:
-            need_compile = True
+    file_key = None
 
-    if need_compile:
+    # NẾU TẢI PDF: BẮT BUỘC DÙNG BẢN PDF TEX LIVE CHUẨN ĐỒNG NHẤT VỚI PREVIEW TRÊN MÀN HÌNH
+    if fmt == "pdf":
+        studio_pdf_key = f"studio/{exam_id}/{mode_str.lower()}/document.pdf"
         try:
-            resp = requests.post(
-                f"{EXPORT_SERVICE_URL}/api/export",
-                json={
-                    "exam_id": str(exam.id),
-                    "title": exam.title,
-                    "slots_state": exam.slots_state,
-                    "export_type": fmt
-                },
-                timeout=120
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                file_key = data.get("file_key")
-                if fmt == "docx":
+            minio_client.stat_object(bucket_name, studio_pdf_key)
+            file_key = studio_pdf_key
+        except Exception:
+            # Biên dịch TeX Live tức thời nếu chưa có
+            items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
+            items_payload = [{
+                "id": str(it.id),
+                "display_label": it.display_label,
+                "max_points": float(it.max_points or 1.0),
+                "problem_snapshot": it.problem_snapshot,
+                "rubric_data": it.rubric_data
+            } for it in items]
+
+            try:
+                resp = requests.post(
+                    f"{EXPORT_SERVICE_URL}/api/export/latex/preview",
+                    json={
+                        "exam_id": str(exam.id),
+                        "title": exam.title,
+                        "header_config": exam.header_config or {},
+                        "layout_knobs": {
+                            "margin_top_cm": 1.8,
+                            "margin_bottom_cm": 1.8,
+                            "margin_left_cm": 2.0,
+                            "margin_right_cm": 1.8,
+                            "font_size_pt": 12,
+                            "line_spread": 1.15,
+                            "item_gap_pt": 10,
+                            "math_skip_pt": 6
+                        },
+                        "items": items_payload,
+                        "mode": mode_str
+                    },
+                    timeout=45
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    file_key = data.get("pdf_key")
+            except Exception:
+                pass
+
+        # Fallback nếu vẫn chưa có
+        if not file_key:
+            file_key = exam.exported_pdf_key
+
+    # NẾU TẢI WORD (.docx):
+    else:
+        file_key = exam.exported_docx_key
+        need_compile = False
+        if not file_key:
+            need_compile = True
+        else:
+            try:
+                minio_client.stat_object(bucket_name, file_key)
+            except Exception:
+                need_compile = True
+
+        if need_compile:
+            try:
+                resp = requests.post(
+                    f"{EXPORT_SERVICE_URL}/api/export",
+                    json={
+                        "exam_id": str(exam.id),
+                        "title": exam.title,
+                        "slots_state": exam.slots_state,
+                        "export_type": "docx"
+                    },
+                    timeout=120
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    file_key = data.get("file_key")
                     exam.exported_docx_key = file_key
-                else:
-                    exam.exported_pdf_key = file_key
-                db.commit()
-            else:
-                raise HTTPException(status_code=502, detail=f"Export compilation error: {resp.text}")
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Không thể biên dịch file: {str(exc)}")
+                    db.commit()
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=f"Lỗi xuất Word: {str(exc)}")
+
+    if not file_key:
+        raise HTTPException(status_code=500, detail="Chưa có file để tải về")
 
     try:
         minio_response = minio_client.get_object(bucket_name, file_key)
@@ -284,7 +341,10 @@ def download_exam_file(exam_id: uuid.UUID, format: str = "docx", db: Session = D
         raise HTTPException(status_code=500, detail=f"Lỗi khi đọc file từ MinIO: {str(e)}")
 
     slug = slugify_vietnamese(exam.title) or f"de_thi_{str(exam.id)[:8]}"
-    filename = f"{slug}.{fmt}"
+    if mode_str == "RUBRIC":
+        filename = f"huong_dan_cham_{slug}.{fmt}"
+    else:
+        filename = f"de_thi_{slug}.{fmt}"
 
     media_types = {
         "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

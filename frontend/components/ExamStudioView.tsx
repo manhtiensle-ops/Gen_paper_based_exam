@@ -277,9 +277,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     compileLivePreview(items, layoutKnobs, mode);
   };
 
-  // Direct Download File (Option B)
+  // Direct Download File (Option B - Native TeX Live PDF)
   const handleDownload = (fmt: "docx" | "pdf") => {
-    const downloadUrl = `/api/generator/exams/${examId}/download?format=${fmt}`;
+    const downloadUrl = `/api/generator/exams/${examId}/download?format=${fmt}&mode=${activeMode}`;
     const link = document.createElement("a");
     link.href = downloadUrl;
     link.setAttribute("download", "");
