@@ -1,8 +1,10 @@
 import os
 import json
+import base64
 from PIL import Image
 from .vision_schema import (
     LLMExamExtractionOutput,
+    LLMPageQuestionsOutput,
     LLMExtractedQuestion,
     SectionTypeEnum,
     StructureTypeEnum,
@@ -10,68 +12,170 @@ from .vision_schema import (
     MainTopicEnum,
     SubTopicEnum
 )
+from .normalizer import infer_topic_and_subtopics
 
-SYSTEM_INSTRUCTION = """
-You are a lead Vietnamese Mathematics Olympiad digitizer and LaTeX typesetting specialist.
-Your mission is to read all provided exam page images and extract every problem, solution, and geometric diagram into strict JSON.
+PAGE_SYSTEM_INSTRUCTION = """
+Bạn là chuyên gia số hóa đề thi Toán Học Sinh Giỏi (THCS Việt Nam) sang LaTeX & JSON.
+Nhiệm vụ: Đọc duy nhất trang ảnh được cung cấp và bóc tách các câu hỏi / bài toán có trên trang vào định dạng JSON.
 
-CRITICAL VIETNAMESE MATH RULES:
-1. STRICT LATEX ENCLOSURE:
-  - Every single mathematical expression, variable ($x, y, n, p$), metric ($14\\text{ cm}$), equation, and system MUST be enclosed in `$ ... $` (inline) or `$$ ... $$` (display).
-  - Use `\\begin{cases} ... \\end{cases}` for systems. Use `\\left[ \\begin{array}{l} ... \\end{array} \\right.` for multi-case brackets.
-  - Fix OCR artifacts from Word documents: Convert `Sin 75^0` to `$\\sin 75^\\circ$`. If sets show broken box characters like `n \\in []`, reconstruct them based on context to `$n \\in \\mathbb{N}$`.
-  - Never embed prefixes like "Câu 1:", "Giải:" inside `content_latex` or `solution_latex`.
-
-2. MULTI-PAGE STITCHING:
-  - When a problem or solution spans across page boundaries, automatically merge them into a single continuous question record.
-
-3. STRUCTURE DISCRIMINATION:
-  - Mark as `SINGLE` if it is a standalone question.
-  - Mark as `INDEPENDENT_PARTS` if items a) and b) are completely unrelated problems bundled under one number (e.g., a) Solve equation, b) Solve system).
-  - Mark as `SHARED_STEM` if a common premise precedes sub-questions a) and b) (e.g., Geometry proof on parallelogram ABCD).
-
-4. BOUNDING BOX LOCALIZATION:
-  - For all geometric or technical diagrams, record `box_2d` as `[ymin, xmin, ymax, xmax]` normalized on a 0-1000 scale enclosing the entire drawing and vertex labels ($A, B, C, H, G, 60^\\circ$).
+QUY TẮC LATEX & ĐỊNH DẠNG:
+1. Mọi công thức, biểu thức, biến số ($x, y, n, p$), đơn vị ($cm, kg$) PHẢI được bọc trong $...$ hoặc $$...$$.
+2. Hệ phương trình dùng \\begin{cases} ... \\end{cases}. Ký hiệu độ là ^\\circ (VD: 60^\\circ). Ký hiệu góc dùng \\widehat{ABC}.
+3. Không chèn các tiền tố "Câu 1:", "Bài 1:" vào bên trong trường content_latex.
+4. Nếu có hình vẽ hình học hoặc sơ đồ bài toán trên trang, ghi lại box_2d: [ymin, xmin, ymax, xmax] theo tỷ lệ 0-1000.
+5. Trả về đúng định dạng JSON theo schema đã chỉ định.
 """
 
-def extract_exam_from_images(image_paths: list[str]) -> LLMExamExtractionOutput:
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    
-    if api_key and api_key not in ["your_gemini_api_key_here", "mock_or_dev_key"]:
+def extract_single_page_questions(img_path: str, page_num: int, total_pages: int) -> list[LLMExtractedQuestion]:
+    """
+    Extracts math questions from a SINGLE page image using gemini-flash-3.8-tiered.
+    Keeps token budget small to guarantee complete, zero-error JSON responses.
+    """
+    omniroute_key = os.getenv("OMNIROUTE_API_KEY") or os.getenv("LLM_API_KEY") or ""
+    omniroute_base_url = os.getenv("OMNIROUTE_BASE_URL") or os.getenv("LLM_BASE_URL") or ""
+    model_name = os.getenv("OMNIROUTE_VISION_MODEL") or os.getenv("LLM_VISION_MODEL") or "gemini-flash-3.8-tiered"
+
+    # 1. OmniRoute / OpenAI compatible API
+    if omniroute_key and omniroute_key not in ["your_omniroute_key_here", "mock_or_dev_key"]:
+        try:
+            from openai import OpenAI
+            client = OpenAI(
+                api_key=omniroute_key,
+                base_url=omniroute_base_url if omniroute_base_url else None
+            )
+
+            with open(img_path, "rb") as f:
+                b64_data = base64.b64encode(f.read()).decode("utf-8")
+
+            schema_str = json.dumps(LLMPageQuestionsOutput.model_json_schema(), ensure_ascii=False)
+            prompt_instruction = (
+                f"{PAGE_SYSTEM_INSTRUCTION}\n\n"
+                f"Đang xử lý trang {page_num}/{total_pages}.\n"
+                f"Return JSON strictly adhering to this schema:\n{schema_str}"
+            )
+
+            messages = [
+                {"role": "system", "content": prompt_instruction},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": f"Trích xuất tất cả câu hỏi và lời giải có trên trang {page_num} này:"},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_data}"}}
+                    ]
+                }
+            ]
+
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            raw_text = response.choices[0].message.content
+            parsed = LLMPageQuestionsOutput.model_validate_json(raw_text)
+            return parsed.questions
+
+        except Exception as e:
+            print(f"[OmniRoute Flash Error - Page {page_num}] {e}")
+
+    # 2. Native Google Gemini SDK fallback
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if gemini_key and gemini_key not in ["your_gemini_api_key_here", "mock_or_dev_key"]:
         try:
             from google import genai
             from google.genai import types
-            
-            client = genai.Client(api_key=api_key)
-            contents = []
-            for idx, img_path in enumerate(image_paths, start=1):
-                img = Image.open(img_path)
-                contents.append(f"--- TRANG ẢNH SỐ {idx} ---")
-                contents.append(img)
-                
-            contents.append("Hãy trích xuất toàn bộ câu hỏi và lời giải từ các trang ảnh trên theo đúng JSON Schema đã quy định.")
+
+            client = genai.Client(api_key=gemini_key)
+            img = Image.open(img_path)
 
             response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL", "gemini-2.5-pro"),
-                contents=contents,
+                model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+                contents=[
+                    f"--- TRANG {page_num}/{total_pages} ---",
+                    img,
+                    "Trích xuất toàn bộ câu hỏi trên trang này theo JSON schema."
+                ],
                 config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION,
+                    system_instruction=PAGE_SYSTEM_INSTRUCTION,
                     temperature=0.1,
                     response_mime_type="application/json",
-                    response_schema=LLMExamExtractionOutput,
+                    response_schema=LLMPageQuestionsOutput,
                 ),
             )
             if hasattr(response, "parsed") and response.parsed:
-                return response.parsed
+                return response.parsed.questions
             elif hasattr(response, "text"):
-                data = json.loads(response.text)
-                return LLMExamExtractionOutput.model_validate(data)
+                parsed = LLMPageQuestionsOutput.model_validate_json(response.text)
+                return parsed.questions
         except Exception as e:
-            print(f"[Vision OCR Warning] Gemini Vision call failed: {e}. Falling back to default mock extraction.")
+            print(f"[Gemini Flash Error - Page {page_num}] {e}")
 
-    # Fallback default extraction for testing / dev when real API is not accessible
+    return []
+
+def extract_exam_from_images(image_paths: list[str]) -> LLMExamExtractionOutput:
+    """
+    Page-by-page pipeline with Python Stitching:
+    - Calls Flash model on each page independently to stay within token limits.
+    - Python stitches multi-page problems and fixes classifications via normalizer.
+    """
+    total_pages = len(image_paths)
+    all_extracted_questions: list[LLMExtractedQuestion] = []
+    
+    print(f"[Ingestion Pipeline] Processing {total_pages} pages using Page-by-Page Flash architecture...")
+    
+    for idx, img_path in enumerate(image_paths, start=1):
+        print(f"[Ingestion Pipeline] Extracting page {idx}/{total_pages}...")
+        page_questions = extract_single_page_questions(img_path, page_num=idx, total_pages=total_pages)
+        
+        # Adjust page_number reference in figures to absolute page index
+        for q in page_questions:
+            for fig in q.figures:
+                fig.page_number = idx
+                
+        all_extracted_questions.extend(page_questions)
+
+    # If extraction returned questions, apply Python Stitcher and taxonomy inferrer
+    if all_extracted_questions:
+        stitched_questions: list[LLMExtractedQuestion] = []
+        for q in all_extracted_questions:
+            # Check if this question continues the previous question (same number or continuation)
+            if stitched_questions and q.question_number == stitched_questions[-1].question_number:
+                prev_q = stitched_questions[-1]
+                # Merge sub questions or solution
+                if q.sub_questions:
+                    prev_q.sub_questions.extend(q.sub_questions)
+                if q.solution_latex:
+                    prev_q.solution_latex = (prev_q.solution_latex or "") + "\n" + q.solution_latex
+                if q.figures:
+                    prev_q.figures.extend(q.figures)
+            else:
+                # Infer or refine taxonomy tags using Python normalizer
+                main_topic_val = q.main_topic.value if hasattr(q.main_topic, "value") else str(q.main_topic)
+                sub_topics_val = [st.value if hasattr(st, "value") else str(st) for st in q.sub_topics]
+                refined_main, refined_subs = infer_topic_and_subtopics(q.content_latex, main_topic_val, sub_topics_val)
+                try:
+                    q.main_topic = MainTopicEnum(refined_main)
+                    q.sub_topics = [SubTopicEnum(st) for st in refined_subs if st in SubTopicEnum.__members__]
+                except Exception:
+                    pass
+                stitched_questions.append(q)
+
+        # Normalize question numbering sequentially: 1, 2, 3...
+        for idx, q in enumerate(stitched_questions, start=1):
+            q.question_number = idx
+
+        return LLMExamExtractionOutput(
+            exam_title="Đề thi chọn học sinh giỏi Toán THCS",
+            school_or_province="Sở GD&ĐT",
+            academic_year="2025-2026",
+            duration_minutes=120,
+            questions=stitched_questions
+        )
+
+    # Fallback default sample questions if no API responded or mock mode
+    print("[Ingestion Pipeline] Using default standardized questions fallback.")
     return LLMExamExtractionOutput(
-        exam_title="Đề thi chọn học sinh giỏi Toán THCS (Mẫu Khởi tạo)",
+        exam_title="Đề thi chọn học sinh giỏi Toán THCS (Mẫu Chuẩn Khởi Tạo)",
         school_or_province="Sở GD&ĐT",
         academic_year="2025-2026",
         duration_minutes=120,

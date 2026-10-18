@@ -5,11 +5,47 @@ import numpy as np
 def generate_embedding(text: str, model_name: str = "text-embedding-004") -> list[float]:
     """
     Computes a 768-dimensional embedding for semantic search.
-    If GEMINI_API_KEY is missing or invalid, falls back to a deterministic 768-dim hash vector
-    to guarantee local pipeline stability and testing.
+    Supports:
+    1. OmniRoute / OpenAI-compatible embedding API (with dimensions=768)
+    2. Google Gemini SDK (text-embedding-004)
+    3. Deterministic pseudo-embedding fallback for offline/test environments.
     """
+    omniroute_key = os.getenv("OMNIROUTE_API_KEY") or os.getenv("LLM_API_KEY") or ""
+    omniroute_base_url = os.getenv("OMNIROUTE_BASE_URL") or os.getenv("LLM_BASE_URL") or ""
+
+    if omniroute_key and omniroute_key not in ["your_omniroute_key_here", "mock_or_dev_key"]:
+        try:
+            from openai import OpenAI
+            client = OpenAI(
+                api_key=omniroute_key,
+                base_url=omniroute_base_url if omniroute_base_url else None
+            )
+            emb_model = os.getenv("OMNIROUTE_EMBEDDING_MODEL") or os.getenv("LLM_EMBEDDING_MODEL") or "text-embedding-3-small"
+            
+            try:
+                # Try with dimensions=768 (supported by text-embedding-3-small/large)
+                resp = client.embeddings.create(
+                    model=emb_model,
+                    input=text,
+                    dimensions=768
+                )
+                return resp.data[0].embedding
+            except Exception:
+                # Default call
+                resp = client.embeddings.create(
+                    model=emb_model,
+                    input=text
+                )
+                vec = resp.data[0].embedding
+                if len(vec) > 768:
+                    vec = vec[:768]
+                elif len(vec) < 768:
+                    vec = vec + [0.0] * (768 - len(vec))
+                return vec
+        except Exception as e:
+            print(f"[OmniRoute Embedder Warning] Embedding API call failed: {e}. Trying Gemini or fallback.")
+
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    
     if api_key and api_key not in ["your_gemini_api_key_here", "mock_or_dev_key"]:
         try:
             from google import genai
@@ -18,7 +54,6 @@ def generate_embedding(text: str, model_name: str = "text-embedding-004") -> lis
                 model=model_name,
                 contents=text
             )
-            # Check embedding output structure
             if hasattr(result, "embedding") and hasattr(result.embedding, "values"):
                 return list(result.embedding.values)
             elif hasattr(result, "embeddings") and len(result.embeddings) > 0:

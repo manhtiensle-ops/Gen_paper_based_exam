@@ -99,3 +99,7 @@ class LLMExamExtractionOutput(BaseModel):
     academic_year: Optional[str] = None
     duration_minutes: int = 120
     questions: List[LLMExtractedQuestion]
+
+class LLMPageQuestionsOutput(BaseModel):
+    exam_title: Optional[str] = None
+    questions: List[LLMExtractedQuestion] = Field(default_factory=list)
