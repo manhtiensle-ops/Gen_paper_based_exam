@@ -285,25 +285,23 @@ export default function Dashboard() {
     setSwapModalOpen(false);
   };
 
-  // Export Exam to Word (.docx) or PDF
-  const handleExport = async (type: "docx" | "pdf") => {
+  // Export & Download Exam directly to Client (Option B - Direct Streaming)
+  const handleExport = (type: "docx" | "pdf") => {
     if (!generatedExam) return;
     setExporting(type);
-    try {
-      const res = await fetch(`/api/generator/exams/${generatedExam.id}/export?export_type=${type}`, {
-        method: "POST"
-      });
-      if (res.ok) {
-        const data = await res.json();
-        alert(`Xuất file thành công! Lưu trữ MinIO: ${data.file_key}`);
-      } else {
-        alert("Lỗi khi xuất file");
-      }
-    } catch (e) {
-      alert("Lỗi kết nối tới dịch vụ xuất file");
-    } finally {
+    
+    // Direct browser download without alert
+    const downloadUrl = `/api/generator/exams/${generatedExam.id}/download?format=${type}`;
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.setAttribute("download", "");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
       setExporting(null);
-    }
+    }, 1500);
   };
 
   // Toggle Verification State

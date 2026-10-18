@@ -1,8 +1,12 @@
 import os
 import uuid
+import re
+import unicodedata
 from typing import List
+from urllib.parse import quote
 import requests
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -13,10 +17,45 @@ from ..schemas import (
     QuestionResponse
 )
 from ..services.hybrid_search import search_candidate_questions
+from ..services.minio_client import get_minio_client
 
 router = APIRouter(prefix="/api/generator", tags=["Exam Generator & Blueprints"])
 
 EXPORT_SERVICE_URL = os.getenv("EXPORT_SERVICE_URL", "http://export-service:8001")
+
+def slugify_vietnamese(text: str) -> str:
+    v_map = {
+        'à': 'a', 'á': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
+        'ă': 'a', 'ằ': 'a', 'ắ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
+        'â': 'a', 'ầ': 'a', 'ấ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
+        'è': 'e', 'é': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
+        'ê': 'e', 'ề': 'e', 'ế': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
+        'ì': 'i', 'í': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
+        'ò': 'o', 'ó': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
+        'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
+        'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
+        'ù': 'u', 'ú': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
+        'ư': 'u', 'ừ': 'u', 'ứ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
+        'ỳ': 'y', 'ý': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
+        'đ': 'd',
+        'À': 'A', 'Á': 'A', 'Ả': 'A', 'Ã': 'A', 'Ạ': 'A',
+        'Ă': 'A', 'Ằ': 'A', 'Ắ': 'A', 'Ẳ': 'A', 'Ẵ': 'A', 'Ặ': 'A',
+        'Â': 'A', 'Ầ': 'A', 'Ấ': 'A', 'Ẩ': 'A', 'Ẫ': 'A', 'Ậ': 'A',
+        'È': 'E', 'É': 'E', 'Ẻ': 'E', 'Ẽ': 'E', 'Ẹ': 'E',
+        'Ê': 'E', 'Ề': 'E', 'Ế': 'E', 'Ể': 'E', 'Ễ': 'E', 'Ệ': 'E',
+        'Ì': 'I', 'Í': 'I', 'Ỉ': 'I', 'Ĩ': 'I', 'Ị': 'I',
+        'Ò': 'O', 'Ó': 'O', 'Ỏ': 'O', 'Õ': 'O', 'Ọ': 'O',
+        'Ô': 'O', 'Ồ': 'O', 'Ố': 'O', 'Ổ': 'O', 'Ỗ': 'O', 'Ộ': 'O',
+        'Ơ': 'O', 'Ờ': 'O', 'Ớ': 'O', 'Ở': 'O', 'Ỡ': 'O', 'Ợ': 'O',
+        'Ù': 'U', 'Ú': 'U', 'Ủ': 'U', 'Ũ': 'U', 'Ụ': 'U',
+        'Ư': 'U', 'Ừ': 'U', 'Ứ': 'U', 'Ử': 'U', 'Ữ': 'U', 'Ự': 'U',
+        'Ỳ': 'Y', 'Ý': 'Y', 'Ỷ': 'Y', 'Ỹ': 'Y', 'Ỵ': 'Y',
+        'Đ': 'D'
+    }
+    for k, v in v_map.items():
+        text = text.replace(k, v)
+    text = re.sub(r'[^\w\s-]', '', text).strip().lower()
+    return re.sub(r'[-\s]+', '_', text)
 
 # Blueprint endpoints
 @router.post("/blueprints", response_model=ExamBlueprintResponse, status_code=status.HTTP_201_CREATED)
@@ -188,3 +227,77 @@ def trigger_exam_export(exam_id: uuid.UUID, export_type: str = "docx", db: Sessi
             raise HTTPException(status_code=502, detail=f"Export service error: {resp.text}")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to communicate with export service: {str(exc)}")
+
+
+# Direct Streaming Download for Client (Option B)
+@router.get("/exams/{exam_id}/download")
+def download_exam_file(exam_id: uuid.UUID, format: str = "docx", db: Session = Depends(get_db)):
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi")
+
+    fmt = format.lower()
+    if fmt not in ["docx", "pdf"]:
+        fmt = "docx"
+
+    file_key = exam.exported_docx_key if fmt == "docx" else exam.exported_pdf_key
+    minio_client = get_minio_client()
+    bucket_name = os.getenv("MINIO_BUCKET_NAME", "hsg-math-assets")
+
+    need_compile = False
+    if not file_key:
+        need_compile = True
+    else:
+        try:
+            minio_client.stat_object(bucket_name, file_key)
+        except Exception:
+            need_compile = True
+
+    if need_compile:
+        try:
+            resp = requests.post(
+                f"{EXPORT_SERVICE_URL}/api/export",
+                json={
+                    "exam_id": str(exam.id),
+                    "title": exam.title,
+                    "slots_state": exam.slots_state,
+                    "export_type": fmt
+                },
+                timeout=120
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                file_key = data.get("file_key")
+                if fmt == "docx":
+                    exam.exported_docx_key = file_key
+                else:
+                    exam.exported_pdf_key = file_key
+                db.commit()
+            else:
+                raise HTTPException(status_code=502, detail=f"Export compilation error: {resp.text}")
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Không thể biên dịch file: {str(exc)}")
+
+    try:
+        minio_response = minio_client.get_object(bucket_name, file_key)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi khi đọc file từ MinIO: {str(e)}")
+
+    slug = slugify_vietnamese(exam.title) or f"de_thi_{str(exam.id)[:8]}"
+    filename = f"{slug}.{fmt}"
+
+    media_types = {
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "pdf": "application/pdf"
+    }
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"; filename*=UTF-8\'\'{quote(filename)}',
+        "Access-Control-Expose-Headers": "Content-Disposition"
+    }
+
+    return StreamingResponse(
+        minio_response.stream(32 * 1024),
+        media_type=media_types.get(fmt, "application/octet-stream"),
+        headers=headers
+    )

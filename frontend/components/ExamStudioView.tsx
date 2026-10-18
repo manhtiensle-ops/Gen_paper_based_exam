@@ -218,43 +218,20 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     alert("Đã áp dụng bài toán biến thể mới vào đề thi!");
   };
 
-  // Export DOCX
-  const handleExport = async (format: "docx" | "pdf") => {
+  // Export & Download directly to Client (Option B - Direct Streaming)
+  const handleExport = (format: "docx" | "pdf") => {
     setExportLoading(true);
-    try {
-      const slotsPayload = items.map((it) => ({
-        slot_index: it.order_index + 1,
-        points: it.max_points,
-        question: it.problem_snapshot,
-        rubric_data: it.rubric_data,
-      }));
+    const downloadUrl = `/api/generator/exams/${examId}/download?format=${format}`;
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.setAttribute("download", "");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-      const res = await fetch(`/api/generator/export/${examId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          export_type: format,
-          slots_state: slotsPayload,
-        }),
-      });
-
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `De_thi_HSG_${examId}.${format}`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      } else {
-        alert("Lỗi xuất tài liệu");
-      }
-    } catch (e) {
-      alert("Lỗi kết nối xuất file");
-    } finally {
+    setTimeout(() => {
       setExportLoading(false);
-    }
+    }, 1500);
   };
 
   return (
