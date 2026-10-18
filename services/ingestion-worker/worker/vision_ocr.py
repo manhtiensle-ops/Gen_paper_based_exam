@@ -31,9 +31,9 @@ def extract_single_page_questions(img_path: str, page_num: int, total_pages: int
     Extracts math questions from a SINGLE page image using gemini-flash-3.8-tiered.
     Keeps token budget small to guarantee complete, zero-error JSON responses.
     """
-    omniroute_key = os.getenv("OMNIROUTE_API_KEY") or os.getenv("LLM_API_KEY") or ""
-    omniroute_base_url = os.getenv("OMNIROUTE_BASE_URL") or os.getenv("LLM_BASE_URL") or ""
-    model_name = os.getenv("OMNIROUTE_VISION_MODEL") or os.getenv("LLM_VISION_MODEL") or "gemini-flash-3.8-tiered"
+    omniroute_key = (os.getenv("OMNIROUTE_API_KEY") or os.getenv("LLM_API_KEY") or "").strip(' "\'')
+    omniroute_base_url = (os.getenv("OMNIROUTE_BASE_URL") or os.getenv("LLM_BASE_URL") or "").strip(' "\'')
+    model_name = (os.getenv("OMNIROUTE_VISION_MODEL") or os.getenv("LLM_VISION_MODEL") or "antigravity/gemini-3.8-flash-tiered").strip(' "\'')
 
     # 1. OmniRoute / OpenAI compatible API
     if omniroute_key and omniroute_key not in ["your_omniroute_key_here", "mock_or_dev_key"]:
@@ -71,8 +71,13 @@ def extract_single_page_questions(img_path: str, page_num: int, total_pages: int
                 temperature=0.1,
                 response_format={"type": "json_object"}
             )
-            raw_text = response.choices[0].message.content
-            parsed = LLMPageQuestionsOutput.model_validate_json(raw_text)
+            raw_text = response.choices[0].message.content or ""
+            clean_json = raw_text.strip()
+            if clean_json.startswith("```"):
+                import re
+                clean_json = re.sub(r"^```(?:json)?\s*", "", clean_json)
+                clean_json = re.sub(r"\s*```$", "", clean_json)
+            parsed = LLMPageQuestionsOutput.model_validate_json(clean_json)
             return parsed.questions
 
         except Exception as e:

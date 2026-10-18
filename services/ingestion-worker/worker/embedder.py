@@ -10,8 +10,8 @@ def generate_embedding(text: str, model_name: str = "text-embedding-004") -> lis
     2. Google Gemini SDK (text-embedding-004)
     3. Deterministic pseudo-embedding fallback for offline/test environments.
     """
-    omniroute_key = os.getenv("OMNIROUTE_API_KEY") or os.getenv("LLM_API_KEY") or ""
-    omniroute_base_url = os.getenv("OMNIROUTE_BASE_URL") or os.getenv("LLM_BASE_URL") or ""
+    omniroute_key = (os.getenv("OMNIROUTE_API_KEY") or os.getenv("LLM_API_KEY") or "").strip(' "\'')
+    omniroute_base_url = (os.getenv("OMNIROUTE_BASE_URL") or os.getenv("LLM_BASE_URL") or "").strip(' "\'')
 
     if omniroute_key and omniroute_key not in ["your_omniroute_key_here", "mock_or_dev_key"]:
         try:
