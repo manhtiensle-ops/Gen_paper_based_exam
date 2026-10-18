@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
 import {
@@ -22,7 +22,10 @@ import {
   Edit3,
   Layers,
   ChevronRight,
-  Eye
+  Eye,
+  Paperclip,
+  X,
+  MessageSquare
 } from "lucide-react";
 
 interface Props {
@@ -64,18 +67,123 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [compiling, setCompiling] = useState(false);
   const [zoomScale, setZoomScale] = useState(100);
 
-  // AI Layout Co-pilot Chat State
+  // Left Sidebar Tab: "chat" | "items" | "knobs"
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "items" | "knobs">("chat");
+
+  // AI Multimodal Layout Agent Chat State
   const [agentInput, setAgentInput] = useState("");
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
-  const [agentLog, setAgentLog] = useState<{ sender: "user" | "agent"; text: string }[]>([
+  const [agentLog, setAgentLog] = useState<{ sender: "user" | "agent"; text: string; imageUrl?: string | null }[]>([
     {
       sender: "agent",
-      text: "Chào thầy cô! Tôi là Trợ lý Dàn trang LaTeX. Hãy ra lệnh cho tôi như: 'Dồn trang gọn gàng', 'Giảm lề 1.5cm', 'Cỡ chữ 11pt', 'Giãn dòng thưa hơn'...",
+      text: "Chào thầy cô! Em là Trợ lý Dàn trang & Sửa đề AI. Thầy cô có thể nhắn lệnh (như 'Dồn vừa 1 trang', 'Chuyển câu hình sang 2 cột') hoặc dán ảnh chụp màn hình (Ctrl+V) khoanh tròn chỗ cần sửa để em xử lý ngay!",
     },
   ]);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Question editing modal
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [agentLog]);
+
+  // Handle Clipboard Paste Image (Ctrl+V)
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipItems = e.clipboardData.items;
+    for (let i = 0; i < clipItems.length; i++) {
+      if (clipItems[i].type.indexOf("image") !== -1) {
+        const file = clipItems[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (uploadEvent) => {
+            setAttachedImage(uploadEvent.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
+  };
+
+  // Handle File Upload Image
+  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        setAttachedImage(uploadEvent.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // AI Layout Agent Action (supports Multimodal Image)
+  const handleSendAgentMessage = async (msgText?: string) => {
+    const textToSend = msgText || agentInput;
+    if ((!textToSend.trim() && !attachedImage) || agentLoading) return;
+
+    const userEntry = {
+      sender: "user" as const,
+      text: textToSend,
+      imageUrl: attachedImage,
+    };
+    setAgentLog((prev) => [...prev, userEntry]);
+    const sentImg = attachedImage;
+    setAttachedImage(null);
+    setAgentInput("");
+    setAgentLoading(true);
+
+    try {
+      const res = await fetch(`/api/studio/exams/${examId}/layout-agent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_message: textToSend,
+          image_data: sentImg,
+          current_layout_knobs: layoutKnobs,
+          header_config: headerConfig,
+          mode: activeMode,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAgentLog((prev) => [
+          ...prev,
+          { sender: "agent", text: data.ui_status_message || "Đã điều chỉnh bố cục thành công!" },
+        ]);
+        if (data.updated_layout_knobs) {
+          setLayoutKnobs(data.updated_layout_knobs);
+        }
+        if (data.preview_data) {
+          setPreviewData(data.preview_data);
+        }
+        // Refresh items in case questions were patched
+        const refRes = await fetch(`/api/studio/exams/${examId}/items`);
+        if (refRes.ok) {
+          const freshItems = await refRes.json();
+          setItems(freshItems);
+        }
+      } else {
+        setAgentLog((prev) => [
+          ...prev,
+          { sender: "agent", text: "Xin lỗi, đã xảy ra lỗi khi điều chỉnh bố cục." },
+        ]);
+      }
+    } catch (e) {
+      setAgentLog((prev) => [
+        ...prev,
+        { sender: "agent", text: "Lỗi kết nối tới AI Layout Agent." },
+      ]);
+    } finally {
+      setAgentLoading(false);
+    }
+  };
 
   // Fetch Items & Compile Initial Live Preview
   const loadExamItems = async () => {
@@ -160,55 +268,6 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       });
     } catch (e) {
       console.error(e);
-    }
-  };
-
-  // AI Layout Agent Action
-  const handleSendAgentMessage = async (msgText?: string) => {
-    const textToSend = msgText || agentInput;
-    if (!textToSend.trim() || agentLoading) return;
-
-    setAgentLog((prev) => [...prev, { sender: "user", text: textToSend }]);
-    setAgentInput("");
-    setAgentLoading(true);
-
-    try {
-      const res = await fetch(`/api/studio/exams/${examId}/layout-agent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_message: textToSend,
-          current_layout_knobs: layoutKnobs,
-          header_config: headerConfig,
-          mode: activeMode,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setAgentLog((prev) => [
-          ...prev,
-          { sender: "agent", text: data.ui_status_message || "Đã điều chỉnh bố cục thành công!" },
-        ]);
-        if (data.updated_layout_knobs) {
-          setLayoutKnobs(data.updated_layout_knobs);
-        }
-        if (data.preview_data) {
-          setPreviewData(data.preview_data);
-        }
-      } else {
-        setAgentLog((prev) => [
-          ...prev,
-          { sender: "agent", text: "Xin lỗi, đã xảy ra lỗi khi điều chỉnh bố cục." },
-        ]);
-      }
-    } catch (e) {
-      setAgentLog((prev) => [
-        ...prev,
-        { sender: "agent", text: "Lỗi kết nối tới AI Layout Agent." },
-      ]);
-    } finally {
-      setAgentLoading(false);
     }
   };
 
@@ -325,267 +384,408 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         </div>
       </header>
 
-      {/* 2. THREE-PANE OVERLEAF-LIKE WORKSPACE */}
-      <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden h-[calc(100vh-53px)]">
-        {/* PANE 1 (LEFT - 3 COLS): AI ACTIONABLE LAYOUT AGENT */}
-        <div className="col-span-3 bg-slate-850 border-r border-slate-800 flex flex-col p-4 space-y-4 overflow-y-auto">
-          <div className="flex items-center justify-between border-b border-slate-700 pb-2.5">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center space-x-1.5">
-              <Sparkles className="w-4 h-4 text-indigo-400" />
-              <span>AI Layout Co-pilot</span>
-            </h3>
-            <span className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
-              Gemini 3.8 Flash
-            </span>
-          </div>
-
-          {/* Quick Action Pills */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Lệnh dàn trang nhanh:</p>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => handleSendAgentMessage("Dồn câu hỏi vừa vặn trong 1 trang A4")}
-                className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-950/70 hover:bg-indigo-900 border border-indigo-700/50 text-indigo-200 transition-all font-medium"
-              >
-                ⚡ Dồn vừa 1 trang
-              </button>
-              <button
-                onClick={() => handleSendAgentMessage("Thu nhỏ lề trang xuống 1.5cm")}
-                className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all font-medium"
-              >
-                📐 Thu nhỏ lề 1.5cm
-              </button>
-              <button
-                onClick={() => handleSendAgentMessage("Đổi cỡ chữ sang 11pt thanh mảnh")}
-                className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all font-medium"
-              >
-                🔤 Cỡ chữ 11pt
-              </button>
-              <button
-                onClick={() => handleSendAgentMessage("Giãn dòng thưa hơn cho dễ đọc")}
-                className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all font-medium"
-              >
-                ↔️ Giãn dòng 1.2
-              </button>
-            </div>
-          </div>
-
-          {/* Chat Messages */}
-          <div className="flex-1 bg-slate-900/60 rounded-xl p-3 border border-slate-800 space-y-2.5 overflow-y-auto text-xs min-h-[220px]">
-            {agentLog.map((log, idx) => (
-              <div
-                key={idx}
-                className={`p-2.5 rounded-xl leading-relaxed ${
-                  log.sender === "user"
-                    ? "bg-indigo-600 text-white ml-4 shadow-sm"
-                    : "bg-slate-800/90 text-slate-200 mr-4 border border-slate-700"
-                }`}
-              >
-                <p className="font-semibold text-[10px] opacity-75 mb-0.5">
-                  {log.sender === "user" ? "Thầy cô" : "Trợ lý Layout"}
-                </p>
-                <p>{log.text}</p>
-              </div>
-            ))}
-            {agentLoading && (
-              <div className="p-2.5 rounded-xl bg-slate-800 text-slate-400 mr-4 border border-slate-700 text-xs flex items-center space-x-2">
-                <Sparkles className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                <span>Đang tính toán bố cục vật lý & biên dịch...</span>
-              </div>
-            )}
-          </div>
-
-          {/* Chat Input */}
-          <div className="flex items-center space-x-2">
-            <input
-              type="text"
-              placeholder="Nhập yêu cầu: 'Dồn trang', 'Cỡ chữ 11pt'..."
-              value={agentInput}
-              onChange={(e) => setAgentInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSendAgentMessage()}
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-            />
+      {/* 2. TWO-PANE SPACIOUS OVERLEAF-STYLE WORKSPACE */}
+      <div className="flex-1 flex overflow-hidden h-[calc(100vh-53px)]">
+        {/* LEFT WORKSTATION (45% WIDTH - ROOMY TABS) */}
+        <div className="w-[45%] min-w-[460px] max-w-[620px] bg-slate-900 border-r border-slate-800 flex flex-col">
+          {/* Workspace Tabs Header */}
+          <div className="h-11 bg-slate-950/80 border-b border-slate-800 px-4 flex items-center space-x-2 shrink-0">
             <button
-              onClick={() => handleSendAgentMessage()}
-              disabled={agentLoading || !agentInput.trim()}
-              className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl disabled:opacity-40 transition-all"
+              onClick={() => setSidebarTab("chat")}
+              className={`h-full px-3.5 text-xs font-bold border-b-2 flex items-center space-x-2 transition-all ${
+                sidebarTab === "chat"
+                  ? "border-indigo-500 text-indigo-400 bg-slate-900/60"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
             >
-              <Send className="w-3.5 h-3.5" />
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Trợ Lý AI Dàn Trang & Sửa Đề</span>
+            </button>
+
+            <button
+              onClick={() => setSidebarTab("items")}
+              className={`h-full px-3.5 text-xs font-bold border-b-2 flex items-center space-x-2 transition-all ${
+                sidebarTab === "items"
+                  ? "border-indigo-500 text-indigo-400 bg-slate-900/60"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Biên Tập Câu Hỏi ({items.length})</span>
+            </button>
+
+            <button
+              onClick={() => setSidebarTab("knobs")}
+              className={`h-full px-3.5 text-xs font-bold border-b-2 flex items-center space-x-2 transition-all ${
+                sidebarTab === "knobs"
+                  ? "border-indigo-500 text-indigo-400 bg-slate-900/60"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Bố Cục (Sliders)</span>
             </button>
           </div>
-        </div>
 
-        {/* PANE 2 (CENTER - 4 COLS): STRUCTURE, QUICK KNOBS & ITEM MANAGER */}
-        <div className="col-span-4 bg-slate-850/80 border-r border-slate-800 flex flex-col p-4 space-y-4 overflow-y-auto">
-          {/* Layout Quick Sliders */}
-          <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 space-y-3">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center space-x-1.5 border-b border-slate-800 pb-2">
-              <Sliders className="w-4 h-4 text-indigo-400" />
-              <span>Thanh Trượt Tinh Chỉnh Bố Cục (Knobs)</span>
-            </h3>
+          {/* TAB 1: AI MULTIMODAL CHAT CO-PILOT */}
+          {sidebarTab === "chat" && (
+            <div className="flex-1 flex flex-col overflow-hidden p-4">
+              {/* Quick Prompt Chips */}
+              <div className="flex flex-wrap gap-1.5 pb-3 border-b border-slate-800/80 shrink-0">
+                <button
+                  onClick={() => handleSendAgentMessage("Dồn toàn bộ các câu hỏi lại để vừa khít trọn vẹn 1 trang A4")}
+                  className="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-indigo-300 text-[11px] font-semibold border border-indigo-900/50 transition-all flex items-center space-x-1"
+                >
+                  <Sparkles className="w-3 h-3 text-indigo-400" />
+                  <span>Dồn vừa 1 trang A4</span>
+                </button>
+                <button
+                  onClick={() => handleSendAgentMessage("Chuyển bài hình học sang bố cục 2 cột: đề bên trái, hình bên phải")}
+                  className="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 transition-all"
+                >
+                  📐 Bài hình 2 cột
+                </button>
+                <button
+                  onClick={() => handleSendAgentMessage("Thu hẹp lề trên và lề dưới xuống 1.4cm")}
+                  className="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 transition-all"
+                >
+                  📏 Thu hẹp lề 1.4cm
+                </button>
+                <button
+                  onClick={() => handleSendAgentMessage("Đổi font chữ sang cỡ 12pt chuẩn thi")}
+                  className="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 transition-all"
+                >
+                  🔤 Cỡ chữ 12pt
+                </button>
+              </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <label className="block text-[11px] text-slate-400 font-semibold mb-1">
-                  Cỡ chữ: <span className="text-white font-bold">{layoutKnobs.font_size_pt}pt</span>
-                </label>
-                <div className="flex bg-slate-800 p-0.5 rounded-lg border border-slate-700">
-                  <button
-                    onClick={() => {
-                      const updated = { ...layoutKnobs, font_size_pt: 11 };
-                      setLayoutKnobs(updated);
-                      compileLivePreview(items, updated);
-                    }}
-                    className={`flex-1 py-1 rounded text-center font-bold text-[11px] ${
-                      layoutKnobs.font_size_pt === 11 ? "bg-indigo-600 text-white" : "text-slate-400"
+              {/* Chat Message List */}
+              <div ref={chatScrollRef} className="flex-1 overflow-y-auto py-3 space-y-3 pr-1">
+                {agentLog.map((log, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex flex-col ${
+                      log.sender === "user" ? "items-end" : "items-start"
                     }`}
                   >
-                    11pt (Thanh)
-                  </button>
-                  <button
-                    onClick={() => {
-                      const updated = { ...layoutKnobs, font_size_pt: 12 };
-                      setLayoutKnobs(updated);
-                      compileLivePreview(items, updated);
-                    }}
-                    className={`flex-1 py-1 rounded text-center font-bold text-[11px] ${
-                      layoutKnobs.font_size_pt === 12 ? "bg-indigo-600 text-white" : "text-slate-400"
-                    }`}
-                  >
-                    12pt (Chuẩn)
-                  </button>
-                </div>
+                    <div
+                      className={`max-w-[88%] p-3 rounded-2xl text-xs leading-relaxed space-y-2 ${
+                        log.sender === "user"
+                          ? "bg-indigo-600 text-white rounded-br-none shadow"
+                          : "bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-none shadow-sm"
+                      }`}
+                    >
+                      {log.imageUrl && (
+                        <div className="rounded-lg overflow-hidden border border-white/20 max-h-48 bg-black/40">
+                          <img
+                            src={log.imageUrl}
+                            alt="Ảnh đính kèm"
+                            className="w-full h-auto object-contain block"
+                          />
+                        </div>
+                      )}
+                      <p className="whitespace-pre-wrap">{log.text}</p>
+                    </div>
+                  </div>
+                ))}
+
+                {agentLoading && (
+                  <div className="flex items-center space-x-2 text-xs text-indigo-400 bg-slate-800/80 p-3 rounded-2xl rounded-bl-none w-fit border border-indigo-900/40">
+                    <Sparkles className="w-4 h-4 animate-spin text-indigo-400" />
+                    <span>Gemini Flash đang phân tích ảnh & tính toán bố cục...</span>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-[11px] text-slate-400 font-semibold mb-1">
-                  Giãn dòng: <span className="text-white font-bold">{layoutKnobs.line_spread}</span>
-                </label>
-                <input
-                  type="range"
-                  min="1.0"
-                  max="1.3"
-                  step="0.05"
-                  value={layoutKnobs.line_spread}
-                  onChange={(e) => {
-                    const updated = { ...layoutKnobs, line_spread: parseFloat(e.target.value) };
-                    setLayoutKnobs(updated);
-                    compileLivePreview(items, updated);
-                  }}
-                  className="w-full accent-indigo-500 cursor-pointer"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] text-slate-400 font-semibold mb-1">
-                  Cách câu: <span className="text-white font-bold">{layoutKnobs.item_gap_pt}pt</span>
-                </label>
-                <input
-                  type="range"
-                  min="4"
-                  max="16"
-                  step="1"
-                  value={layoutKnobs.item_gap_pt}
-                  onChange={(e) => {
-                    const updated = { ...layoutKnobs, item_gap_pt: parseInt(e.target.value) };
-                    setLayoutKnobs(updated);
-                    compileLivePreview(items, updated);
-                  }}
-                  className="w-full accent-indigo-500 cursor-pointer"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] text-slate-400 font-semibold mb-1">
-                  Lề trang: <span className="text-white font-bold">{layoutKnobs.margin_left_cm}cm</span>
-                </label>
-                <input
-                  type="range"
-                  min="1.2"
-                  max="2.5"
-                  step="0.1"
-                  value={layoutKnobs.margin_left_cm}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    const updated = {
-                      ...layoutKnobs,
-                      margin_left_cm: val,
-                      margin_right_cm: Math.max(1.2, val - 0.2),
-                      margin_top_cm: val,
-                      margin_bottom_cm: val,
-                    };
-                    setLayoutKnobs(updated);
-                    compileLivePreview(items, updated);
-                  }}
-                  className="w-full accent-indigo-500 cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Question Items List with Move / Edit Buttons */}
-          <div className="flex-1 space-y-2 overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-700 pb-2">
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                Danh sách bài toán ({items.length} câu)
-              </span>
-            </div>
-
-            {items.map((it, idx) => (
-              <div
-                key={it.id}
-                className="p-3 bg-slate-900/90 hover:bg-slate-800 rounded-xl border border-slate-700/80 space-y-2 text-xs transition-all"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-extrabold text-indigo-400">{it.display_label}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-semibold">
-                      {it.max_points} điểm
+              {/* Input Area with Image Attachment & Paste Support */}
+              <div className="pt-2 border-t border-slate-800 shrink-0 space-y-2">
+                {attachedImage && (
+                  <div className="relative inline-block border-2 border-indigo-500 rounded-xl overflow-hidden bg-slate-950 p-1 shadow-lg">
+                    <img
+                      src={attachedImage}
+                      alt="Thumbnail đính kèm"
+                      className="h-16 w-auto object-contain rounded-lg"
+                    />
+                    <button
+                      onClick={() => setAttachedImage(null)}
+                      className="absolute top-1.5 right-1.5 w-5 h-5 bg-rose-600 hover:bg-rose-700 text-white rounded-full flex items-center justify-center text-xs shadow"
+                      title="Gỡ ảnh"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    <span className="text-[9px] text-indigo-300 block text-center pt-0.5">
+                      Ảnh đã sẵn sàng gửi
                     </span>
-                    {it.problem_snapshot?.figures_meta?.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
-                        Hình vẽ 2 cột
-                      </span>
-                    )}
                   </div>
+                )}
 
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => moveItem(idx, "up")}
-                      disabled={idx === 0}
-                      className="p-1 text-slate-400 hover:text-white disabled:opacity-20"
-                      title="Di chuyển lên"
-                    >
-                      <ArrowUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => moveItem(idx, "down")}
-                      disabled={idx === items.length - 1}
-                      className="p-1 text-slate-400 hover:text-white disabled:opacity-20"
-                      title="Di chuyển xuống"
-                    >
-                      <ArrowDown className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setEditingQuestion(it.problem_snapshot)}
-                      className="p-1 text-slate-400 hover:text-indigo-400 rounded hover:bg-slate-700"
-                      title="Sửa nội dung câu hỏi"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                <div className="relative flex items-end bg-slate-950 rounded-2xl border border-slate-700 focus-within:border-indigo-500 transition-all p-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFileSelect}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-xl transition-all mr-1"
+                    title="Đính kèm ảnh chụp màn hình chỗ cần sửa"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+
+                  <textarea
+                    rows={2}
+                    placeholder="Nhập yêu cầu sửa bố cục, hoặc dán ảnh (Ctrl+V) chỗ cần sửa..."
+                    value={agentInput}
+                    onChange={(e) => setAgentInput(e.target.value)}
+                    onPaste={handlePaste}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendAgentMessage();
+                      }
+                    }}
+                    className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none resize-none py-1 leading-relaxed"
+                  />
+
+                  <button
+                    onClick={() => handleSendAgentMessage()}
+                    disabled={agentLoading || (!agentInput.trim() && !attachedImage)}
+                    className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-40 transition-all shadow shrink-0 ml-1"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
                 </div>
-
-                <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                  {it.problem_snapshot?.content_latex || "..."}
+                <p className="text-[10px] text-slate-500 flex items-center justify-between px-1">
+                  <span>Mẹo: Bạn có thể nhấn Ctrl+V để dán trực tiếp ảnh chụp màn hình!</span>
+                  <span>Enter để gửi</span>
                 </p>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {/* TAB 2: QUESTION ITEMS & REORDER */}
+          {sidebarTab === "items" && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {items.map((it, idx) => {
+                const snap = it.problem_snapshot || {};
+                return (
+                  <div
+                    key={it.id}
+                    className="p-4 bg-slate-950/70 hover:bg-slate-950 rounded-2xl border border-slate-800 space-y-2.5 transition-all text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-extrabold text-sm text-indigo-400">
+                          {it.display_label}
+                        </span>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60">
+                          {it.max_points} điểm
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold">
+                          {snap.main_topic || "ALGEBRA"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => setEditingQuestion(snap)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all"
+                          title="Sửa nội dung câu hỏi"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => moveItem(idx, "up")}
+                          disabled={idx === 0}
+                          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg disabled:opacity-20 transition-all"
+                          title="Di chuyển lên"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => moveItem(idx, "down")}
+                          disabled={idx === items.length - 1}
+                          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg disabled:opacity-20 transition-all"
+                          title="Di chuyển xuống"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="text-slate-300 leading-relaxed font-serif line-clamp-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/60">
+                      {snap.content_latex || "..."}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* TAB 3: LAYOUT SLIDERS & KNOBS */}
+          {sidebarTab === "knobs" && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-4">
+                <h4 className="font-bold text-slate-200 flex items-center justify-between">
+                  <span>Thông số cỡ chữ & khoảng cách</span>
+                  <button
+                    onClick={() => compileLivePreview(items, layoutKnobs, activeMode)}
+                    className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Áp dụng</span>
+                  </button>
+                </h4>
+
+                <div>
+                  <div className="flex justify-between text-slate-400 mb-1">
+                    <span>Cỡ chữ tài liệu:</span>
+                    <span className="font-bold text-white">{layoutKnobs.font_size_pt}pt</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {[11, 12].map((pt) => (
+                      <button
+                        key={pt}
+                        onClick={() => {
+                          const updated = { ...layoutKnobs, font_size_pt: pt };
+                          setLayoutKnobs(updated);
+                          compileLivePreview(items, updated, activeMode);
+                        }}
+                        className={`flex-1 py-1.5 rounded-lg font-bold border transition-all ${
+                          layoutKnobs.font_size_pt === pt
+                            ? "bg-indigo-600 text-white border-indigo-500 shadow"
+                            : "bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800"
+                        }`}
+                      >
+                        {pt}pt {pt === 12 ? "(Chuẩn Bộ)" : "(Tiết kiệm trang)"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-400 mb-1">
+                    <span>Hệ số giãn dòng (Line spread):</span>
+                    <span className="font-bold text-white">{layoutKnobs.line_spread}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1.0"
+                    max="1.30"
+                    step="0.05"
+                    value={layoutKnobs.line_spread}
+                    onChange={(e) => {
+                      const updated = { ...layoutKnobs, line_spread: parseFloat(e.target.value) };
+                      setLayoutKnobs(updated);
+                    }}
+                    onMouseUp={() => compileLivePreview(items, layoutKnobs, activeMode)}
+                    className="w-full accent-indigo-500 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-400 mb-1">
+                    <span>Khoảng cách giữa các câu:</span>
+                    <span className="font-bold text-white">{layoutKnobs.item_gap_pt}pt</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="4"
+                    max="16"
+                    step="1"
+                    value={layoutKnobs.item_gap_pt}
+                    onChange={(e) => {
+                      const updated = { ...layoutKnobs, item_gap_pt: parseInt(e.target.value) };
+                      setLayoutKnobs(updated);
+                    }}
+                    onMouseUp={() => compileLivePreview(items, layoutKnobs, activeMode)}
+                    className="w-full accent-indigo-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Margins */}
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <h4 className="font-bold text-slate-200">Căn lề trang in A4 (cm)</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-400 block mb-1">Lề Trên:</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1.2"
+                      max="3.0"
+                      value={layoutKnobs.margin_top_cm}
+                      onChange={(e) => {
+                        const updated = { ...layoutKnobs, margin_top_cm: parseFloat(e.target.value) };
+                        setLayoutKnobs(updated);
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-white text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-400 block mb-1">Lề Dưới:</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1.2"
+                      max="3.0"
+                      value={layoutKnobs.margin_bottom_cm}
+                      onChange={(e) => {
+                        const updated = { ...layoutKnobs, margin_bottom_cm: parseFloat(e.target.value) };
+                        setLayoutKnobs(updated);
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-white text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-400 block mb-1">Lề Trái:</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1.5"
+                      max="3.5"
+                      value={layoutKnobs.margin_left_cm}
+                      onChange={(e) => {
+                        const updated = { ...layoutKnobs, margin_left_cm: parseFloat(e.target.value) };
+                        setLayoutKnobs(updated);
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-white text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-400 block mb-1">Lề Phải:</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1.2"
+                      max="2.5"
+                      value={layoutKnobs.margin_right_cm}
+                      onChange={(e) => {
+                        const updated = { ...layoutKnobs, margin_right_cm: parseFloat(e.target.value) };
+                        setLayoutKnobs(updated);
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-white text-xs font-mono"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => compileLivePreview(items, layoutKnobs, activeMode)}
+                  className="w-full mt-2 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-bold rounded-xl border border-slate-700 transition-all text-xs"
+                >
+                  Áp Dụng Lề Mới
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* PANE 3 (RIGHT - 5 COLS): OVERLEAF LIVE A4 PDF CANVAS */}
-        <div className="col-span-5 bg-slate-950 flex flex-col h-full border-l border-slate-800">
+        {/* PANE 2 (RIGHT): OVERLEAF LIVE A4 PDF CANVAS */}
+        <div className="flex-1 bg-slate-950 flex flex-col h-full border-l border-slate-800 overflow-hidden">
           {/* Canvas Controls Header */}
           <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 flex items-center justify-between text-xs text-slate-400">
             <div className="flex items-center space-x-2">

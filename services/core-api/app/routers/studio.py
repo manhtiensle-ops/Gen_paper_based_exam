@@ -500,6 +500,7 @@ def run_layout_agent(
         raise HTTPException(status_code=404, detail="Không tìm thấy đề thi")
 
     user_message = payload.get("user_message", "")
+    image_data = payload.get("image_data") # Optional base64 data URL from screenshot upload/paste
     current_knobs = payload.get("current_layout_knobs") or {
         "margin_top_cm": 1.8,
         "margin_bottom_cm": 1.8,
@@ -513,27 +514,43 @@ def run_layout_agent(
     header_cfg = payload.get("header_config") or exam.header_config or {}
     mode = payload.get("mode", "EXAM")
 
+    items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
+    questions_summary = []
+    for it in items:
+        snap = it.problem_snapshot or {}
+        questions_summary.append({
+            "item_id": str(it.id),
+            "display_label": it.display_label,
+            "topic": snap.get("main_topic", ""),
+            "content_latex": snap.get("content_latex", "")[:150]
+        })
+
     client = get_omniroute_client()
     vision_model = os.getenv("OMNIROUTE_VISION_MODEL", "antigravity/gemini-3.8-flash-tiered")
 
-    prompt = f"""Bạn là Kỹ sư Chế bản LaTeX & Trợ lý Dàn trang Đề thi Toán học (Actionable Layout Agent).
-Nhiệm vụ: Nhận lệnh tự nhiên từ giáo viên và điều chỉnh các tham số bố cục (layout_knobs) để trang in A4 đạt thẩm mỹ tối ưu.
+    prompt = f"""Bạn là Kỹ sư Chế bản LaTeX & Trợ lý Dàn trang Đề thi Toán học (Actionable Multimodal Layout Agent).
+Nhiệm vụ: Nhận lệnh từ giáo viên (kèm ảnh chụp màn hình ghi chú / khoanh tròn nếu có) và điều chỉnh các tham số bố cục (layout_knobs), hoặc sửa trực tiếp nội dung/công thức câu hỏi theo chỉ định của giáo viên.
 
 CÁC NGUYÊN TẮC DÀN TRANG TOÁN:
 1. "Dồn trang / ép vào vừa 1 trang": Giảm margin (xuống 1.4-1.6cm), giảm line_spread (1.05-1.10), giảm item_gap_pt (4-6pt), giảm math_skip_pt (3-4pt).
 2. "Thưa dòng / giãn dòng": Tăng line_spread (1.20-1.25), tăng item_gap_pt (12-14pt).
 3. "Chữ nhỏ lại": font_size_pt = 11. "Chữ to chuẩn": font_size_pt = 12.
 4. "Thu nhỏ lề": margin_left_cm = 1.6, margin_right_cm = 1.4, margin_top_cm = 1.4, margin_bottom_cm = 1.4.
+5. "Chuyển câu hình sang 2 cột": đặt layout_knobs["geometry_layout"] = {{"mode": "two_column_fig_right"}}.
+6. NẾU CÓ ẢNH ĐÍNH KÈM: Quan sát vùng khoanh tròn, ghi chú viết tay hoặc mũi tên chỉ định của giáo viên để sửa chính xác câu hỏi hoặc chỉnh bố cục tương ứng.
 
-THAM SỐ HIỆN TẠI:
+THAM SỐ BỐ CỤC HIỆN TẠI:
 {json.dumps(current_knobs, indent=2)}
+
+DANH SÁCH CÁC CÂU TRONG ĐỀ:
+{json.dumps(questions_summary, ensure_ascii=False, indent=2)}
 
 LỆNH CỦA GIÁO VIÊN:
 "{user_message}"
 
 Trả về DUY NHẤT một JSON hợp lệ:
 {{
-  "ui_status_message": "Mô tả ngắn gọn hành động vừa thực hiện (dưới 25 từ, ví dụ: 'Đã giảm lề trang và co giãn dòng để dồn vừa vặn trang 1.')",
+  "ui_status_message": "Mô tả ngắn gọn hành động vừa thực hiện (dưới 30 từ, ví dụ: 'Đã giảm lề trang và co khoảng cách để dồn vừa vặn trang 1.')",
   "updated_layout_knobs": {{
     "margin_top_cm": 1.8,
     "margin_bottom_cm": 1.8,
@@ -543,13 +560,23 @@ Trả về DUY NHẤT một JSON hợp lệ:
     "line_spread": 1.15,
     "item_gap_pt": 10,
     "math_skip_pt": 6
-  }}
-}}"""
+  }},
+  "question_patch": null
+}}
+(Lưu ý: Nếu giáo viên yêu cầu sửa nội dung/công thức câu hỏi cụ thể, điền question_patch: {{"item_id": "UUID-của-câu", "field": "content_latex", "new_content": "nội dung mới"}} hoặc null nếu không có)."""
 
     try:
+        if image_data:
+            user_content = [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": image_data}}
+            ]
+        else:
+            user_content = prompt
+
         response = client.chat.completions.create(
             model=vision_model,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": user_content}],
             temperature=0.2,
             response_format={"type": "json_object"}
         )
@@ -563,7 +590,21 @@ Trả về DUY NHẤT một JSON hợp lệ:
         ui_status = data.get("ui_status_message", "Đã cập nhật bố cục theo yêu cầu.")
         new_knobs = data.get("updated_layout_knobs", current_knobs)
 
-        # Biên dịch lại xem trước
+        # Áp dụng question_patch nếu có
+        patch_info = data.get("question_patch")
+        if patch_info and isinstance(patch_info, dict):
+            p_id = patch_info.get("item_id")
+            p_field = patch_info.get("field", "content_latex")
+            p_val = patch_info.get("new_content")
+            if p_id and p_val:
+                target_item = db.query(ExamItem).filter(ExamItem.id == p_id).first()
+                if target_item:
+                    snap = dict(target_item.problem_snapshot or {})
+                    snap[p_field] = p_val
+                    target_item.problem_snapshot = snap
+                    db.commit()
+
+        # Re-fetch items for preview
         items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
         items_payload = [{
             "id": str(it.id),
