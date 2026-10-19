@@ -79,3 +79,34 @@
 ### 3.4. Turbo-LaTeX Engine & Zero-I/O Compilation
 - Sử dụng TeX Live biên dịch trực tiếp trên phân vùng RAM `tmpfs` (`/dev/shm`).
 - Tích hợp bộ font Times New Roman chuẩn Toán học (`mathptmx`), căn lề A4 chuẩn Bộ GD&ĐT, và xuất ảnh từng trang A4 tức thời bằng `pdftoppm -png -r 150`.
+
+---
+
+## 4. Kiến Trúc Giao Diện UI/UX Studio (Light Academic Theme & Fluid Layout)
+
+### 4.1. Triết Lý Thiết Kế: "Light Academic Workspace"
+Thay vì sử dụng nền tối đen sì (`#000000` / `#0B0F19`) làm chói gắt và lạc điệu với các phân hệ khác của hệ thống, Exam Studio áp dụng **Light Academic Theme (Trắng ngà / Slate nhã nhặn)**:
+- **Tone màu chủ đạo:**
+  - Nền tổng thể: Trắng (`#FFFFFF`) và xám dịu (`#F8FAFC`, `#F1F5F9`).
+  - Viền phân định: Đường hairline mỏng thanh lịch (`border-slate-200`).
+  - Nền bàn làm việc xem bản in (PDF Canvas): Màu xám trung tính sáng (`#E2E8F0` / `#CBD5E1`), giúp tờ giấy in A4 màu trắng tuyết nổi bật với hiệu ứng đổ bóng đa tầng vật lý (`box-shadow: 0 12px 32px -4px rgba(0,0,0,0.18)`).
+- **Tối đa hóa không gian hiển thị (Screen Real Estate):**
+  - Mở rộng toàn màn hình (`100vw`, `100vh`), loại bỏ mọi khoảng đệm thừa (padding/margin) gây bó hẹp.
+  - Thanh Resizer kéo-thả trực quan ở giữa cho phép giáo viên tùy ý điều chỉnh tỷ lệ: 40/60, 50/50, hoặc 60/40 tùy theo nhu cầu tập trung vào code hay xem bản in.
+
+### 4.2. Cơ Chế Preamble Folding ("Focus on Content")
+- Toàn bộ mã kỹ thuật TeX Live (`\documentclass`, `\usepackage`, `\geometry`, các macro hệ thống) được gập gọn vào một khối collapsible banner:
+  ```
+  ▸ [ Cấu hình hệ thống TeX Live & Tiêu chuẩn Bộ GD&ĐT (35 dòng đã ẩn) — Bấm để mở rộng ]
+  ```
+- Khi mở Studio, con trỏ soạn thảo đưa người dùng vào thẳng phần nội dung đề thi (`Câu 1`, `Câu 2`...), giúp giáo viên không bị choáng ngợp bởi mã nguồn nội bộ.
+
+### 4.3. Tương Tác Hai Chiều & Phím Tắt Overleaf (Ctrl + S)
+- Giáo viên gõ sửa công thức toán hoặc câu từ trực tiếp trên khung soạn thảo bên trái.
+- Nhấn tổ hợp phím **`Ctrl + S`** (hoặc nút *Biên dịch lại*): Mã nguồn TeX được đẩy về backend qua endpoint `/api/studio/exams/{id}/compile-raw`.
+- TeX Live biên dịch ngầm trên RAM Disk trong `< 0.3s`, bản in PDF A4 bên phải cập nhật tức thì.
+
+### 4.4. Ngăn Kéo Trợ Lý AI Đa Phương Thức (Slide-Over Drawer)
+- AI Co-pilot không chiếm cố định một cột gây chật chội màn hình mà hoạt động dưới dạng ngăn kéo thông minh (Drawer) có thể mở/đóng bằng 1 click hoặc phím tắt `Ctrl + K`.
+- Hỗ trợ dán ảnh chụp màn hình trực tiếp từ clipboard (`Ctrl + V`), quan sát vết khoanh tròn của giáo viên và tự động điều chỉnh bố cục/mã câu hỏi.
+

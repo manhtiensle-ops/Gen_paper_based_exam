@@ -33,33 +33,33 @@
 
 ---
 
-## 3. Không Gian Làm Việc "Exam Studio" (Xưởng Soạn Đề & Barem)
+## 3. Không Gian Làm Việc "Exam Studio" (Overleaf-Grade Light Studio)
 
 Vào tab **"Exam Studio (Soạn & Barem 0.25đ)"** hoặc bấm nút **"Mở Exam Studio ➔"** từ bảng tổ hợp đề thi:
 
-### 3.1. Chế Độ Xem Kép (Dual-Mode)
-- **[📄 Đề Thi Thí Sinh]:** Hiển thị đúng biểu mẫu đề thi in phát cho học sinh (gồm Quốc hiệu, Sở GD&ĐT, Tên trường, khung Số báo danh 6 ô, đề bài phân câu, hình vẽ).
-- **[⚖️ Barem Hướng Dẫn Chấm]:** Hiển thị bảng 2 cột truyền thống chuẩn Bộ GD&ĐT (Cột nội dung các bước lập luận chi tiết và Cột barem điểm bẻ nhỏ 0.25đ).
+### 3.1. Giao Diện Sáng Nhã Nhặn (Light Academic Theme) & Tận Dụng Toàn Màn Hình
+- **Tone màu chủ đạo:** Màu trắng tuyết và xám slate thanh lịch, tạo sự đồng nhất với giao diện toàn trang và giúp mắt giáo viên thoải mái khi làm việc lâu.
+- **Thanh chia đôi co giãn (Draggable Split Resizer):** 
+  - Nằm ở ranh giới giữa khung Code và khung PDF.
+  - Giáo viên có thể bấm giữ chuột để kéo co giãn tỷ lệ (từ 30% đến 70%) tùy theo nhu cầu xem code rộng hơn hay xem bản in to hơn.
+  - Nhấp đúp (Double-click) vào thanh chia để tự động khôi phục tỷ lệ cân bằng `50/50`.
 
-### 3.2. Trợ Lý AI Dàn Trang & Sửa Đề Đa Phương Thức (Multimodal Co-pilot)
-Nằm ở cột bên trái:
-- **Dán ảnh chụp màn hình trực tiếp (`Ctrl + V`):**
-  - Khi xem bản in PDF bên phải, bạn thấy chỗ nào cần sửa hoặc muốn đổi bố cục:
-  - Dùng công cụ Snipping Tool chụp màn hình, khoanh tròn hoặc vẽ mũi tên vào chỗ cần sửa $\rightarrow$ Bấm `Ctrl + V` vào ô chat của AI.
-  - Nhập lệnh (ví dụ: *"Sửa biểu thức trong vòng tròn đỏ thành...", "Đổi bố cục bài hình này thành 2 cột"*).
-  - Bấm gửi $\rightarrow$ Gemini Flash sẽ quan sát vết khoanh tròn trên ảnh, tự động sửa mã đề thi và biên dịch lại bản in tức thì.
-- **Các nút lệnh dàn trang nhanh:**
-  - `⚡ Dồn vừa 1 trang A4`: Tự động co giãn lề và khoảng cách dòng để đề thi nằm gọn trong 1 trang giấy.
-  - `📐 Bài hình 2 cột`: Đặt đề bài và câu hỏi bên trái, đưa hình vẽ sang bên phải.
-  - `📏 Thu hẹp lề 1.4cm`: Tối ưu diện tích in ấn.
-  - `🔤 Cỡ chữ 12pt`: Đặt cỡ chữ chuẩn theo quy định của Sở.
+### 3.2. Sửa Công Thức Trực Tiếp Bằng Mã LaTeX (Code Editor - Nửa Trái)
+- **Thu gọn Preamble thông minh (Focus on Content):**
+  - Khối mã cấu hình TeX Live được ẩn tự động dưới banner `▸ [Cấu hình hệ thống TeX Live]`.
+  - Giáo viên nhìn thấy ngay các đề bài: `Câu 1`, `Câu 2`... để chỉnh sửa nhanh.
+- **Gõ sửa tự do & Phím tắt `Ctrl + S`:**
+  - Giáo viên click chuột sửa bất kỳ ký hiệu toán nào (như đổi `x^2` thành `x^3`, sửa nghiệm, sửa đề bài).
+  - Bấm **`Ctrl + S`** (hoặc nút *Biên dịch lại*): TeX Live biên dịch ngầm tức thì (< 0.3s) và bản in A4 bên phải cập nhật ngay lập tức.
 
-### 3.3. Tinh Chỉnh Bằng Tay & Barem Điểm 0.25đ
-- **Tab Biên tập câu hỏi:**
-  - Bấm nút mũi tên lên / xuống để hoán đổi vị trí các câu hỏi (tự động cập nhật lại nhãn *Câu 1, Câu 2...*).
-  - Bấm nút `+` / `-` trên các dòng barem để tăng/giảm $0.25$ điểm cho từng bước chấm thi.
-- **Tab Bố cục (Sliders):**
-  - Kéo thanh trượt để thay đổi cỡ chữ, giãn dòng và 4 lề trang in A4.
+### 3.3. Trợ Lý AI Dàn Trang & Sửa Đề Đa Phương Thức (Slide-Over Drawer)
+- Bấm nút **`[ 💬 Trợ Lý AI ]`** hoặc nhấn **`Ctrl + K`** để mở ngăn kéo trợ lý thông minh:
+  - **Dán ảnh chụp màn hình (`Ctrl + V`):** Dùng Snipping Tool chụp chỗ cần sửa trên bản in, khoanh tròn đỏ rồi bấm `Ctrl + V` vào ô chat kèm lệnh (ví dụ: *"Sửa biểu thức này thành...", "Đổi bài hình sang 2 cột"*).
+  - **Nút lệnh dàn trang 1-click:** `⚡ Dồn vừa 1 trang A4`, `📐 Bài hình 2 cột`, `📏 Thu hẹp lề 1.4cm`, `🔤 Cỡ chữ 12pt`.
+
+### 3.4. Chế Độ Xem Kép (Dual-Mode)
+- **[📄 Đề Thi Thí Sinh]:** Hiển thị đúng biểu mẫu đề thi in phát cho học sinh (Quốc hiệu, Sở GD&ĐT, Tên trường, khung Số báo danh 6 ô, đề bài phân câu, hình vẽ).
+- **[⚖️ Barem Hướng Dẫn Chấm]:** Hiển thị bảng 2 cột truyền thống chuẩn Bộ GD&ĐT (Cột nội dung các bước lập luận chi tiết và Cột barem điểm bẻ nhỏ 0.25đ Quanta).
 
 ---
 
