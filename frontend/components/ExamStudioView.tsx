@@ -25,7 +25,9 @@ import {
   Eye,
   Paperclip,
   X,
-  MessageSquare
+  MessageSquare,
+  Code2,
+  Play
 } from "lucide-react";
 
 interface Props {
@@ -67,8 +69,11 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [compiling, setCompiling] = useState(false);
   const [zoomScale, setZoomScale] = useState(100);
 
-  // Left Sidebar Tab: "chat" | "items" | "knobs"
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "items" | "knobs">("chat");
+  // Left Sidebar Tab: "editor" | "chat" | "items" | "knobs"
+  const [sidebarTab, setSidebarTab] = useState<"editor" | "chat" | "items" | "knobs">("editor");
+
+  // Raw LaTeX Code State for Live Editor
+  const [rawLatexCode, setRawLatexCode] = useState<string>("");
 
   // AI Multimodal Layout Agent Chat State
   const [agentInput, setAgentInput] = useState("");
@@ -228,6 +233,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       if (res.ok) {
         const data = await res.json();
         setPreviewData(data);
+        if (data.latex_source) {
+          setRawLatexCode(data.latex_source);
+        }
       }
     } catch (e) {
       console.error("Compile preview error:", e);
@@ -235,6 +243,50 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       setCompiling(false);
     }
   };
+
+  // Compile Raw Edited LaTeX (< 0.3s)
+  const handleCompileRawLatex = async () => {
+    if (!rawLatexCode.trim() || compiling) return;
+    setCompiling(true);
+    try {
+      const res = await fetch(`/api/studio/exams/${examId}/compile-raw`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          latex_source: rawLatexCode,
+          mode: activeMode,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPreviewData(data);
+      } else {
+        const err = await res.json();
+        alert(err.detail || "Lỗi biên dịch LaTeX");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Lỗi kết nối biên dịch mã nguồn");
+    } finally {
+      setCompiling(false);
+    }
+  };
+
+  // Global Ctrl + S / Cmd + S shortcut for instant compile
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (sidebarTab === "editor") {
+          handleCompileRawLatex();
+        } else {
+          compileLivePreview();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [sidebarTab, rawLatexCode, activeMode, compiling]);
 
   // Reorder Item
   const moveItem = async (index: number, direction: "up" | "down") => {
@@ -391,6 +443,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           {/* Workspace Tabs Header */}
           <div className="h-11 bg-slate-950/80 border-b border-slate-800 px-4 flex items-center space-x-2 shrink-0">
             <button
+              onClick={() => setSidebarTab("editor")}
+              className={`h-full px-3.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
+                sidebarTab === "editor"
+                  ? "border-emerald-500 text-emerald-400 bg-slate-900/60"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Code2 className="w-3.5 h-3.5" />
+              <span>Mã Nguồn LaTeX</span>
+            </button>
+
+            <button
               onClick={() => setSidebarTab("chat")}
               className={`h-full px-3.5 text-xs font-bold border-b-2 flex items-center space-x-2 transition-all ${
                 sidebarTab === "chat"
@@ -426,6 +490,55 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               <span>Bố Cục (Sliders)</span>
             </button>
           </div>
+
+          {/* TAB 0: OVERLEAF LIVE CODE EDITOR */}
+          {sidebarTab === "editor" && (
+            <div className="flex-1 flex flex-col overflow-hidden bg-slate-950">
+              {/* Code Editor Sub-toolbar */}
+              <div className="h-9 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between text-xs text-slate-400 shrink-0">
+                <div className="flex items-center space-x-2">
+                  <span className="font-mono text-emerald-400 font-bold flex items-center space-x-1">
+                    <Code2 className="w-3.5 h-3.5" />
+                    <span>exam_document.tex</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500">|</span>
+                  <span className="text-[10px] text-slate-400">
+                    Phím tắt: <kbd className="bg-slate-800 text-slate-200 px-1.5 py-0.5 rounded text-[9px] font-mono border border-slate-700">Ctrl+S</kbd>
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleCompileRawLatex}
+                  disabled={compiling || !rawLatexCode.trim()}
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all flex items-center space-x-1 shadow-sm disabled:opacity-40"
+                  title="Biên dịch lại từ mã nguồn TeX (< 0.3s)"
+                >
+                  <Play className={`w-3 h-3 ${compiling ? "animate-spin text-white" : "fill-white"}`} />
+                  <span>{compiling ? "Đang chạy..." : "Biên dịch lại"}</span>
+                </button>
+              </div>
+
+              {/* Code Textarea */}
+              <div className="flex-1 flex overflow-hidden font-mono text-xs leading-relaxed">
+                <textarea
+                  value={rawLatexCode}
+                  onChange={(e) => setRawLatexCode(e.target.value)}
+                  placeholder="% Đang tải mã nguồn LaTeX của đề thi... Thầy cô có thể sửa trực tiếp bất kỳ công thức toán hay câu từ nào và nhấn Ctrl+S để biên dịch!"
+                  spellCheck={false}
+                  className="flex-1 h-full bg-slate-950 text-emerald-300 p-4 font-mono text-xs leading-relaxed resize-none focus:outline-none border-none selection:bg-indigo-900 selection:text-white"
+                />
+              </div>
+
+              {/* Footer status */}
+              <div className="h-7 bg-slate-900 border-t border-slate-800 px-4 flex items-center justify-between text-[10px] text-slate-500 shrink-0">
+                <span>LaTeX 2e • UTF-8 • pdfTeX Native</span>
+                <span className="text-emerald-400 font-semibold flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>Sẵn sàng chỉnh sửa trực tiếp (Ctrl+S)</span>
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* TAB 1: AI MULTIMODAL CHAT CO-PILOT */}
           {sidebarTab === "chat" && (

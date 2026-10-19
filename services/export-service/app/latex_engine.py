@@ -300,3 +300,56 @@ def compile_latex_to_preview(
         }
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def compile_raw_latex_to_preview(
+    exam_id: str,
+    latex_source: str,
+    mode: str = "EXAM"
+) -> Dict[str, Any]:
+    """Biên dịch trực tiếp chuỗi mã nguồn LaTeX do giáo viên gõ trên Code Editor"""
+    minio_client = get_minio_client()
+    bucket_name = os.getenv("MINIO_BUCKET_NAME", "hsg-math-assets")
+
+    shm_base = "/dev/shm" if os.path.exists("/dev/shm") and os.access("/dev/shm", os.W_OK) else None
+    temp_dir = tempfile.mkdtemp(prefix="latex_raw_", dir=shm_base)
+
+    try:
+        tex_file = os.path.join(temp_dir, "document.tex")
+        with open(tex_file, "w", encoding="utf-8") as f:
+            f.write(latex_source)
+
+        cmd = ["pdflatex", "-interaction=nonstopmode", "document.tex"]
+        run_res = subprocess.run(cmd, cwd=temp_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+
+        pdf_file = os.path.join(temp_dir, "document.pdf")
+        if not os.path.exists(pdf_file):
+            error_log = run_res.stdout[-1000:] if run_res.stdout else run_res.stderr
+            raise RuntimeError(f"Lỗi biên dịch LaTeX: {error_log}")
+
+        cmd_ppm = ["pdftoppm", "-png", "-r", "150", "document.pdf", "page"]
+        subprocess.run(cmd_ppm, cwd=temp_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        png_files = sorted([f for f in os.listdir(temp_dir) if f.startswith("page-") and f.endswith(".png")])
+
+        prefix = f"studio/{exam_id}/{mode.lower()}"
+        pdf_key = f"{prefix}/document.pdf"
+        minio_client.fput_object(bucket_name, pdf_key, pdf_file, content_type="application/pdf")
+
+        page_keys = []
+        for png in png_files:
+            p_path = os.path.join(temp_dir, png)
+            p_key = f"{prefix}/{png}"
+            minio_client.fput_object(bucket_name, p_key, p_path, content_type="image/png")
+            page_keys.append(p_key)
+
+        return {
+            "status": "SUCCESS",
+            "mode": mode,
+            "pdf_key": pdf_key,
+            "page_keys": page_keys,
+            "total_pages": len(page_keys),
+            "latex_source": latex_source
+        }
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)

@@ -1,3 +1,3 @@
-from .models import SourceExam, Question, ExamBlueprint, GeneratedExam
+from .models import SourceExam, Question, ExamBlueprint, GeneratedExam, ExamItem
 
-__all__ = ["SourceExam", "Question", "ExamBlueprint", "GeneratedExam"]
+__all__ = ["SourceExam", "Question", "ExamBlueprint", "GeneratedExam", "ExamItem"]

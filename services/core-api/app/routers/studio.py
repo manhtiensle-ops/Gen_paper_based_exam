@@ -636,3 +636,35 @@ Trả về DUY NHẤT một JSON hợp lệ:
     except Exception as e:
         logger.error(f"Error in layout agent: {e}")
         raise HTTPException(status_code=500, detail=f"Lỗi AI Layout Agent: {str(e)}")
+
+
+# ==================== LIVE CODE EDITOR: COMPILE RAW LATEX (< 0.3s) ====================
+
+@router.post("/exams/{exam_id}/compile-raw")
+def compile_raw_latex_preview(
+    exam_id: UUID,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db)
+):
+    latex_source = payload.get("latex_source", "")
+    mode = payload.get("mode", "EXAM")
+    if not latex_source.strip():
+        raise HTTPException(status_code=400, detail="Mã nguồn LaTeX không được để trống")
+
+    try:
+        resp = requests.post(
+            f"{EXPORT_SERVICE_URL}/api/export/latex/compile-raw",
+            json={
+                "exam_id": str(exam_id),
+                "latex_source": latex_source,
+                "mode": mode
+            },
+            timeout=30
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            raise HTTPException(status_code=500, detail=resp.text)
+    except Exception as e:
+        logger.error(f"Error compiling raw LaTeX: {e}")
+        raise HTTPException(status_code=500, detail=f"Lỗi biên dịch mã nguồn: {str(e)}")

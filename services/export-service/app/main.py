@@ -4,7 +4,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
 from .compiler import compile_exam_document, get_minio_client
-from .latex_engine import compile_latex_to_preview
+from .latex_engine import compile_latex_to_preview, compile_raw_latex_to_preview
+from .docx_math_builder import compile_native_omml_docx
 
 app = FastAPI(
     title="HSG Math Exam Export Service",
@@ -32,6 +33,13 @@ class LatexPreviewRequest(BaseModel):
     header_config: Dict[str, Any] = {}
     layout_knobs: Dict[str, Any] = {}
     items: List[Dict[str, Any]] = []
+    mode: str = "EXAM"
+
+class NativeDocxRequest(BaseModel):
+    exam_id: str
+    title: str = "ĐỀ THI HỌC SINH GIỎI"
+    header_config: Dict[str, Any] = {}
+    slots_state: List[Dict[str, Any]] = []
     mode: str = "EXAM"
 
 @app.on_event("startup")
@@ -74,5 +82,40 @@ def preview_latex_exam(payload: LatexPreviewRequest):
             mode=payload.mode
         )
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class RawLatexCompileRequest(BaseModel):
+    exam_id: str
+    latex_source: str
+    mode: str = "EXAM"
+
+@app.post("/api/export/latex/compile-raw")
+def compile_raw_latex_endpoint(payload: RawLatexCompileRequest):
+    try:
+        result = compile_raw_latex_to_preview(
+            exam_id=payload.exam_id,
+            latex_source=payload.latex_source,
+            mode=payload.mode
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/export/docx/native")
+def export_native_omml_docx(payload: NativeDocxRequest):
+    try:
+        exam_data = {
+            "id": payload.exam_id,
+            "title": payload.title,
+            "header_config": payload.header_config,
+            "slots_state": payload.slots_state
+        }
+        file_key = compile_native_omml_docx(exam_data, mode=payload.mode)
+        return {
+            "status": "SUCCESS",
+            "file_key": file_key,
+            "mode": payload.mode
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

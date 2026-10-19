@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import ExamBlueprint, GeneratedExam, Question
+from ..models import ExamBlueprint, GeneratedExam, Question, ExamItem
 from ..schemas import (
     ExamBlueprintCreate, ExamBlueprintResponse,
     GenerateExamRequest, SwapQuestionRequest, GeneratedExamResponse,
@@ -300,37 +300,37 @@ def download_exam_file(
         if not file_key:
             file_key = exam.exported_pdf_key
 
-    # NẾU TẢI WORD (.docx):
+    # NẾU TẢI WORD (.docx): BẮT BUỘC DÙNG NATIVE OMML DOCX BUILDER CHUẨN BỘ GD&ĐT
     else:
-        file_key = exam.exported_docx_key
-        need_compile = False
-        if not file_key:
-            need_compile = True
-        else:
-            try:
-                minio_client.stat_object(bucket_name, file_key)
-            except Exception:
-                need_compile = True
+        items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
+        slots_payload = [{
+            "slot_index": it.order_index + 1,
+            "points": float(it.max_points or 1.0),
+            "question": it.problem_snapshot,
+            "rubric_data": it.rubric_data
+        } for it in items] if items else exam.slots_state
 
-        if need_compile:
-            try:
-                resp = requests.post(
-                    f"{EXPORT_SERVICE_URL}/api/export",
-                    json={
-                        "exam_id": str(exam.id),
-                        "title": exam.title,
-                        "slots_state": exam.slots_state,
-                        "export_type": "docx"
-                    },
-                    timeout=120
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    file_key = data.get("file_key")
-                    exam.exported_docx_key = file_key
-                    db.commit()
-            except Exception as exc:
-                raise HTTPException(status_code=500, detail=f"Lỗi xuất Word: {str(exc)}")
+        try:
+            resp = requests.post(
+                f"{EXPORT_SERVICE_URL}/api/export/docx/native",
+                json={
+                    "exam_id": str(exam.id),
+                    "title": exam.title,
+                    "header_config": exam.header_config or {},
+                    "slots_state": slots_payload,
+                    "mode": mode_str
+                },
+                timeout=60
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                file_key = data.get("file_key")
+                exam.exported_docx_key = file_key
+                db.commit()
+            else:
+                raise HTTPException(status_code=502, detail=f"Native Word export compilation error: {resp.text}")
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Lỗi xuất Word Native: {str(exc)}")
 
     if not file_key:
         raise HTTPException(status_code=500, detail="Chưa có file để tải về")
