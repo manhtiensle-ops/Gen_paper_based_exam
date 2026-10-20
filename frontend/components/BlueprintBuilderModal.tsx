@@ -22,7 +22,7 @@ interface Slot {
   points: number;
   main_topic: string;
   difficulty: "EASY" | "MEDIUM" | "HARD" | "OLYMPIAD";
-  structure_type?: "SINGLE" | "MULTI_PART";
+  structure_type?: "SINGLE" | "INDEPENDENT_PARTS" | "SHARED_STEM";
   title_hint?: string;
 }
 
@@ -55,11 +55,10 @@ const TOPICS = [
   { value: "ALGEBRA", label: "Đại số & Biến đổi căn thức" },
   { value: "NUMBER_THEORY", label: "Số học & Số nguyên tố" },
   { value: "PLANE_GEOMETRY", label: "Hình học phẳng" },
+  { value: "SOLID_GEOMETRY", label: "Hình học không gian & khối hộp" },
   { value: "INEQUALITY_EXTREMA", label: "Bất đẳng thức & Cực trị" },
-  { value: "COMBINATORICS", label: "Tổ hợp rời rạc & Dirichlet" },
-  { value: "COORDINATE_GEOMETRY", label: "Hình học tọa độ" },
-  { value: "PROBABILITY_STATISTICS", label: "Xác suất & Thống kê" },
-  { value: "PRACTICAL_MATH", label: "Toán thực tế" },
+  { value: "COMBINATORICS_PROBABILITY", label: "Tổ hợp, Xác suất & Dirichlet" },
+  { value: "REAL_WORLD_MATH", label: "Toán thực tế & Chuyển động" },
 ];
 
 const DIFFICULTIES = [

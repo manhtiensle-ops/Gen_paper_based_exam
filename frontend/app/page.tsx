@@ -192,8 +192,11 @@ export default function Dashboard() {
       if (res.ok) {
         const data = await res.json();
         setBlueprints(data);
-        if (data.length > 0 && !selectedBlueprintId) {
-          setSelectedBlueprintId(data[0].id);
+        if (data.length > 0) {
+          const exists = data.some((b: any) => b.id === selectedBlueprintId);
+          if (!exists) {
+            setSelectedBlueprintId(data[0].id);
+          }
         }
       }
     } catch (e) {
@@ -314,9 +317,19 @@ export default function Dashboard() {
           url.searchParams.set("exam_id", data.id);
           window.history.replaceState(null, "", url.toString());
         }
+      } else {
+        let errDetail = `Lỗi máy chủ (${res.status})`;
+        try {
+          const errJson = await res.json();
+          errDetail = errJson.detail || errDetail;
+        } catch (_) {
+          const errText = await res.text().catch(() => "");
+          if (errText) errDetail = errText;
+        }
+        alert(`Lỗi khi tổ hợp đề thi: ${errDetail}`);
       }
-    } catch (e) {
-      alert("Lỗi khi tổ hợp đề thi");
+    } catch (e: any) {
+      alert(`Lỗi khi tổ hợp đề thi: ${e.message || e}`);
     } finally {
       setGenerating(false);
     }

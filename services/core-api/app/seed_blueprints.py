@@ -26,11 +26,11 @@ PRESET_BLUEPRINTS = [
                     {"slot_index": 3, "points": 0.5, "main_topic": "NUMBER_THEORY", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Số chính phương & số nguyên tố"},
                     {"slot_index": 4, "points": 0.5, "main_topic": "INEQUALITY_EXTREMA", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Bất đẳng thức đại số cơ bản"},
                     {"slot_index": 5, "points": 0.5, "main_topic": "NUMBER_THEORY", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Phương trình nghiệm nguyên"},
-                    {"slot_index": 6, "points": 0.5, "main_topic": "COORDINATE_GEOMETRY", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Tọa độ mặt phẳng & đường thẳng"},
-                    {"slot_index": 7, "points": 0.5, "main_topic": "PROBABILITY_STATISTICS", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Xác suất cổ điển & thẻ số"},
-                    {"slot_index": 8, "points": 0.5, "main_topic": "PRACTICAL_MATH", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Toán thực tế chuyển động / năng suất"},
+                    {"slot_index": 6, "points": 0.5, "main_topic": "ALGEBRA", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Tọa độ mặt phẳng & hàm số bậc nhất"},
+                    {"slot_index": 7, "points": 0.5, "main_topic": "COMBINATORICS_PROBABILITY", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Xác suất cổ điển & thẻ số"},
+                    {"slot_index": 8, "points": 0.5, "main_topic": "REAL_WORLD_MATH", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Toán thực tế chuyển động / năng suất"},
                     {"slot_index": 9, "points": 0.5, "main_topic": "PLANE_GEOMETRY", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Tỉ số lượng giác / tam giác đồng dạng"},
-                    {"slot_index": 10, "points": 0.5, "main_topic": "COMBINATORICS", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Tổ hợp đếm số & chọn phần tử"}
+                    {"slot_index": 10, "points": 0.5, "main_topic": "COMBINATORICS_PROBABILITY", "difficulty": "MEDIUM", "structure_type": "SINGLE", "title_hint": "Tổ hợp đếm số & chọn phần tử"}
                 ]
             },
             {
@@ -40,9 +40,9 @@ PRESET_BLUEPRINTS = [
                 "section_points": 15.0,
                 "slots": [
                     {"slot_index": 11, "points": 3.0, "main_topic": "ALGEBRA", "difficulty": "HARD", "structure_type": "SINGLE", "title_hint": "Dãy số quy nạp / Tối ưu hóa thực tế"},
-                    {"slot_index": 12, "points": 4.0, "main_topic": "ALGEBRA", "difficulty": "HARD", "structure_type": "MULTI_PART", "title_hint": "Phương trình vô tỷ & Hệ phương trình phi tuyến"},
+                    {"slot_index": 12, "points": 4.0, "main_topic": "ALGEBRA", "difficulty": "HARD", "structure_type": "INDEPENDENT_PARTS", "title_hint": "Phương trình vô tỷ & Hệ phương trình phi tuyến"},
                     {"slot_index": 13, "points": 2.0, "main_topic": "ALGEBRA", "difficulty": "HARD", "structure_type": "SINGLE", "title_hint": "Đại số đối xứng / Đẳng thức có điều kiện"},
-                    {"slot_index": 14, "points": 4.0, "main_topic": "PLANE_GEOMETRY", "difficulty": "HARD", "structure_type": "MULTI_PART", "title_hint": "Hình học phẳng: Tứ giác nội tiếp & tiếp tuyến đường tròn"},
+                    {"slot_index": 14, "points": 4.0, "main_topic": "PLANE_GEOMETRY", "difficulty": "HARD", "structure_type": "SHARED_STEM", "title_hint": "Hình học phẳng: Tứ giác nội tiếp & tiếp tuyến đường tròn"},
                     {"slot_index": 15, "points": 2.0, "main_topic": "INEQUALITY_EXTREMA", "difficulty": "OLYMPIAD", "structure_type": "SINGLE", "title_hint": "Bất đẳng thức cực trị HSG / Nguyên lý Dirichlet"}
                 ]
             }
@@ -62,10 +62,10 @@ PRESET_BLUEPRINTS = [
                 "section_type": "ESSAY",
                 "section_points": 20.0,
                 "slots": [
-                    {"slot_index": 1, "points": 4.0, "main_topic": "ALGEBRA", "difficulty": "MEDIUM", "structure_type": "MULTI_PART", "title_hint": "Bài 1: Rút gọn biểu thức chứa căn & giá trị nguyên"},
-                    {"slot_index": 2, "points": 4.0, "main_topic": "ALGEBRA", "difficulty": "HARD", "structure_type": "MULTI_PART", "title_hint": "Bài 2: Phương trình vô tỷ & Hệ phương trình đối xứng"},
+                    {"slot_index": 1, "points": 4.0, "main_topic": "ALGEBRA", "difficulty": "MEDIUM", "structure_type": "INDEPENDENT_PARTS", "title_hint": "Bài 1: Rút gọn biểu thức chứa căn & giá trị nguyên"},
+                    {"slot_index": 2, "points": 4.0, "main_topic": "ALGEBRA", "difficulty": "HARD", "structure_type": "INDEPENDENT_PARTS", "title_hint": "Bài 2: Phương trình vô tỷ & Hệ phương trình đối xứng"},
                     {"slot_index": 3, "points": 3.0, "main_topic": "NUMBER_THEORY", "difficulty": "HARD", "structure_type": "SINGLE", "title_hint": "Bài 3: Số học (Chia hết, số chính phương, nghiệm nguyên)"},
-                    {"slot_index": 4, "points": 6.0, "main_topic": "PLANE_GEOMETRY", "difficulty": "HARD", "structure_type": "MULTI_PART", "title_hint": "Bài 4: Hình học phẳng nguyên khối (Bài hình 3 ý a, b, c)"},
+                    {"slot_index": 4, "points": 6.0, "main_topic": "PLANE_GEOMETRY", "difficulty": "HARD", "structure_type": "SHARED_STEM", "title_hint": "Bài 4: Hình học phẳng nguyên khối (Bài hình 3 ý a, b, c)"},
                     {"slot_index": 5, "points": 3.0, "main_topic": "INEQUALITY_EXTREMA", "difficulty": "OLYMPIAD", "structure_type": "SINGLE", "title_hint": "Bài 5: Bất đẳng thức Cauchy / Cauchy-Schwarz cực trị"}
                 ]
             }
@@ -88,8 +88,8 @@ PRESET_BLUEPRINTS = [
                     {"slot_index": 1, "points": 2.0, "main_topic": "ALGEBRA", "difficulty": "HARD", "structure_type": "SINGLE", "title_hint": "Bài 1: Phương trình / Bất phương trình vô tỷ"},
                     {"slot_index": 2, "points": 2.0, "main_topic": "ALGEBRA", "difficulty": "HARD", "structure_type": "SINGLE", "title_hint": "Bài 2: Hệ phương trình phi tuyến chứa căn / tham số"},
                     {"slot_index": 3, "points": 2.0, "main_topic": "NUMBER_THEORY", "difficulty": "HARD", "structure_type": "SINGLE", "title_hint": "Bài 3: Số học (Định lý Fermat, số chính phương, cấp số)"},
-                    {"slot_index": 4, "points": 3.0, "main_topic": "PLANE_GEOMETRY", "difficulty": "HARD", "structure_type": "MULTI_PART", "title_hint": "Bài 4: Hình học phẳng (Tiếp tuyến, tứ giác nội tiếp, cát tuyến)"},
-                    {"slot_index": 5, "points": 1.0, "main_topic": "COMBINATORICS", "difficulty": "OLYMPIAD", "structure_type": "SINGLE", "title_hint": "Bài 5: Nguyên lý Dirichlet / Bất biến tổ hợp"}
+                    {"slot_index": 4, "points": 3.0, "main_topic": "PLANE_GEOMETRY", "difficulty": "HARD", "structure_type": "SHARED_STEM", "title_hint": "Bài 4: Hình học phẳng (Tiếp tuyến, tứ giác nội tiếp, cát tuyến)"},
+                    {"slot_index": 5, "points": 1.0, "main_topic": "COMBINATORICS_PROBABILITY", "difficulty": "OLYMPIAD", "structure_type": "SINGLE", "title_hint": "Bài 5: Nguyên lý Dirichlet / Bất biến tổ hợp"}
                 ]
             }
         ]
@@ -108,10 +108,10 @@ PRESET_BLUEPRINTS = [
                 "section_type": "ESSAY",
                 "section_points": 20.0,
                 "slots": [
-                    {"slot_index": 1, "points": 4.0, "main_topic": "ALGEBRA", "difficulty": "MEDIUM", "structure_type": "MULTI_PART", "title_hint": "Bài 1: Phân tích đa thức thành nhân tử & Rút gọn phân thức"},
-                    {"slot_index": 2, "points": 4.0, "main_topic": "ALGEBRA", "difficulty": "HARD", "structure_type": "MULTI_PART", "title_hint": "Bài 2: Phương trình bậc cao & Phương trình nghiệm nguyên"},
+                    {"slot_index": 1, "points": 4.0, "main_topic": "ALGEBRA", "difficulty": "MEDIUM", "structure_type": "INDEPENDENT_PARTS", "title_hint": "Bài 1: Phân tích đa thức thành nhân tử & Rút gọn phân thức"},
+                    {"slot_index": 2, "points": 4.0, "main_topic": "ALGEBRA", "difficulty": "HARD", "structure_type": "INDEPENDENT_PARTS", "title_hint": "Bài 2: Phương trình bậc cao & Phương trình nghiệm nguyên"},
                     {"slot_index": 3, "points": 3.0, "main_topic": "INEQUALITY_EXTREMA", "difficulty": "HARD", "structure_type": "SINGLE", "title_hint": "Bài 3: Bất đẳng thức đại số lớp 8 (Hằng đẳng thức mở rộng)"},
-                    {"slot_index": 4, "points": 6.0, "main_topic": "PLANE_GEOMETRY", "difficulty": "HARD", "structure_type": "MULTI_PART", "title_hint": "Bài 4: Hình học 8: Định lý Thales, tam giác đồng dạng & diện tích"},
+                    {"slot_index": 4, "points": 6.0, "main_topic": "PLANE_GEOMETRY", "difficulty": "HARD", "structure_type": "SHARED_STEM", "title_hint": "Bài 4: Hình học 8: Định lý Thales, tam giác đồng dạng & diện tích"},
                     {"slot_index": 5, "points": 3.0, "main_topic": "NUMBER_THEORY", "difficulty": "OLYMPIAD", "structure_type": "SINGLE", "title_hint": "Bài 5: Cực trị hình học hoặc số học tính chất chia hết"}
                 ]
             }

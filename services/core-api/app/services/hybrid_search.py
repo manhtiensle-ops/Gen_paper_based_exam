@@ -30,7 +30,12 @@ def search_candidate_questions(
     if difficulty:
         query = query.filter(Question.difficulty == difficulty)
     if structure_type:
-        query = query.filter(Question.structure_type == structure_type)
+        # Chuẩn hóa nếu blueprint truyền MULTI_PART
+        valid_structs = {"SINGLE", "INDEPENDENT_PARTS", "SHARED_STEM"}
+        if structure_type in valid_structs:
+            query = query.filter(Question.structure_type == structure_type)
+        elif structure_type == "MULTI_PART":
+            query = query.filter(Question.structure_type.in_(["INDEPENDENT_PARTS", "SHARED_STEM"]))
     if exclude_ids:
         query = query.filter(~Question.id.in_(exclude_ids))
 
