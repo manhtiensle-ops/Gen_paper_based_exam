@@ -5,6 +5,11 @@ import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
 import ExamStudioView from "@/components/ExamStudioView";
 import {
+  saveWorkspaceSession,
+  getWorkspaceSession,
+  hasAnyUnsavedDrafts,
+} from "@/utils/workspaceStorage";
+import {
   FileText,
   UploadCloud,
   CheckCircle,
@@ -46,6 +51,75 @@ export default function Dashboard() {
   const [generatedExam, setGeneratedExam] = useState<any | null>(null);
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState<"docx" | "pdf" | null>(null);
+
+  // Handle tab navigation with URL Query string & Session persistence
+  const handleTabChange = (tab: "generator" | "questions" | "ingestion" | "review" | "studio") => {
+    setActiveTab(tab);
+    const examId = generatedExam?.id;
+    saveWorkspaceSession(tab, examId, generatedExam);
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tab);
+      if (examId && (tab === "studio" || tab === "generator")) {
+        url.searchParams.set("exam_id", examId);
+      } else {
+        url.searchParams.delete("exam_id");
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
+
+  const fetchExamById = async (id: string, targetTab?: any) => {
+    try {
+      const res = await fetch(`/api/generator/exams/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setGeneratedExam(data);
+        saveWorkspaceSession(targetTab || activeTab, data.id, data);
+      }
+    } catch (e) {
+      console.warn("Could not fetch exam by id:", e);
+    }
+  };
+
+  // Restore session on mount (Disaster Recovery from URL & LocalStorage SWR)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlTab = urlParams.get("tab") as any;
+    const urlExamId = urlParams.get("exam_id");
+
+    const session = getWorkspaceSession();
+
+    // 1. Restore active tab
+    const effectiveTab = urlTab && ["generator", "questions", "ingestion", "review", "studio"].includes(urlTab)
+      ? urlTab
+      : session?.active_tab || "generator";
+    setActiveTab(effectiveTab);
+
+    // 2. Restore generatedExam in 0ms from cache
+    if (session?.cached_exam_data) {
+      setGeneratedExam(session.cached_exam_data);
+    }
+
+    const effectiveExamId = urlExamId || session?.active_exam_id;
+    if (effectiveExamId) {
+      fetchExamById(effectiveExamId, effectiveTab);
+    }
+
+    // 3. Register navigation guard for unsaved changes
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasAnyUnsavedDrafts()) {
+        e.preventDefault();
+        e.returnValue = "Bạn có thay đổi chưa lưu trong đề thi. Bạn có chắc muốn rời đi?";
+        return e.returnValue;
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
 
   // Swap Slot Modal State
   const [swapModalOpen, setSwapModalOpen] = useState(false);
@@ -231,6 +305,12 @@ export default function Dashboard() {
       if (res.ok) {
         const data = await res.json();
         setGeneratedExam(data);
+        saveWorkspaceSession(activeTab, data.id, data);
+        if (typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          url.searchParams.set("exam_id", data.id);
+          window.history.replaceState(null, "", url.toString());
+        }
       }
     } catch (e) {
       alert("Lỗi khi tổ hợp đề thi");
@@ -373,7 +453,7 @@ export default function Dashboard() {
       {/* Navigation Tabs */}
       <div className="flex border-b border-slate-200 bg-white rounded-xl p-1.5 shadow-sm space-x-1">
         <button
-          onClick={() => setActiveTab("generator")}
+          onClick={() => handleTabChange("generator")}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
             activeTab === "generator"
               ? "bg-indigo-600 text-white shadow-sm"
@@ -385,7 +465,7 @@ export default function Dashboard() {
         </button>
 
         <button
-          onClick={() => setActiveTab("questions")}
+          onClick={() => handleTabChange("questions")}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
             activeTab === "questions"
               ? "bg-indigo-600 text-white shadow-sm"
@@ -397,7 +477,7 @@ export default function Dashboard() {
         </button>
 
         <button
-          onClick={() => setActiveTab("ingestion")}
+          onClick={() => handleTabChange("ingestion")}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
             activeTab === "ingestion"
               ? "bg-indigo-600 text-white shadow-sm"
@@ -409,7 +489,7 @@ export default function Dashboard() {
         </button>
 
         <button
-          onClick={() => setActiveTab("review")}
+          onClick={() => handleTabChange("review")}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
             activeTab === "review"
               ? "bg-indigo-600 text-white shadow-sm"
@@ -421,7 +501,7 @@ export default function Dashboard() {
         </button>
 
         <button
-          onClick={() => setActiveTab("studio")}
+          onClick={() => handleTabChange("studio")}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
             activeTab === "studio"
               ? "bg-indigo-600 text-white shadow-sm"
@@ -529,7 +609,7 @@ export default function Dashboard() {
                 </div>
 
                 <button
-                  onClick={() => setActiveTab("studio")}
+                  onClick={() => handleTabChange("studio")}
                   className="w-full mt-3 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-2 shadow-md transition-all"
                 >
                   <Scale className="w-4 h-4" />
@@ -965,7 +1045,7 @@ export default function Dashboard() {
       {activeTab === "studio" && (
         <ExamStudioView
           examId={generatedExam?.id || "6122d749-249f-496b-9e41-ffbe43d420a9"}
-          onBack={() => setActiveTab("generator")}
+          onBack={() => handleTabChange("generator")}
         />
       )}
 

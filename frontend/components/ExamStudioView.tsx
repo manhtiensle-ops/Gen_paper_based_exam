@@ -5,6 +5,11 @@ import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
 import RubricTablePreview from "@/components/RubricTablePreview";
 import {
+  saveExamDraft,
+  getExamDraft,
+  clearExamDraft,
+} from "@/utils/workspaceStorage";
+import {
   FileText,
   Scale,
   Sparkles,
@@ -57,6 +62,60 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   // Raw LaTeX Code State for Live Editor
   const [rawLatexCode, setRawLatexCode] = useState<string>("");
   const [isPreambleFolded, setIsPreambleFolded] = useState<boolean>(true);
+  const [isDirty, setIsDirty] = useState<boolean>(false);
+  const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
+
+  // Restore draft from local storage on mount (Disaster Recovery)
+  useEffect(() => {
+    if (!examId) return;
+    const draft = getExamDraft(examId);
+    if (draft) {
+      if (draft.split_ratio) setSplitRatio(draft.split_ratio);
+      if (draft.active_mode) setActiveMode(draft.active_mode);
+      if (draft.active_sidebar_tab) setSidebarTab(draft.active_sidebar_tab as any);
+      if (draft.unsaved_latex && draft.is_dirty) {
+        setRawLatexCode(draft.unsaved_latex);
+        setIsDirty(true);
+        const timeStr = new Date(draft.last_modified_timestamp).toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        setRestoredDraftNotice(`Đã khôi phục bản nháp chưa lưu lúc ${timeStr}. Bấm Ctrl+S để lưu và biên dịch.`);
+      }
+    }
+  }, [examId]);
+
+  // Header Config
+  const [headerConfig, setHeaderConfig] = useState({
+    governing_body: "SỞ GIÁO DỤC VÀ ĐÀO TẠO HÀ NỘI",
+    department_or_school: "TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN",
+    exam_name: "KỲ THI CHỌN HỌC SINH GIỎI LỚP 9",
+    academic_year: "Năm học: 2026 - 2027",
+    subject_title: "Môn thi: TOÁN 9",
+    exam_code: "ĐỀ CHÍNH THỨC",
+    duration_minutes: 150,
+    show_sbd_box: true,
+  });
+
+  // Debounced auto-save draft to local storage
+  useEffect(() => {
+    if (!examId || !rawLatexCode) return;
+    const timer = setTimeout(() => {
+      saveExamDraft({
+        schema_version: 2,
+        exam_id: examId,
+        exam_title: headerConfig.exam_name || "Đề thi",
+        active_mode: activeMode,
+        active_sidebar_tab: sidebarTab,
+        split_ratio: splitRatio,
+        unsaved_latex: rawLatexCode,
+        is_dirty: isDirty,
+        last_modified_timestamp: Date.now(),
+        server_sync_timestamp: Date.now(),
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [rawLatexCode, isDirty, splitRatio, activeMode, sidebarTab, examId, headerConfig.exam_name]);
 
   // Tải ExamDocument JSON (khung bảng chấm chuẩn)
   const loadTemplateDoc = async () => {
@@ -84,18 +143,6 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     line_spread: 1.15,
     item_gap_pt: 10,
     math_skip_pt: 6,
-  });
-
-  // Header Config
-  const [headerConfig, setHeaderConfig] = useState({
-    governing_body: "SỞ GIÁO DỤC VÀ ĐÀO TẠO HÀ NỘI",
-    department_or_school: "TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN",
-    exam_name: "KỲ THI CHỌN HỌC SINH GIỎI LỚP 9",
-    academic_year: "Năm học: 2026 - 2027",
-    subject_title: "Môn thi: TOÁN 9",
-    exam_code: "ĐỀ CHÍNH THỨC",
-    duration_minutes: 150,
-    show_sbd_box: true,
   });
 
   // Live Canvas Preview State
@@ -313,6 +360,20 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       if (res.ok) {
         const data = await res.json();
         setPreviewData(data);
+        setIsDirty(false);
+        setRestoredDraftNotice(null);
+        saveExamDraft({
+          schema_version: 2,
+          exam_id: examId,
+          exam_title: headerConfig.exam_name || "Đề thi",
+          active_mode: activeMode,
+          active_sidebar_tab: sidebarTab,
+          split_ratio: splitRatio,
+          unsaved_latex: rawLatexCode,
+          is_dirty: false,
+          last_modified_timestamp: Date.now(),
+          server_sync_timestamp: Date.now(),
+        });
       } else {
         const err = await res.json();
         alert(err.detail || "Lỗi biên dịch LaTeX");
@@ -552,6 +613,30 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         </div>
       </header>
 
+      {/* DISASTER RECOVERY RESTORED DRAFT BANNER */}
+      {restoredDraftNotice && (
+        <div className="bg-amber-50 border-b border-amber-200 px-5 py-2 flex items-center justify-between text-xs text-amber-900 z-40 shrink-0">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span className="font-medium">{restoredDraftNotice}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => (sidebarTab === "editor" ? handleCompileRawLatex() : compileLivePreview())}
+              className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold transition-all shadow-xs"
+            >
+              Lưu & Biên dịch (Ctrl+S)
+            </button>
+            <button
+              onClick={() => setRestoredDraftNotice(null)}
+              className="p-1 hover:bg-amber-100 rounded text-amber-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 2. MAIN RESIZABLE FLUID WORKSPACE (TẬN DỤNG TOÀN BỘ MÀN HÌNH) */}
       <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
         {/* LEFT WORKSTATION (WIDTH: splitRatio%) */}
@@ -700,7 +785,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               <div className="flex-1 flex overflow-hidden">
                 <textarea
                   value={rawLatexCode}
-                  onChange={(e) => setRawLatexCode(e.target.value)}
+                  onChange={(e) => {
+                    setRawLatexCode(e.target.value);
+                    setIsDirty(true);
+                  }}
                   placeholder="% Mã nguồn LaTeX của đề thi... Thầy cô có thể click sửa trực tiếp bất kỳ công thức toán hay câu từ nào và nhấn Ctrl+S để biên dịch!"
                   spellCheck={false}
                   className="flex-1 h-full bg-white text-slate-900 p-4 font-mono text-xs leading-relaxed resize-none focus:outline-none border-none selection:bg-indigo-100 selection:text-indigo-900 overflow-y-auto"
