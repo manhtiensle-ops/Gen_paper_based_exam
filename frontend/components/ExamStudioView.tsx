@@ -492,8 +492,17 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   };
 
   // Switch Mode (Exam vs Rubric)
-  const handleModeSwitch = (mode: "EXAM" | "RUBRIC") => {
+  const handleModeSwitch = async (mode: "EXAM" | "RUBRIC") => {
     setActiveMode(mode);
+    try {
+      const res = await fetch(`/api/studio/exams/${examId}/items`);
+      if (res.ok) {
+        const fresh = await res.json();
+        setItems(fresh);
+        compileLivePreview(fresh, layoutKnobs, mode);
+        return;
+      }
+    } catch (_) {}
     compileLivePreview(items, layoutKnobs, mode);
   };
 
@@ -596,7 +605,24 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
           {/* Quick Recompile Button */}
           <button
-            onClick={() => (sidebarTab === "editor" ? handleCompileRawLatex() : compileLivePreview())}
+            onClick={async () => {
+              if (sidebarTab === "editor") {
+                handleCompileRawLatex();
+              } else {
+                try {
+                  const res = await fetch(`/api/studio/exams/${examId}/items`);
+                  if (res.ok) {
+                    const fresh = await res.json();
+                    setItems(fresh);
+                    compileLivePreview(fresh, layoutKnobs, activeMode);
+                  } else {
+                    compileLivePreview(items, layoutKnobs, activeMode);
+                  }
+                } catch (_) {
+                  compileLivePreview(items, layoutKnobs, activeMode);
+                }
+              }
+            }}
             disabled={compiling}
             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50"
             title="Biên dịch lại (< 0.3s) (Ctrl+S)"
@@ -637,7 +663,24 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           </div>
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => (sidebarTab === "editor" ? handleCompileRawLatex() : compileLivePreview())}
+              onClick={async () => {
+                if (sidebarTab === "editor") {
+                  handleCompileRawLatex();
+                } else {
+                  try {
+                    const res = await fetch(`/api/studio/exams/${examId}/items`);
+                    if (res.ok) {
+                      const fresh = await res.json();
+                      setItems(fresh);
+                      compileLivePreview(fresh, layoutKnobs, activeMode);
+                    } else {
+                      compileLivePreview(items, layoutKnobs, activeMode);
+                    }
+                  } catch (_) {
+                    compileLivePreview(items, layoutKnobs, activeMode);
+                  }
+                }
+              }}
               className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold transition-all shadow-xs"
             >
               Lưu & Biên dịch (Ctrl+S)
@@ -1184,11 +1227,12 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             {previewData?.page_keys && previewData.page_keys.length > 0 ? (
               previewData.page_keys.map((pageKey: string, pIdx: number) => (
                 <div
-                  key={pIdx}
+                  key={`${pIdx}-${canvasKey}`}
                   style={{ width: `${(595 * zoomScale) / 100}px` }}
                   className="bg-white rounded-[3px] overflow-hidden border border-slate-300 transition-all relative group shadow-[0_16px_36px_-6px_rgba(0,0,0,0.18)]"
                 >
                   <img
+                    key={`img-${pageKey}-${canvasKey}`}
                     src={`/api/assets/${pageKey}?t=${canvasKey}`}
                     alt={`Trang in A4 - Trang ${pIdx + 1}`}
                     className="w-full h-auto object-contain block bg-white"

@@ -53,7 +53,7 @@ interface Props {
   templateDoc: ExamDocument;
   onUpdate: (updatedDoc: ExamDocument) => void;
   onRefreshFromItems?: () => void;
-  onRecompile?: () => void;
+  onRecompile?: () => void | Promise<void>;
 }
 
 export default function RubricTablePreview({
@@ -145,7 +145,7 @@ export default function RubricTablePreview({
       });
 
       setSaveStatus("Đã sinh barem và lưu thành công!");
-      if (onRecompile) onRecompile();
+      if (onRecompile) await onRecompile();
       setTimeout(() => setSaveStatus(null), 3000);
     } catch (e: any) {
       alert(e.message || "Lỗi sinh barem");
@@ -182,7 +182,7 @@ export default function RubricTablePreview({
         body: JSON.stringify(updatedDoc),
       });
       setSaveStatus("Đã cập nhật điểm & biên dịch lại!");
-      if (onRecompile) onRecompile();
+      if (onRecompile) await onRecompile();
       setTimeout(() => setSaveStatus(null), 2500);
     } catch (e) {
       console.error(e);
@@ -220,7 +220,7 @@ export default function RubricTablePreview({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedDoc),
       });
-      if (onRecompile) onRecompile();
+      if (onRecompile) await onRecompile();
     } catch (e) {
       console.error(e);
     }
@@ -250,7 +250,7 @@ export default function RubricTablePreview({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedDoc),
       });
-      if (onRecompile) onRecompile();
+      if (onRecompile) await onRecompile();
     } catch (e) {
       console.error(e);
     }
@@ -275,9 +275,9 @@ export default function RubricTablePreview({
         <div className="flex items-center space-x-2">
           {onRefreshFromItems && (
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (onRefreshFromItems) onRefreshFromItems();
-                if (onRecompile) onRecompile();
+                if (onRecompile) await onRecompile();
               }}
               className="px-2.5 py-1 text-slate-600 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-lg font-semibold transition-all flex items-center space-x-1"
               title="Đồng bộ lại từ danh sách câu hỏi hiện tại"

@@ -46,7 +46,12 @@ def get_asset(object_key: str):
             content_type = "application/pdf"
         elif object_key.endswith(".docx"):
             content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        return StreamingResponse(obj, media_type=content_type)
+        response_headers = {
+            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+        return StreamingResponse(obj, media_type=content_type, headers=response_headers)
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
 
