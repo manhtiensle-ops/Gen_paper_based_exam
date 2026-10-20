@@ -464,6 +464,9 @@ def get_exam_latex_preview(
                 t_q = essay_qs[idx]
                 t_steps = t_q.get("grading_steps", [])
                 if t_steps:
+                    calc_total = sum(s.get("points") or 0 for s in t_steps)
+                    if calc_total > 0:
+                        it_payload["max_points"] = calc_total
                     it_payload["rubric_data"] = {
                         "steps": [{
                             "step_id": s.get("step_id", f"s{s_i+1}"),
@@ -830,7 +833,7 @@ def update_template_document(
 
     exam.template_document = template_doc
 
-    # Đồng bộ các steps sang các ExamItem
+    # Đồng bộ các steps và cập nhật max_points sang các ExamItem
     items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
     questions = part2.get("questions", [])
     for idx, it in enumerate(items):
@@ -840,6 +843,9 @@ def update_template_document(
             rubric = it.rubric_data or {}
             rubric["steps"] = q_steps
             it.rubric_data = rubric
+            new_pts = sum(s.get("points") or 0 for s in q_steps)
+            if new_pts > 0:
+                it.max_points = new_pts
 
     db.commit()
     return {"status": "ok", "message": "Đã cập nhật template_document"}

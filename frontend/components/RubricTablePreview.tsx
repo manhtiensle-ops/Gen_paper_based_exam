@@ -275,7 +275,10 @@ export default function RubricTablePreview({
         <div className="flex items-center space-x-2">
           {onRefreshFromItems && (
             <button
-              onClick={onRefreshFromItems}
+              onClick={() => {
+                if (onRefreshFromItems) onRefreshFromItems();
+                if (onRecompile) onRecompile();
+              }}
               className="px-2.5 py-1 text-slate-600 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-lg font-semibold transition-all flex items-center space-x-1"
               title="Đồng bộ lại từ danh sách câu hỏi hiện tại"
             >

@@ -118,11 +118,16 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   }, [rawLatexCode, isDirty, splitRatio, activeMode, sidebarTab, examId, headerConfig.exam_name]);
 
   // Tải ExamDocument JSON (khung bảng chấm chuẩn)
-  const loadTemplateDoc = async () => {
+  const loadTemplateDoc = async (forceRegenerate = false) => {
     try {
-      let res = await fetch(`/api/studio/exams/${examId}/template-document`);
-      if (!res.ok) {
+      let res;
+      if (forceRegenerate) {
         res = await fetch(`/api/studio/exams/${examId}/generate-template-document`, { method: "POST" });
+      } else {
+        res = await fetch(`/api/studio/exams/${examId}/template-document`);
+        if (!res.ok) {
+          res = await fetch(`/api/studio/exams/${examId}/generate-template-document`, { method: "POST" });
+        }
       }
       if (res.ok) {
         const data = await res.json();
@@ -824,9 +829,21 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   examId={examId}
                   templateDoc={templateDoc}
                   onUpdate={(updated) => setTemplateDoc(updated)}
-                  onRefreshFromItems={loadTemplateDoc}
+                  onRefreshFromItems={() => loadTemplateDoc(true)}
                   onRecompile={async () => {
-                    compileLivePreview(items, layoutKnobs, "RUBRIC");
+                    // Tải lại items tươi từ DB để đồng bộ điểm số và barem
+                    try {
+                      const res = await fetch(`/api/studio/exams/${examId}/items`);
+                      if (res.ok) {
+                        const freshItems = await res.json();
+                        setItems(freshItems);
+                        compileLivePreview(freshItems, layoutKnobs, "RUBRIC");
+                      } else {
+                        compileLivePreview(items, layoutKnobs, "RUBRIC");
+                      }
+                    } catch (_) {
+                      compileLivePreview(items, layoutKnobs, "RUBRIC");
+                    }
                   }}
                 />
               ) : (
