@@ -75,8 +75,16 @@ export default function RubricTablePreview({
     try {
       // Tìm item_id từ exam_items qua endpoint items
       const itemsRes = await fetch(`/api/studio/exams/${examId}/items`);
-      if (!itemsRes.ok) throw new Error("Không thể tải danh sách câu hỏi");
-      const items = await itemsRes.json();
+      if (!itemsRes.ok) {
+        const errText = await itemsRes.text().catch(() => "");
+        throw new Error(`Không thể tải danh sách câu hỏi: ${errText || itemsRes.statusText}`);
+      }
+      let items: any[] = [];
+      try {
+        items = await itemsRes.json();
+      } catch (_) {
+        throw new Error("Phản hồi danh sách câu hỏi không đúng định dạng JSON");
+      }
       const targetItem = items[qIdx];
       if (!targetItem) throw new Error("Không tìm thấy câu hỏi tương ứng");
 
@@ -87,11 +95,23 @@ export default function RubricTablePreview({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Lỗi AI sinh barem");
+        let errDetail = `Lỗi máy chủ (${res.status})`;
+        try {
+          const errJson = await res.json();
+          errDetail = errJson.detail || errDetail;
+        } catch (_) {
+          const errText = await res.text().catch(() => "");
+          if (errText) errDetail = errText;
+        }
+        throw new Error(errDetail);
       }
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch (_) {
+        throw new Error("Máy chủ trả về kết quả không đúng định dạng JSON");
+      }
       const newSteps: GradingStep[] = (data.grading_steps || []).map((s: any, idx: number) => ({
         step_id: s.step_id || `s${idx + 1}`,
         latex_content: s.latex_content || "",

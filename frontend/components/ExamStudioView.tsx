@@ -375,12 +375,19 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           server_sync_timestamp: Date.now(),
         });
       } else {
-        const err = await res.json();
-        alert(err.detail || "Lỗi biên dịch LaTeX");
+        let errDetail = "Lỗi biên dịch LaTeX";
+        try {
+          const err = await res.json();
+          errDetail = err.detail || errDetail;
+        } catch (_) {
+          const raw = await res.text().catch(() => "");
+          if (raw) errDetail = raw;
+        }
+        alert(errDetail);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Lỗi kết nối biên dịch mã nguồn");
+      alert(e.message || "Lỗi kết nối biên dịch mã nguồn");
     } finally {
       setCompiling(false);
     }

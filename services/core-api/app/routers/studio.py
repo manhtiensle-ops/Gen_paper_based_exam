@@ -936,6 +936,11 @@ YÊU CẦU:
 
         return {"grading_steps": steps, "total_points": total_pts}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"AI grading steps error: {e}")
-        raise HTTPException(500, f"Lỗi AI sinh barem: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Lỗi AI sinh barem: {str(e)}"
+        )
