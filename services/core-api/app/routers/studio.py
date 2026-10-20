@@ -842,26 +842,41 @@ def ai_generate_grading_steps(
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": GRADING_SYSTEM_PROMPT},
-                {"role": "user", "content": f"""Đề bài LaTeX:
+                {"role": "user", "content": f"""Đề bài Toán:
 {content}
 
-Lời giải tham khảo:
-{solution}
+Lời giải tham khảo có sẵn (nếu có):
+{solution or '(Chưa có lời giải chi tiết)'}
 
-Tổng điểm câu này: {total_pts} điểm.
-Hãy chia lời giải thành các bước chấm (grading_steps).
-Mỗi bước là 1 mốc điểm 0.25đ hoặc bội của 0.25đ.
-Tổng điểm tất cả các bước PHẢI = {total_pts} điểm.
+YÊU CẦU:
+1. Nếu chưa có lời giải chi tiết, bạn hãy tự giải bài toán trên một cách chặt chẽ, chính xác và phân tích thành các mốc chấm chuẩn.
+2. Tổng điểm câu này là: {total_pts} điểm.
+3. Chia thành các bước chấm (grading_steps), mỗi bước ứng với mốc 0.25đ hoặc bội số của 0.25đ.
+4. Tổng điểm tất cả các bước PHẢI bằng chính xác {total_pts} điểm.
 
-Trả về JSON:
-{{"grading_steps": [{{"step_id": "s1", "latex_content": "...", "points": 0.25, "tikz_code": null}}, ...]}}"""}
+Định dạng JSON yêu cầu:
+{{"grading_steps": [{{"step_id": "s1", "latex_content": "nội dung bước giải...", "points": 0.25, "tikz_code": null}}]}}"""}
             ],
             temperature=0.2,
             max_tokens=4096
         )
 
         import json as json_mod
-        result = json_mod.loads(response.choices[0].message.content)
+        import re as re_mod
+
+        raw_text = (response.choices[0].message.content or "").strip()
+        m = re_mod.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw_text)
+        if m:
+            clean_json_str = m.group(1).strip()
+        else:
+            first_brace = raw_text.find("{")
+            last_brace = raw_text.rfind("}")
+            if first_brace != -1 and last_brace != -1:
+                clean_json_str = raw_text[first_brace:last_brace + 1]
+            else:
+                clean_json_str = raw_text
+
+        result = json_mod.loads(clean_json_str)
         steps = result.get("grading_steps", [])
 
         actual_sum = sum(s.get("points", 0) for s in steps)
