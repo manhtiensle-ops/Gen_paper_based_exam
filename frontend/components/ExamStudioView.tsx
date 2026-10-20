@@ -380,6 +380,41 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     }
   };
 
+  // Adjust Step Point (0.25 Stepper)
+  const adjustStepPoint = async (itemId: string, stepIdx: number, delta: number) => {
+    const item = items.find((it) => it.id === itemId);
+    if (!item) return;
+
+    const rubric = { ...(item.rubric_data || {}) };
+    const steps = [...(rubric.steps || [])];
+    if (!steps[stepIdx]) return;
+
+    const newPts = Math.max(0.25, (steps[stepIdx].points || 0.25) + delta);
+    steps[stepIdx].points = Math.round(newPts * 100) / 100;
+    steps[stepIdx].allocated_quanta = Math.round(newPts * 4);
+    rubric.steps = steps;
+
+    const newTotal = steps.reduce((sum: number, s: any) => sum + (s.points || 0), 0);
+
+    const updatedItems = items.map((it) =>
+      it.id === itemId ? { ...it, rubric_data: rubric, max_points: newTotal } : it
+    );
+    setItems(updatedItems);
+
+    try {
+      await fetch(`/api/studio/items/${itemId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rubric_data: rubric, max_points: newTotal }),
+      });
+      if (activeMode === "RUBRIC") {
+        compileLivePreview(updatedItems, layoutKnobs, activeMode);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // Switch Mode (Exam vs Rubric)
   const handleModeSwitch = (mode: "EXAM" | "RUBRIC") => {
     setActiveMode(mode);
