@@ -156,24 +156,33 @@ export default function RubricTablePreview({
 
   // Tăng / giảm điểm của một bước (bước nhảy 0.25đ)
   const adjustStepPoint = async (qIdx: number, sIdx: number, delta: number) => {
-    const updatedQuestions = [...essayQuestions];
-    const targetQ = { ...updatedQuestions[qIdx] };
-    const steps = [...targetQ.grading_steps];
-    const currentPts = steps[sIdx].points || 0.25;
-    const newPts = Math.max(0.25, Math.round((currentPts + delta) * 100) / 100);
-    steps[sIdx] = { ...steps[sIdx], points: newPts };
-    targetQ.grading_steps = steps;
-    updatedQuestions[qIdx] = targetQ;
+  const updatedQuestions = [...essayQuestions];
+  const targetQ = { ...updatedQuestions[qIdx] };
+  const steps = [...targetQ.grading_steps];
+  const currentPts = steps[sIdx].points || 0.25;
+  const newPts = Math.max(0.25, Math.round((currentPts + delta) * 100) / 100);
+  steps[sIdx] = { ...steps[sIdx], points: newPts };
+  targetQ.grading_steps = steps;
+    
+  // Tự động cập nhật lại tổng điểm câu nếu có sự thay đổi bước chấm
+  const newTotal = steps.reduce((acc, st) => acc + (st.points || 0), 0);
+  targetQ.total_points = newTotal;
+  if (targetQ.sub_label && targetQ.sub_label.includes("\n(")) {
+    const prefix = targetQ.sub_label.split("\n(")[0];
+    targetQ.sub_label = `${prefix}\n(${newTotal} điểm)`;
+  }
 
-    const updatedDoc = {
-      ...templateDoc,
-      part2_essay: {
-        ...templateDoc.part2_essay,
-        questions: updatedQuestions,
-      },
-    };
+  updatedQuestions[qIdx] = targetQ;
 
-    onUpdate(updatedDoc);
+  const updatedDoc = {
+    ...templateDoc,
+    part2_essay: {
+      ...templateDoc.part2_essay,
+      questions: updatedQuestions,
+    },
+  };
+
+  onUpdate(updatedDoc);
 
     try {
       await fetch(`/api/studio/exams/${examId}/template-document`, {

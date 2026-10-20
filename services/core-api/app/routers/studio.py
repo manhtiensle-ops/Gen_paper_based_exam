@@ -819,17 +819,18 @@ def update_template_document(
 
     template_doc = payload.get("template_document", payload)
 
-    # Validate cơ bản: kiểm tra tổng điểm từng câu
+    # Tự động đồng bộ total_points nếu giáo viên chia lại bước mà chưa sửa header câu
     part2 = template_doc.get("part2_essay", {})
     for q in part2.get("questions", []):
         steps = q.get("grading_steps", [])
         actual = sum(s.get("points") or 0 for s in steps)
-        expected = q.get("total_points", 0)
-        if abs(actual - expected) > 0.01:
-            raise HTTPException(
-                422,
-                f"Câu '{q.get('sub_label', '?')}': tổng bước ({actual}) ≠ total_points ({expected})"
-            )
+        if steps and actual > 0:
+            q["total_points"] = actual
+            # Cập nhật sub_label nếu có định dạng Câu X\n(Y điểm)
+            sub_lbl = q.get("sub_label", "")
+            if "\n(" in sub_lbl:
+                prefix = sub_lbl.split("\n(")[0]
+                q["sub_label"] = f"{prefix}\n({actual} điểm)"
 
     exam.template_document = template_doc
 

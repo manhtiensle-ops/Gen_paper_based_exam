@@ -610,6 +610,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 handleCompileRawLatex();
               } else {
                 try {
+                  if (sidebarTab === "rubric-table" && templateDoc) {
+                    await fetch(`/api/studio/exams/${examId}/template-document`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(templateDoc),
+                    });
+                  }
                   const res = await fetch(`/api/studio/exams/${examId}/items`);
                   if (res.ok) {
                     const fresh = await res.json();
