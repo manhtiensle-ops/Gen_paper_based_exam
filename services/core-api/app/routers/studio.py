@@ -668,3 +668,217 @@ def compile_raw_latex_preview(
     except Exception as e:
         logger.error(f"Error compiling raw LaTeX: {e}")
         raise HTTPException(status_code=500, detail=f"Lỗi biên dịch mã nguồn: {str(e)}")
+
+
+# ==================== FIXED-LAYOUT TEMPLATE ENGINE ====================
+
+GRADING_SYSTEM_PROMPT = """Bạn là Chuyên gia Xây dựng Hướng dẫn chấm môn Toán THCS Việt Nam.
+
+NHIỆM VỤ: Chia lời giải thành các bước chấm (grading_steps), trả về JSON.
+
+QUY TẮC:
+1. Chỉ trả JSON. KHÔNG sinh HTML, KHÔNG sinh LaTeX table.
+2. Mọi biểu thức toán: $...$ (inline) hoặc $$...$$ (display).
+3. Mỗi bước ứng mốc 0.25đ hoặc bội 0.25đ (0.25, 0.5, 0.75, 1.0...).
+4. SUM(step.points) PHẢI = total_points. Lệch = lỗi.
+5. step_id là mã ngắn gọn, VD: "s1", "s2".
+6. Viết latex_content ngắn gọn, đúng trọng tâm lập luận. Không dài dòng giải thích.
+7. Câu hình học có hình: ghi tikz_code cho bước đầu tiên."""
+
+
+@router.post("/exams/{exam_id}/generate-template-document")
+def generate_template_document(exam_id: UUID, db: Session = Depends(get_db)):
+    """Gom exam_items → ExamDocument JSON, lưu vào generated_exams.template_document."""
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(404, "Không tìm thấy đề thi")
+
+    items = db.query(ExamItem)\
+              .filter(ExamItem.exam_id == exam_id)\
+              .order_by(ExamItem.order_index).all()
+
+    if not items:
+        raise HTTPException(400, "Đề thi chưa có câu hỏi nào trong Studio")
+
+    part1_questions = []
+    part2_questions = []
+
+    for item in items:
+        snap = item.problem_snapshot or {}
+        section = snap.get("section_type", "ESSAY")
+
+        if section == "SHORT_ANSWER":
+            part1_questions.append({
+                "number": item.order_index + 1,
+                "prompt_latex": snap.get("content_latex", ""),
+                "short_answer_latex": snap.get("final_answer", ""),
+                "solution_hint_latex": snap.get("solution_latex")
+            })
+        else:
+            rubric = item.rubric_data or {}
+            steps = rubric.get("steps", [])
+
+            # Chuyển đổi steps hiện tại sang format GradingStep
+            grading_steps = []
+            for s_idx, st in enumerate(steps):
+                grading_steps.append({
+                    "step_id": st.get("step_id", f"s{s_idx+1}"),
+                    "latex_content": st.get("latex_content", st.get("milestone_tag", "") + ": " + st.get("latex_content", "")),
+                    "points": st.get("points", 0.25),
+                    "tikz_code": st.get("tikz_code")
+                })
+
+            # Fallback nếu chưa có steps
+            if not grading_steps:
+                grading_steps = [{
+                    "step_id": "s1",
+                    "latex_content": snap.get("solution_latex") or "(Đang cập nhật lời giải)",
+                    "points": float(item.max_points),
+                    "tikz_code": None
+                }]
+
+            part2_questions.append({
+                "sub_label": f"{item.display_label}\n({float(item.max_points):.1f} điểm)",
+                "total_points": float(item.max_points),
+                "prompt_latex": snap.get("content_latex", ""),
+                "grading_steps": grading_steps
+            })
+
+    header = exam.header_config or {}
+    template_doc = {
+        "metadata": {
+            "exam_title": header.get("exam_name", exam.title),
+            "grade_and_year": header.get("academic_year", "LỚP 9 NĂM HỌC 2026-2027"),
+            "subject": header.get("subject_title", "TOÁN"),
+            "duration_minutes": header.get("duration_minutes", 120),
+            "governing_body": header.get("governing_body", "SỞ GIÁO DỤC VÀ ĐÀO TẠO"),
+            "department_or_school": header.get("department_or_school", "")
+        },
+        "part1_short_answer": {
+            "section_title": f"I. PHẦN GHI KẾT QUẢ ({len(part1_questions) * 0.5:.1f} điểm)",
+            "section_note": "(Thí sinh chỉ cần ghi kết quả vào tờ giấy thi)",
+            "points_per_question": 0.5,
+            "questions": part1_questions
+        } if part1_questions else None,
+        "part2_essay": {
+            "section_title": "II. PHẦN TỰ LUẬN",
+            "section_note": "(Thí sinh trình bày lời giải vào tờ giấy thi)",
+            "questions": part2_questions
+        }
+    }
+
+    exam.template_document = template_doc
+    db.commit()
+    db.refresh(exam)
+
+    return template_doc
+
+
+@router.get("/exams/{exam_id}/template-document")
+def get_template_document(exam_id: UUID, db: Session = Depends(get_db)):
+    """Lấy ExamDocument JSON đã lưu."""
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(404, "Không tìm thấy đề thi")
+    if not exam.template_document:
+        raise HTTPException(404, "Đề thi chưa có template_document. Gọi POST generate-template-document trước.")
+    return exam.template_document
+
+
+@router.put("/exams/{exam_id}/template-document")
+def update_template_document(
+    exam_id: UUID,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db)
+):
+    """Cập nhật ExamDocument JSON (sau khi giáo viên chỉnh sửa trên UI)."""
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(404, "Không tìm thấy đề thi")
+
+    template_doc = payload.get("template_document", payload)
+
+    # Validate cơ bản: kiểm tra tổng điểm từng câu
+    part2 = template_doc.get("part2_essay", {})
+    for q in part2.get("questions", []):
+        steps = q.get("grading_steps", [])
+        actual = sum(s.get("points") or 0 for s in steps)
+        expected = q.get("total_points", 0)
+        if abs(actual - expected) > 0.01:
+            raise HTTPException(
+                422,
+                f"Câu '{q.get('sub_label', '?')}': tổng bước ({actual}) ≠ total_points ({expected})"
+            )
+
+    exam.template_document = template_doc
+    db.commit()
+    return {"status": "ok", "message": "Đã cập nhật template_document"}
+
+
+@router.post("/exams/{exam_id}/ai-generate-grading-steps")
+def ai_generate_grading_steps(
+    exam_id: UUID,
+    body: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db)
+):
+    """Gọi Gemini Flash sinh grading_steps cho 1 câu tự luận."""
+    item_id = body.get("item_id")
+    if not item_id:
+        raise HTTPException(400, "Thiếu item_id")
+
+    item = db.query(ExamItem).filter(ExamItem.id == item_id, ExamItem.exam_id == exam_id).first()
+    if not item:
+        raise HTTPException(404, "Không tìm thấy câu hỏi trong đề thi")
+
+    snap = item.problem_snapshot or {}
+    content = snap.get("content_latex", "")
+    solution = snap.get("solution_latex", "")
+    total_pts = float(item.max_points)
+
+    client = get_omniroute_client()
+    try:
+        response = client.chat.completions.create(
+            model=os.getenv("OMNIROUTE_MODEL", "antigravity/gemini-3.8-flash-tiered"),
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": GRADING_SYSTEM_PROMPT},
+                {"role": "user", "content": f"""Đề bài LaTeX:
+{content}
+
+Lời giải tham khảo:
+{solution}
+
+Tổng điểm câu này: {total_pts} điểm.
+Hãy chia lời giải thành các bước chấm (grading_steps).
+Mỗi bước là 1 mốc điểm 0.25đ hoặc bội của 0.25đ.
+Tổng điểm tất cả các bước PHẢI = {total_pts} điểm.
+
+Trả về JSON:
+{{"grading_steps": [{{"step_id": "s1", "latex_content": "...", "points": 0.25, "tikz_code": null}}, ...]}}"""}
+            ],
+            temperature=0.2,
+            max_tokens=4096
+        )
+
+        import json as json_mod
+        result = json_mod.loads(response.choices[0].message.content)
+        steps = result.get("grading_steps", [])
+
+        actual_sum = sum(s.get("points", 0) for s in steps)
+        if abs(actual_sum - total_pts) > 0.01:
+            logger.warning(f"AI grading sum mismatch: {actual_sum} vs {total_pts}, auto-adjusting last step")
+            if steps:
+                diff = total_pts - sum(s.get("points", 0) for s in steps[:-1])
+                steps[-1]["points"] = round(diff, 2)
+
+        # Lưu vào rubric_data
+        rubric = item.rubric_data or {}
+        rubric["steps"] = steps
+        item.rubric_data = rubric
+        db.commit()
+
+        return {"grading_steps": steps, "total_points": total_pts}
+
+    except Exception as e:
+        logger.error(f"AI grading steps error: {e}")
+        raise HTTPException(500, f"Lỗi AI sinh barem: {str(e)}")

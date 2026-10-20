@@ -86,6 +86,7 @@ class GeneratedExam(Base):
     total_target_score = Column(Numeric(4, 2), default=20.00)
     exported_docx_key = Column(Text, nullable=True)
     exported_pdf_key = Column(Text, nullable=True)
+    template_document = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

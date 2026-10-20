@@ -318,6 +318,7 @@ def download_exam_file(
                     "title": exam.title,
                     "header_config": exam.header_config or {},
                     "slots_state": slots_payload,
+                    "template_document": exam.template_document,
                     "mode": mode_str
                 },
                 timeout=60

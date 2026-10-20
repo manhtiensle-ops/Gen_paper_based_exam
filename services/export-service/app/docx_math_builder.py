@@ -406,6 +406,143 @@ class DocxMathExamBuilder:
 
         self._apply_table_borders(table)
 
+    def add_fixed_layout_rubric_table(self, essay_questions: List[Dict[str, Any]]):
+        """
+        Dựng bảng 3 cột Hướng dẫn chấm theo kỹ thuật Sub-Row + vMerge (gộp ô dọc) cho cột Câu.
+        Điểm số luôn căn ngang tuyệt đối với dòng biến đổi tương ứng.
+        """
+        p_head = self.doc.add_paragraph()
+        p_head.paragraph_format.space_before = Pt(12)
+        p_head.paragraph_format.space_after = Pt(6)
+        p_head.paragraph_format.keep_with_next = True
+        r_head = p_head.add_run("HƯỚNG DẪN CHẤM VÀ THANG ĐIỂM CHI TIẾT (CHUẨN BỘ GD&ĐT)")
+        r_head.font.bold = True
+        r_head.font.size = Pt(12.5)
+
+        table = self.doc.add_table(rows=1, cols=3)
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+        col_widths_inch = [Inches(1.0), Inches(5.3), Inches(0.8)]
+        col_widths_dxa = [1417, 7511, 1134]
+
+        # Header row
+        hdr_row = table.rows[0]
+        hdr_tr = hdr_row._tr.get_or_add_trPr()
+        hdr_tr.append(parse_xml(f'<w:tblHeader {nsdecls("w")}/>'))
+        hdr_tr.append(parse_xml(f'<w:cantSplit {nsdecls("w")}/>'))
+
+        headers_text = ["Câu", "Nội dung lập luận & Các bước giải chi tiết", "Điểm"]
+        for idx, text in enumerate(headers_text):
+            cell = hdr_row.cells[idx]
+            cell.width = col_widths_inch[idx]
+            self._set_cell_width_dxa(cell, col_widths_dxa[idx])
+            cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+            shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{self.COLOR_PRIMARY}"/>')
+            cell._tc.get_or_add_tcPr().append(shd)
+
+            p = cell.paragraphs[0]
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.paragraph_format.space_before = Pt(4)
+            p.paragraph_format.space_after = Pt(4)
+            p.paragraph_format.keep_with_next = True
+            run = p.add_run(text)
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+            run.font.size = Pt(10.5)
+
+        for q in essay_questions:
+            sub_label = q.get("sub_label", "")
+            prompt = q.get("prompt_latex", "")
+            steps = q.get("grading_steps", [])
+
+            # Hàng 0: Đề bài
+            row_prompt = table.add_row()
+            trPr0 = row_prompt._tr.get_or_add_trPr()
+            trPr0.append(parse_xml(f'<w:cantSplit {nsdecls("w")}/>'))
+
+            c0 = row_prompt.cells[0]
+            self._set_cell_width_dxa(c0, col_widths_dxa[0])
+            c0.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            tcPr0 = c0._tc.get_or_add_tcPr()
+            tcPr0.append(parse_xml(f'<w:vMerge {nsdecls("w")} w:val="restart"/>'))
+            p0 = c0.paragraphs[0]
+            p0.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for line in sub_label.split("\n"):
+                r = p0.add_run(line + "\n")
+                r.font.bold = True
+                r.font.size = Pt(10.5)
+
+            c1 = row_prompt.cells[1]
+            self._set_cell_width_dxa(c1, col_widths_dxa[1])
+            p1 = c1.paragraphs[0]
+            p1.paragraph_format.space_before = Pt(3)
+            p1.paragraph_format.space_after = Pt(3)
+            self.add_mixed_text_with_math(p1, prompt)
+            for r in p1.runs:
+                r.font.bold = True
+
+            c2 = row_prompt.cells[2]
+            self._set_cell_width_dxa(c2, col_widths_dxa[2])
+
+            # Các hàng bước giải
+            for s_idx, step in enumerate(steps):
+                is_last = (s_idx == len(steps) - 1)
+                row_step = table.add_row()
+                trPr_s = row_step._tr.get_or_add_trPr()
+                trPr_s.append(parse_xml(f'<w:cantSplit {nsdecls("w")}/>'))
+
+                # Cột 0: vMerge CONTINUE
+                c0s = row_step.cells[0]
+                self._set_cell_width_dxa(c0s, col_widths_dxa[0])
+                tcPr0s = c0s._tc.get_or_add_tcPr()
+                tcPr0s.append(parse_xml(f'<w:vMerge {nsdecls("w")}/>'))
+
+                # Cột 1: Bước giải
+                c1s = row_step.cells[1]
+                self._set_cell_width_dxa(c1s, col_widths_dxa[1])
+                p1s = c1s.paragraphs[0]
+                p1s.paragraph_format.line_spacing = 1.15
+                p1s.paragraph_format.space_before = Pt(2)
+                p1s.paragraph_format.space_after = Pt(2)
+                content = step.get("latex_content", "")
+                self.add_mixed_text_with_math(p1s, content)
+
+                # Ẩn border ngang giữa các bước, chỉ đóng ở bước cuối
+                border_bottom = 'w:val="single" w:sz="4" w:space="0" w:color="94A3B8"' if is_last else 'w:val="nil"'
+                border_top = 'w:val="nil"'
+
+                for cell in [c0s, c1s]:
+                    borders = parse_xml(f'''
+                        <w:tcBorders {nsdecls("w")}>
+                            <w:top {border_top}/>
+                            <w:bottom {border_bottom}/>
+                        </w:tcBorders>
+                    ''')
+                    cell._tc.get_or_add_tcPr().append(borders)
+
+                # Cột 2: Điểm
+                c2s = row_step.cells[2]
+                self._set_cell_width_dxa(c2s, col_widths_dxa[2])
+                c2s.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                p2s = c2s.paragraphs[0]
+                p2s.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                pts = step.get("points")
+                if pts is not None:
+                    r2s = p2s.add_run(f"{pts:.2f}")
+                    r2s.font.bold = True
+                    r2s.font.size = Pt(10.5)
+
+                borders2 = parse_xml(f'''
+                    <w:tcBorders {nsdecls("w")}>
+                        <w:top {border_top}/>
+                        <w:bottom {border_bottom}/>
+                    </w:tcBorders>
+                ''')
+                c2s._tc.get_or_add_tcPr().append(borders2)
+
+        self._apply_table_borders(table)
+
     @staticmethod
     def _set_cell_width_dxa(cell, dxa_width: int):
         tcPr = cell._tc.get_or_add_tcPr()
@@ -512,32 +649,38 @@ def compile_native_omml_docx(exam_data: Dict[str, Any], mode: str = "EXAM") -> s
             r_end.font.size = Pt(10)
         else:
             # Rubric Table
-            rubric_rows = []
-            for idx, slot in enumerate(slots):
-                q_lbl = f"Câu {slot.get('slot_index', idx + 1)}"
-                pts = float(slot.get("points") or 1.0)
-                q = slot.get("question") or {}
-                rubric = slot.get("rubric_data") or {}
-                steps = rubric.get("steps") or []
+            template_doc = exam_data.get("template_document")
+            essay_questions = template_doc.get("part2_essay", {}).get("questions", []) if template_doc else []
 
-                if steps:
-                    for s_idx, st in enumerate(steps):
-                        tag = st.get("milestone_tag", "")
-                        desc = f"{tag}: {st.get('latex_content', '')}" if tag else st.get('latex_content', '')
+            if essay_questions:
+                builder.add_fixed_layout_rubric_table(essay_questions)
+            else:
+                rubric_rows = []
+                for idx, slot in enumerate(slots):
+                    q_lbl = f"Câu {slot.get('slot_index', idx + 1)}"
+                    pts = float(slot.get("points") or 1.0)
+                    q = slot.get("question") or {}
+                    rubric = slot.get("rubric_data") or {}
+                    steps = rubric.get("steps") or []
+
+                    if steps:
+                        for s_idx, st in enumerate(steps):
+                            tag = st.get("milestone_tag", "")
+                            desc = f"{tag}: {st.get('latex_content', '')}" if tag else st.get('latex_content', '')
+                            rubric_rows.append({
+                                "question_label": q_lbl if s_idx == 0 else "",
+                                "solution_step": desc,
+                                "score": st.get("points", 0.25)
+                            })
+                    else:
+                        sol = q.get("solution_latex", "*(Đang cập nhật lời giải)*")
                         rubric_rows.append({
-                            "question_label": q_lbl if s_idx == 0 else "",
-                            "solution_step": desc,
-                            "score": st.get("points", 0.25)
+                            "question_label": q_lbl,
+                            "solution_step": sol,
+                            "score": pts
                         })
-                else:
-                    sol = q.get("solution_latex", "*(Đang cập nhật lời giải)*")
-                    rubric_rows.append({
-                        "question_label": q_lbl,
-                        "solution_step": sol,
-                        "score": pts
-                    })
 
-            builder.add_marking_scheme_table(rubric_rows)
+                builder.add_marking_scheme_table(rubric_rows)
 
         out_docx = os.path.join(td, "exam.docx")
         builder.save(out_docx)

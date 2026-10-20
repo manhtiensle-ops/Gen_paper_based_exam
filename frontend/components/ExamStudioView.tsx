@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
+import RubricTablePreview from "@/components/RubricTablePreview";
 import {
   FileText,
   Scale,
@@ -21,6 +22,7 @@ import {
   Settings,
   Edit3,
   Layers,
+  Table,
   ChevronRight,
   Eye,
   Paperclip,
@@ -48,12 +50,29 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const activePointerIdRef = useRef<number | null>(null);
 
-  // Left Sidebar Tab: "editor" | "items" | "knobs"
-  const [sidebarTab, setSidebarTab] = useState<"editor" | "items" | "knobs">("editor");
+  // Left Sidebar Tab: "editor" | "rubric-table" | "items" | "knobs"
+  const [sidebarTab, setSidebarTab] = useState<"editor" | "rubric-table" | "items" | "knobs">("editor");
+  const [templateDoc, setTemplateDoc] = useState<any | null>(null);
 
   // Raw LaTeX Code State for Live Editor
   const [rawLatexCode, setRawLatexCode] = useState<string>("");
   const [isPreambleFolded, setIsPreambleFolded] = useState<boolean>(true);
+
+  // Tải ExamDocument JSON (khung bảng chấm chuẩn)
+  const loadTemplateDoc = async () => {
+    try {
+      let res = await fetch(`/api/studio/exams/${examId}/template-document`);
+      if (!res.ok) {
+        res = await fetch(`/api/studio/exams/${examId}/generate-template-document`, { method: "POST" });
+      }
+      if (res.ok) {
+        const data = await res.json();
+        setTemplateDoc(data);
+      }
+    } catch (e) {
+      console.error("Load template document error:", e);
+    }
+  };
 
   // Layout Knobs
   const [layoutKnobs, setLayoutKnobs] = useState({
@@ -232,6 +251,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         const data = await res.json();
         setItems(data);
         compileLivePreview(data, layoutKnobs, activeMode);
+        loadTemplateDoc();
       }
     } catch (e) {
       console.error(e);
@@ -520,6 +540,21 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               </button>
 
               <button
+                onClick={() => {
+                  setSidebarTab("rubric-table");
+                  if (!templateDoc) loadTemplateDoc();
+                }}
+                className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
+                  sidebarTab === "rubric-table"
+                    ? "border-indigo-600 text-indigo-700 bg-white"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Table className="w-3.5 h-3.5" />
+                <span>Khung Barem (Sub-Row)</span>
+              </button>
+
+              <button
                 onClick={() => setSidebarTab("items")}
                 className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
                   sidebarTab === "items"
@@ -644,6 +679,25 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <span>Sẵn sàng chỉnh sửa trực tiếp (Ctrl+S)</span>
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* TAB: FIXED-LAYOUT RUBRIC TABLE (SUB-ROW + VMERGE) */}
+          {sidebarTab === "rubric-table" && (
+            <div className="flex-1 overflow-hidden flex flex-col bg-slate-100">
+              {templateDoc ? (
+                <RubricTablePreview
+                  examId={examId}
+                  templateDoc={templateDoc}
+                  onUpdate={(updated) => setTemplateDoc(updated)}
+                  onRefreshFromItems={loadTemplateDoc}
+                />
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 space-y-3">
+                  <RefreshCw className="w-8 h-8 animate-spin text-indigo-500" />
+                  <p className="text-xs">Đang tải và chuẩn hóa khung bảng hướng dẫn chấm...</p>
+                </div>
+              )}
             </div>
           )}
 

@@ -123,6 +123,7 @@ class GeneratedExamResponse(BaseModel):
     total_target_score: Optional[float] = 20.00
     exported_docx_key: Optional[str] = None
     exported_pdf_key: Optional[str] = None
+    template_document: Optional[Dict[str, Any]] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 

@@ -40,6 +40,7 @@ class NativeDocxRequest(BaseModel):
     title: str = "ĐỀ THI HỌC SINH GIỎI"
     header_config: Dict[str, Any] = {}
     slots_state: List[Dict[str, Any]] = []
+    template_document: Optional[Dict[str, Any]] = None
     mode: str = "EXAM"
 
 @app.on_event("startup")
@@ -109,7 +110,8 @@ def export_native_omml_docx(payload: NativeDocxRequest):
             "id": payload.exam_id,
             "title": payload.title,
             "header_config": payload.header_config,
-            "slots_state": payload.slots_state
+            "slots_state": payload.slots_state,
+            "template_document": payload.template_document
         }
         file_key = compile_native_omml_docx(exam_data, mode=payload.mode)
         return {
