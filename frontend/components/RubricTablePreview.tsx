@@ -53,6 +53,7 @@ interface Props {
   templateDoc: ExamDocument;
   onUpdate: (updatedDoc: ExamDocument) => void;
   onRefreshFromItems?: () => void;
+  onRecompile?: () => void;
 }
 
 export default function RubricTablePreview({
@@ -60,6 +61,7 @@ export default function RubricTablePreview({
   templateDoc,
   onUpdate,
   onRefreshFromItems,
+  onRecompile,
 }: Props) {
   const [loadingAiIndex, setLoadingAiIndex] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -123,6 +125,7 @@ export default function RubricTablePreview({
       });
 
       setSaveStatus("Đã sinh barem và lưu thành công!");
+      if (onRecompile) onRecompile();
       setTimeout(() => setSaveStatus(null), 3000);
     } catch (e: any) {
       alert(e.message || "Lỗi sinh barem");
@@ -132,7 +135,7 @@ export default function RubricTablePreview({
   };
 
   // Tăng / giảm điểm của một bước (bước nhảy 0.25đ)
-  const adjustStepPoint = (qIdx: number, sIdx: number, delta: number) => {
+  const adjustStepPoint = async (qIdx: number, sIdx: number, delta: number) => {
     const updatedQuestions = [...essayQuestions];
     const targetQ = { ...updatedQuestions[qIdx] };
     const steps = [...targetQ.grading_steps];
@@ -151,10 +154,21 @@ export default function RubricTablePreview({
     };
 
     onUpdate(updatedDoc);
+
+    try {
+      await fetch(`/api/studio/exams/${examId}/template-document`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedDoc),
+      });
+      if (onRecompile) onRecompile();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Thêm một bước mới
-  const handleAddStep = (qIdx: number) => {
+  const handleAddStep = async (qIdx: number) => {
     const updatedQuestions = [...essayQuestions];
     const targetQ = { ...updatedQuestions[qIdx] };
     const steps = [...targetQ.grading_steps];
@@ -177,10 +191,21 @@ export default function RubricTablePreview({
     };
 
     onUpdate(updatedDoc);
+
+    try {
+      await fetch(`/api/studio/exams/${examId}/template-document`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedDoc),
+      });
+      if (onRecompile) onRecompile();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Xóa một bước
-  const handleDeleteStep = (qIdx: number, sIdx: number) => {
+  const handleDeleteStep = async (qIdx: number, sIdx: number) => {
     const updatedQuestions = [...essayQuestions];
     const targetQ = { ...updatedQuestions[qIdx] };
     if (targetQ.grading_steps.length <= 1) return;
@@ -196,6 +221,17 @@ export default function RubricTablePreview({
     };
 
     onUpdate(updatedDoc);
+
+    try {
+      await fetch(`/api/studio/exams/${examId}/template-document`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedDoc),
+      });
+      if (onRecompile) onRecompile();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (

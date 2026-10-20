@@ -577,6 +577,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               <button
                 onClick={() => {
                   setSidebarTab("rubric-table");
+                  handleModeSwitch("RUBRIC");
                   if (!templateDoc) loadTemplateDoc();
                 }}
                 className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
@@ -726,6 +727,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   templateDoc={templateDoc}
                   onUpdate={(updated) => setTemplateDoc(updated)}
                   onRefreshFromItems={loadTemplateDoc}
+                  onRecompile={async () => {
+                    const res = await fetch(`/api/studio/exams/${examId}/items`);
+                    if (res.ok) {
+                      const freshItems = await res.json();
+                      setItems(freshItems);
+                      compileLivePreview(freshItems, layoutKnobs, "RUBRIC");
+                    }
+                  }}
                 />
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 space-y-3">
