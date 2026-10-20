@@ -886,9 +886,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                       </div>
                     </div>
 
-                    <p className="text-slate-800 leading-relaxed font-serif line-clamp-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      {snap.content_latex || "..."}
-                    </p>
+                    <div className="text-slate-800 leading-relaxed font-serif line-clamp-4 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                      <MathRenderer content={snap.content_latex || "..."} />
+                    </div>
 
                     {/* Step Barem Steppers if in Rubric mode */}
                     {activeMode === "RUBRIC" && steps.length > 0 && (
@@ -901,9 +901,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                             key={sIdx}
                             className="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 text-[11px]"
                           >
-                            <span className="text-slate-700 truncate max-w-[240px]">
-                              {st.milestone_tag || `Bước ${sIdx + 1}`}: {st.latex_content}
-                            </span>
+                            <div className="text-slate-700 text-xs flex-1 truncate pr-2 flex items-center space-x-1">
+                              <span className="font-semibold text-slate-900 shrink-0">
+                                {st.milestone_tag || `Bước ${sIdx + 1}`}:
+                              </span>
+                              <span className="truncate">
+                                <MathRenderer content={st.latex_content || ""} />
+                              </span>
+                            </div>
                             <div className="flex items-center space-x-1 shrink-0">
                               <button
                                 onClick={() => adjustStepPoint(it.id, sIdx, -0.25)}
