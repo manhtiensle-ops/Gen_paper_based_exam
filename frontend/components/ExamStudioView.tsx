@@ -149,6 +149,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [previewData, setPreviewData] = useState<any>(null);
   const [compiling, setCompiling] = useState(false);
   const [zoomScale, setZoomScale] = useState<number>(100);
+  const [canvasKey, setCanvasKey] = useState<number>(Date.now());
 
   // AI Multimodal Drawer State
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
@@ -333,6 +334,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       if (res.ok) {
         const data = await res.json();
         setPreviewData(data);
+        setCanvasKey(Date.now());
         if (data.latex_source) {
           setRawLatexCode(data.latex_source);
         }
@@ -360,6 +362,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       if (res.ok) {
         const data = await res.json();
         setPreviewData(data);
+        setCanvasKey(Date.now());
         setIsDirty(false);
         setRestoredDraftNotice(null);
         saveExamDraft({
@@ -823,12 +826,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   onUpdate={(updated) => setTemplateDoc(updated)}
                   onRefreshFromItems={loadTemplateDoc}
                   onRecompile={async () => {
-                    const res = await fetch(`/api/studio/exams/${examId}/items`);
-                    if (res.ok) {
-                      const freshItems = await res.json();
-                      setItems(freshItems);
-                      compileLivePreview(freshItems, layoutKnobs, "RUBRIC");
-                    }
+                    compileLivePreview(items, layoutKnobs, "RUBRIC");
                   }}
                 />
               ) : (
@@ -1174,7 +1172,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   className="bg-white rounded-[3px] overflow-hidden border border-slate-300 transition-all relative group shadow-[0_16px_36px_-6px_rgba(0,0,0,0.18)]"
                 >
                   <img
-                    src={`/api/assets/${pageKey}?t=${Date.now()}`}
+                    src={`/api/assets/${pageKey}?t=${canvasKey}`}
                     alt={`Trang in A4 - Trang ${pIdx + 1}`}
                     className="w-full h-auto object-contain block bg-white"
                   />

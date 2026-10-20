@@ -181,7 +181,9 @@ export default function RubricTablePreview({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedDoc),
       });
+      setSaveStatus("Đã cập nhật điểm & biên dịch lại!");
       if (onRecompile) onRecompile();
+      setTimeout(() => setSaveStatus(null), 2500);
     } catch (e) {
       console.error(e);
     }
