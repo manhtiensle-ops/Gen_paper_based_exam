@@ -70,9 +70,13 @@ class ExamBlueprint(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     grade = Column(Integer, nullable=False, default=9)
+    is_preset = Column(Boolean, default=False)
+    target_total_score = Column(Numeric(4, 2), default=20.00)
+    duration_minutes = Column(Integer, default=150)
     source_exam_id = Column(UUID(as_uuid=True), ForeignKey("source_exams.id", ondelete="SET NULL"), nullable=True)
     sections_config = Column(JSONB, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 class GeneratedExam(Base):
     __tablename__ = "generated_exams"

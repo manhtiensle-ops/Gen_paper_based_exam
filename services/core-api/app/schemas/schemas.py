@@ -93,12 +93,25 @@ class ExamBlueprintCreate(BaseModel):
     name: str
     description: Optional[str] = None
     grade: int = 9
+    is_preset: bool = False
+    target_total_score: float = 20.00
+    duration_minutes: int = 150
     source_exam_id: Optional[UUID] = None
     sections_config: List[Dict[str, Any]]
+
+class ExamBlueprintUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    grade: Optional[int] = None
+    is_preset: Optional[bool] = None
+    target_total_score: Optional[float] = None
+    duration_minutes: Optional[int] = None
+    sections_config: Optional[List[Dict[str, Any]]] = None
 
 class ExamBlueprintResponse(ExamBlueprintCreate):
     id: UUID
     created_at: datetime
+    updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
 class GenerateExamRequest(BaseModel):

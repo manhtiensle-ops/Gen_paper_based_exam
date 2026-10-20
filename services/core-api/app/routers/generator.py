@@ -2,7 +2,7 @@ import os
 import uuid
 import re
 import unicodedata
-from typing import List
+from typing import List, Optional, Dict, Any
 from urllib.parse import quote
 import requests
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import ExamBlueprint, GeneratedExam, Question, ExamItem
 from ..schemas import (
-    ExamBlueprintCreate, ExamBlueprintResponse,
+    ExamBlueprintCreate, ExamBlueprintUpdate, ExamBlueprintResponse,
     GenerateExamRequest, SwapQuestionRequest, GeneratedExamResponse,
     QuestionResponse
 )
@@ -64,6 +64,9 @@ def create_blueprint(payload: ExamBlueprintCreate, db: Session = Depends(get_db)
         name=payload.name,
         description=payload.description,
         grade=payload.grade,
+        is_preset=payload.is_preset,
+        target_total_score=payload.target_total_score,
+        duration_minutes=payload.duration_minutes,
         source_exam_id=payload.source_exam_id,
         sections_config=payload.sections_config
     )
@@ -73,8 +76,13 @@ def create_blueprint(payload: ExamBlueprintCreate, db: Session = Depends(get_db)
     return bp
 
 @router.get("/blueprints", response_model=List[ExamBlueprintResponse])
-def list_blueprints(db: Session = Depends(get_db)):
-    return db.query(ExamBlueprint).order_by(ExamBlueprint.created_at.desc()).all()
+def list_blueprints(grade: Optional[int] = None, is_preset: Optional[bool] = None, db: Session = Depends(get_db)):
+    query = db.query(ExamBlueprint)
+    if grade is not None:
+        query = query.filter(ExamBlueprint.grade == grade)
+    if is_preset is not None:
+        query = query.filter(ExamBlueprint.is_preset == is_preset)
+    return query.order_by(ExamBlueprint.is_preset.desc(), ExamBlueprint.created_at.desc()).all()
 
 @router.get("/blueprints/{blueprint_id}", response_model=ExamBlueprintResponse)
 def get_blueprint(blueprint_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -82,6 +90,51 @@ def get_blueprint(blueprint_id: uuid.UUID, db: Session = Depends(get_db)):
     if not bp:
         raise HTTPException(status_code=404, detail="Blueprint not found")
     return bp
+
+@router.put("/blueprints/{blueprint_id}", response_model=ExamBlueprintResponse)
+def update_blueprint(blueprint_id: uuid.UUID, payload: ExamBlueprintUpdate, db: Session = Depends(get_db)):
+    bp = db.query(ExamBlueprint).filter(ExamBlueprint.id == blueprint_id).first()
+    if not bp:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    
+    update_data = payload.model_dump(exclude_unset=True)
+    for field, val in update_data.items():
+        setattr(bp, field, val)
+    
+    db.commit()
+    db.refresh(bp)
+    return bp
+
+@router.post("/blueprints/{blueprint_id}/clone", response_model=ExamBlueprintResponse)
+def clone_blueprint(blueprint_id: uuid.UUID, db: Session = Depends(get_db)):
+    bp = db.query(ExamBlueprint).filter(ExamBlueprint.id == blueprint_id).first()
+    if not bp:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    
+    new_bp = ExamBlueprint(
+        name=f"Bản sao - {bp.name}",
+        description=bp.description,
+        grade=bp.grade,
+        is_preset=False,
+        target_total_score=bp.target_total_score,
+        duration_minutes=bp.duration_minutes,
+        sections_config=bp.sections_config
+    )
+    db.add(new_bp)
+    db.commit()
+    db.refresh(new_bp)
+    return new_bp
+
+@router.delete("/blueprints/{blueprint_id}")
+def delete_blueprint(blueprint_id: uuid.UUID, db: Session = Depends(get_db)):
+    bp = db.query(ExamBlueprint).filter(ExamBlueprint.id == blueprint_id).first()
+    if not bp:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    if bp.is_preset:
+        raise HTTPException(status_code=400, detail="Không thể xóa khung ma trận chuẩn có sẵn của hệ thống")
+    db.delete(bp)
+    db.commit()
+    return {"status": "ok", "message": "Đã xóa khung ma trận thành công"}
 
 # Algorithmic Exam Generation (Zero-hallucination via SQL + pgvector)
 @router.post("/generate", response_model=GeneratedExamResponse)

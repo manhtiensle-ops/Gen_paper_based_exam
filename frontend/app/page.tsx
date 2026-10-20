@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
 import ExamStudioView from "@/components/ExamStudioView";
+import BlueprintBuilderModal from "@/components/BlueprintBuilderModal";
 import {
   saveWorkspaceSession,
   getWorkspaceSession,
@@ -25,7 +26,8 @@ import {
   AlertCircle,
   Edit3,
   Sparkles,
-  Scale
+  Scale,
+  Sliders
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -47,6 +49,7 @@ export default function Dashboard() {
   // Generator & Assembled Exam State
   const [blueprints, setBlueprints] = useState<any[]>([]);
   const [selectedBlueprintId, setSelectedBlueprintId] = useState<string>("");
+  const [blueprintModalOpen, setBlueprintModalOpen] = useState(false);
   const [examTitle, setExamTitle] = useState("Đề thi chọn HSG Toán 9 - Đề số 01");
   const [generatedExam, setGeneratedExam] = useState<any | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -536,21 +539,41 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-3">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Khung ma trận (Blueprint)
-              </label>
-              {blueprints.length > 0 ? (
-                <select
-                  value={selectedBlueprintId}
-                  onChange={(e) => setSelectedBlueprintId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Khung ma trận (Blueprint)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setBlueprintModalOpen(true)}
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1"
                 >
-                  {blueprints.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
+                  <span>⚙️ Tùy biến khung</span>
+                </button>
+              </div>
+
+              {blueprints.length > 0 ? (
+                <div className="space-y-2">
+                  <select
+                    value={selectedBlueprintId}
+                    onChange={(e) => setSelectedBlueprintId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    {blueprints.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name} ({b.target_total_score || 20}đ - {b.duration_minutes || 150}p)
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setBlueprintModalOpen(true)}
+                    className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold border border-slate-200 transition-all flex items-center justify-center space-x-1.5"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Xem & Chỉnh sửa chi tiết ma trận này</span>
+                  </button>
+                </div>
               ) : (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-2">
                   <p>Chưa có ma trận đề thi mẫu nào.</p>
@@ -1066,6 +1089,23 @@ export default function Dashboard() {
             );
             setGeneratedExam({ ...generatedExam, slots_state: updatedSlots });
           }
+        }}
+      />
+
+      {/* BLUEPRINT BUILDER & CUSTOMIZER MODAL */}
+      <BlueprintBuilderModal
+        isOpen={blueprintModalOpen}
+        onClose={() => setBlueprintModalOpen(false)}
+        onSelectBlueprint={async (selectedId) => {
+          setSelectedBlueprintId(selectedId);
+          // Nạp lại danh sách blueprints
+          try {
+            const res = await fetch("/api/generator/blueprints");
+            if (res.ok) {
+              const data = await res.json();
+              setBlueprints(data);
+            }
+          } catch (e) {}
         }}
       />
     </div>
