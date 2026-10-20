@@ -153,8 +153,11 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   // Live Canvas Preview State
   const [previewData, setPreviewData] = useState<any>(null);
   const [compiling, setCompiling] = useState(false);
+  const [activePage, setActivePage] = useState<number>(0);
   const [zoomScale, setZoomScale] = useState<number>(100);
   const [canvasKey, setCanvasKey] = useState<number>(Date.now());
+  const [viewerMode, setViewerMode] = useState<"scroll" | "pdf">("scroll");
+  const canvasScrollRef = useRef<HTMLDivElement>(null);
 
   // AI Multimodal Drawer State
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
@@ -1202,60 +1205,107 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               )}
             </div>
 
-            {/* Zoom Controls */}
-            <div className="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
-              <button
-                onClick={() => setZoomScale((prev) => Math.max(50, prev - 10))}
-                className="p-1 hover:bg-white rounded text-slate-700 transition-all"
-                title="Thu nhỏ"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <span className="w-12 text-center font-mono font-bold text-xs text-slate-800">{zoomScale}%</span>
-              <button
-                onClick={() => setZoomScale((prev) => Math.min(180, prev + 10))}
-                className="p-1 hover:bg-white rounded text-slate-700 transition-all"
-                title="Phóng to"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setZoomScale(100)}
-                className="p-1 hover:bg-white rounded text-slate-700 transition-all border-l border-slate-200 ml-1 pl-1.5"
-                title="Khôi phục 100%"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
+            {/* Viewer Mode & Zoom Controls */}
+            <div className="flex items-center space-x-2">
+              {/* Chế độ xem: Cuộn liên tục / Trình chiếu PDF Native */}
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
+                <button
+                  onClick={() => setViewerMode("scroll")}
+                  className={`px-2.5 py-1 rounded-lg font-bold flex items-center space-x-1 transition-all ${
+                    viewerMode === "scroll"
+                      ? "bg-white text-indigo-700 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                  title="Chế độ cuộn liên tục (Continuous Scroll)"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Cuộn A4</span>
+                </button>
+                <button
+                  onClick={() => setViewerMode("pdf")}
+                  className={`px-2.5 py-1 rounded-lg font-bold flex items-center space-x-1 transition-all ${
+                    viewerMode === "pdf"
+                      ? "bg-white text-indigo-700 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                  title="Trình chiếu PDF Native (hỗ trợ cuộn mượt, in, dàn trang chuẩn)"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>PDF Native</span>
+                </button>
+              </div>
+
+              {viewerMode === "scroll" && (
+                <div className="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                  <button
+                    onClick={() => setZoomScale((prev) => Math.max(50, prev - 10))}
+                    className="p-1 hover:bg-white rounded text-slate-700 transition-all"
+                    title="Thu nhỏ"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-12 text-center font-mono font-bold text-xs text-slate-800">{zoomScale}%</span>
+                  <button
+                    onClick={() => setZoomScale((prev) => Math.min(180, prev + 10))}
+                    className="p-1 hover:bg-white rounded text-slate-700 transition-all"
+                    title="Phóng to"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setZoomScale(100)}
+                    className="p-1 hover:bg-white rounded text-slate-700 transition-all border-l border-slate-200 ml-1 pl-1.5"
+                    title="Khôi phục 100%"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Canvas Viewer Area with High-Elevation A4 Drop Shadows */}
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center space-y-6">
-            {previewData?.page_keys && previewData.page_keys.length > 0 ? (
-              previewData.page_keys.map((pageKey: string, pIdx: number) => (
-                <div
-                  key={`${pIdx}-${canvasKey}`}
-                  style={{ width: `${(595 * zoomScale) / 100}px` }}
-                  className="bg-white rounded-[3px] overflow-hidden border border-slate-300 transition-all relative group shadow-[0_16px_36px_-6px_rgba(0,0,0,0.18)]"
-                >
-                  <img
-                    key={`img-${pageKey}-${canvasKey}`}
-                    src={`/api/assets/${pageKey}?t=${canvasKey}`}
-                    alt={`Trang in A4 - Trang ${pIdx + 1}`}
-                    className="w-full h-auto object-contain block bg-white"
-                  />
-                  <div className="absolute bottom-2 right-3 text-[10px] font-mono text-slate-600 bg-white/90 px-2 py-0.5 rounded shadow border border-slate-200">
-                    Trang {pIdx + 1} / {previewData.page_keys.length}
+          {/* Canvas Viewer Area with Smooth Continuous Scroll */}
+          {viewerMode === "pdf" && previewData?.pdf_key ? (
+            <div className="flex-1 w-full h-full bg-slate-100 overflow-hidden relative">
+              <iframe
+                src={`/api/assets/${previewData.pdf_key}?t=${canvasKey}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+                className="w-full h-full border-none block"
+                title="Trình chiếu PDF Native"
+              />
+            </div>
+          ) : (
+            <div
+              ref={canvasScrollRef}
+              className="flex-1 overflow-y-auto overflow-x-hidden p-8 flex flex-col items-center space-y-8 scroll-smooth bg-slate-200/60"
+              style={{ scrollBehavior: "smooth" }}
+            >
+              {previewData?.page_keys && previewData.page_keys.length > 0 ? (
+                previewData.page_keys.map((pageKey: string, pIdx: number) => (
+                  <div
+                    key={`${pIdx}-${canvasKey}`}
+                    id={`pdf-page-${pIdx + 1}`}
+                    style={{ width: `${(595 * zoomScale) / 100}px` }}
+                    className="bg-white rounded-[2px] overflow-hidden border border-slate-300 transition-all relative group shadow-[0_20px_40px_-10px_rgba(0,0,0,0.22)] shrink-0"
+                  >
+                    <img
+                      key={`img-${pageKey}-${canvasKey}`}
+                      src={`/api/assets/${pageKey}?t=${canvasKey}`}
+                      alt={`Trang in A4 - Trang ${pIdx + 1}`}
+                      className="w-full h-auto object-contain block bg-white"
+                    />
+                    <div className="absolute bottom-3 right-4 text-[11px] font-mono font-bold text-slate-700 bg-white/95 px-2.5 py-1 rounded shadow-md border border-slate-200/80">
+                      Trang {pIdx + 1} / {previewData.page_keys.length}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
+                  <FileText className="w-12 h-12 text-slate-300 animate-pulse" />
+                  <p className="text-xs font-medium">Đang nạp bản in trực tiếp từ TeX Live Engine...</p>
                 </div>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
-                <FileText className="w-12 h-12 text-slate-300 animate-pulse" />
-                <p className="text-xs font-medium">Đang nạp bản in trực tiếp từ TeX Live Engine...</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 3. AI MULTIMODAL SLIDE-OVER DRAWER (SLIDE FROM RIGHT) */}
