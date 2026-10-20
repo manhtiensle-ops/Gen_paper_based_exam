@@ -455,6 +455,24 @@ def get_exam_latex_preview(
         "rubric_data": it.rubric_data
     } for it in items]
 
+    # Ưu tiên đồng bộ các bước chấm từ template_document nếu có
+    template_doc = exam.template_document
+    if template_doc and template_doc.get("part2_essay"):
+        essay_qs = template_doc["part2_essay"].get("questions", [])
+        for idx, it_payload in enumerate(items_payload):
+            if idx < len(essay_qs):
+                t_q = essay_qs[idx]
+                t_steps = t_q.get("grading_steps", [])
+                if t_steps:
+                    it_payload["rubric_data"] = {
+                        "steps": [{
+                            "step_id": s.get("step_id", f"s{s_i+1}"),
+                            "milestone_tag": (s.get("milestone_tag") or "").replace("&", r"\&"),
+                            "latex_content": s.get("latex_content", ""),
+                            "points": s.get("points", 0.25)
+                        } for s_i, s in enumerate(t_steps)]
+                    }
+
     header_cfg = payload.get("header_config") or exam.header_config or {}
     layout_knobs = payload.get("layout_knobs") or {
         "margin_top_cm": 1.8,
@@ -811,6 +829,18 @@ def update_template_document(
             )
 
     exam.template_document = template_doc
+
+    # Đồng bộ các steps sang các ExamItem
+    items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
+    questions = part2.get("questions", [])
+    for idx, it in enumerate(items):
+        if idx < len(questions):
+            q_data = questions[idx]
+            q_steps = q_data.get("grading_steps", [])
+            rubric = it.rubric_data or {}
+            rubric["steps"] = q_steps
+            it.rubric_data = rubric
+
     db.commit()
     return {"status": "ok", "message": "Đã cập nhật template_document"}
 
@@ -890,6 +920,18 @@ YÊU CẦU:
         rubric = item.rubric_data or {}
         rubric["steps"] = steps
         item.rubric_data = rubric
+
+        # Cập nhật vào template_document của đề thi nếu có
+        exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+        if exam and exam.template_document and exam.template_document.get("part2_essay"):
+            template_doc = dict(exam.template_document)
+            questions = template_doc["part2_essay"].get("questions", [])
+            for q in questions:
+                if item.display_label in q.get("sub_label", ""):
+                    q["grading_steps"] = steps
+                    break
+            exam.template_document = template_doc
+
         db.commit()
 
         return {"grading_steps": steps, "total_points": total_pts}
