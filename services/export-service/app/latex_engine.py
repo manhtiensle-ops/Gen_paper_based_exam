@@ -188,11 +188,11 @@ def generate_latex_source(
         tex.append("\\textit{(Thang điểm 0,25đ chuẩn - Học sinh làm theo cách khác nếu đúng vẫn cho điểm tối đa)}")
         tex.append("\\end{center}\\vspace{6pt}")
 
-        tex.append("\\noindent")
-        tex.append("\\begin{longtable}{|p{0.14\\textwidth}|p{0.70\\textwidth}|p{0.10\\textwidth}|}")
-        tex.append("\\hline")
-        tex.append("\\textbf{Câu / Ý} & \\centering\\textbf{Nội dung các bước giải và lập luận} & \\centering\\textbf{Điểm} \\\\")
-        tex.append("\\hline\\endhead")
+        tex.append(r"\noindent")
+        tex.append(r"\begin{longtable}{|p{0.14\textwidth}|p{0.70\textwidth}|>{\centering\arraybackslash}p{0.10\textwidth}|}")
+        tex.append(r"\hline")
+        tex.append(r"\textbf{Câu / Ý} & \centering\arraybackslash\textbf{Nội dung các bước giải và lập luận} & \textbf{Điểm} \\")
+        tex.append(r"\hline\endhead")
 
         for it in items:
             label = it.get("display_label", "Câu")
@@ -201,25 +201,29 @@ def generate_latex_source(
             steps = rubric.get("steps", []) or []
 
             if steps:
-                first_st = steps[0]
-                first_tag = first_st.get("milestone_tag", "")
-                first_txt = first_st.get("latex_content", "")
-                first_pts = first_st.get("points", 0.25)
-                tex.append(f"\\textbf{{{label}}} ({pts}đ) & \\textbf{{{first_tag}:}} {first_txt} & \\centering\\textbf{{{first_pts}}} \\\\ \\cline{{2-3}}")
-
-                for st in steps[1:]:
-                    s_tag = st.get("milestone_tag", "")
-                    s_txt = st.get("latex_content", "")
+                for s_idx, st in enumerate(steps):
+                    s_tag = (st.get("milestone_tag", "") or "").replace("&", r"\&")
+                    s_txt = st.get("latex_content", "") or ""
                     s_pts = st.get("points", 0.25)
-                    tex.append(f" & \\textbf{{{s_tag}:}} {s_txt} & \\centering {s_pts} \\\\ \\cline{{2-3}}")
-                tex.append("\\hline")
+                    tag_prefix = f"\\textbf{{{s_tag}:}} " if s_tag else ""
+                    is_last_st = (s_idx == len(steps) - 1)
+
+                    if s_idx == 0:
+                        tex.append(f"\\textbf{{{label}}} ({pts}đ) & {tag_prefix}{s_txt} & \\textbf{{{s_pts}}} \\\\")
+                    else:
+                        tex.append(f" & {tag_prefix}{s_txt} & {s_pts} \\\\")
+
+                    if not is_last_st:
+                        tex.append(r"\cline{2-3}")
+                    else:
+                        tex.append(r"\hline")
             else:
                 snap = it.get("problem_snapshot", {}) or {}
                 sol = snap.get("solution_latex", "") or "*(Đang cập nhật lời giải)*"
-                tex.append(f"\\textbf{{{label}}} ({pts}đ) & {sol} & \\centering {pts} \\\\")
-                tex.append("\\hline")
+                tex.append(f"\\textbf{{{label}}} ({pts}đ) & {sol} & {pts} \\\\")
+                tex.append(r"\hline")
 
-        tex.append("\\end{longtable}")
+        tex.append(r"\end{longtable}")
 
     tex.append("\\end{document}")
     return "\n".join(tex)
@@ -258,7 +262,7 @@ def compile_latex_to_preview(
 
         # Chạy pdflatex (non-stop)
         cmd = ["pdflatex", "-interaction=nonstopmode", "document.tex"]
-        run_res = subprocess.run(cmd, cwd=temp_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+        run_res = subprocess.run(cmd, cwd=temp_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace", timeout=30)
 
         pdf_file = os.path.join(temp_dir, "document.pdf")
         if not os.path.exists(pdf_file):
