@@ -63,6 +63,43 @@ def get_current_user_profile(
         tenant_id=user.tenant_id
     )
 
+class UpdateProfileRequest(BaseModel):
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    tenant_id: Optional[str] = None
+
+@router.put("/profile", response_model=UserProfileResponse)
+def update_user_profile(
+    payload: UpdateProfileRequest,
+    cf_access_email: Optional[str] = Header(None, alias="cf-access-authenticated-user-email"),
+    db: Session = Depends(get_db)
+):
+    """Cập nhật thông tin profile của giáo viên."""
+    effective_email = cf_access_email or "giaovien.vinhphat@gmail.com"
+    user = db.query(User).filter(User.email == effective_email).first()
+    if not user:
+        raise HTTPException(404, "Không tìm thấy người dùng")
+
+    if payload.full_name is not None:
+        user.full_name = payload.full_name.strip()
+    if payload.avatar_url is not None:
+        user.avatar_url = payload.avatar_url.strip()
+    if payload.tenant_id is not None:
+        user.tenant_id = payload.tenant_id.strip()
+
+    db.commit()
+    db.refresh(user)
+
+    return UserProfileResponse(
+        id=str(user.id),
+        email=user.email,
+        full_name=user.full_name or "Thầy/Cô Giáo",
+        avatar_url=user.avatar_url,
+        role=user.role,
+        subscription_tier=user.subscription_tier,
+        tenant_id=user.tenant_id
+    )
+
 @router.post("/switch-tenant")
 def switch_tenant(
     payload: SwitchTenantRequest,

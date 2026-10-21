@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
+import ProfileModal from "@/components/ProfileModal";
 import ExamStudioView from "@/components/ExamStudioView";
 import BlueprintBuilderModal from "@/components/BlueprintBuilderModal";
 import {
@@ -28,7 +29,8 @@ import {
   Sparkles,
   Scale,
   Sliders,
-  X
+  X,
+  User as UserIcon
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -134,6 +136,27 @@ export default function Dashboard() {
 
   // Edit Question Modal State
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
+
+  // User Profile State & Profile Modal
+  const [userProfile, setUserProfile] = useState<any>({
+    id: "default_id",
+    email: "giaovien.vinhphat@gmail.com",
+    full_name: "Thầy/Cô Giáo",
+    role: "TEACHER",
+    subscription_tier: "PRO",
+    tenant_id: "thcs_le_quy_don",
+  });
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+  // Fetch Current User Profile on Mount
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setUserProfile(data);
+      })
+      .catch((err) => console.error("Fetch profile error:", err));
+  }, []);
 
   // Ánh xạ nhãn tiếng Việt chuẩn sư phạm cho các chủ đề toán học
   const TOPIC_VI_MAP: Record<string, string> = {
@@ -565,6 +588,23 @@ export default function Dashboard() {
         >
           <Scale className="w-4 h-4" />
           <span>Exam Studio (Soạn & Barem 0.25đ)</span>
+        </button>
+
+        <div className="flex-1" />
+
+        {/* Profile Button in Tabs Bar */}
+        <button
+          onClick={() => setProfileModalOpen(true)}
+          className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200 transition-all self-center"
+          title="Xem và chỉnh sửa hồ sơ giáo viên"
+        >
+          <div className="w-5 h-5 rounded bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold">
+            {userProfile?.full_name ? userProfile.full_name.slice(0, 1).toUpperCase() : "G"}
+          </div>
+          <span className="truncate max-w-[130px]">{userProfile?.full_name || "Hồ sơ cá nhân"}</span>
+          <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-100 text-amber-800 font-bold border border-amber-300/60">
+            {userProfile?.subscription_tier || "PRO"}
+          </span>
         </button>
       </div>
 
@@ -1262,6 +1302,16 @@ export default function Dashboard() {
           }
         }}
       />
+
+      {/* Profile Modal */}
+      {userProfile && (
+        <ProfileModal
+          isOpen={profileModalOpen}
+          user={userProfile}
+          onClose={() => setProfileModalOpen(false)}
+          onUpdate={(updated) => setUserProfile(updated)}
+        />
+      )}
 
       {/* BLUEPRINT BUILDER & CUSTOMIZER MODAL */}
       <BlueprintBuilderModal
