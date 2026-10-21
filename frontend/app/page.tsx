@@ -27,7 +27,8 @@ import {
   Edit3,
   Sparkles,
   Scale,
-  Sliders
+  Sliders,
+  X
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -44,6 +45,7 @@ export default function Dashboard() {
   const [sourceExams, setSourceExams] = useState<any[]>([]);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [batchFiles, setBatchFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
 
   // Generator & Assembled Exam State
@@ -214,30 +216,56 @@ export default function Dashboard() {
     fetchQuestions();
   }, [filterTopic, filterDifficulty, filterSection]);
 
-  // Handle Document Upload
+  // Handle Batch Document Upload
   const handleUploadDocument = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadFile || !uploadTitle) return;
+    if (batchFiles.length === 0 && (!uploadFile || !uploadTitle)) return;
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append("title", uploadTitle);
-    formData.append("file", uploadFile);
-    formData.append("grade", "9");
 
     try {
-      const res = await fetch("/api/exams/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (res.ok) {
-        setUploadTitle("");
-        setUploadFile(null);
-        await fetchSourceExams();
-        alert("Tải lên thành công! Tiến trình số hóa đang chạy ngầm.");
+      if (batchFiles.length > 0) {
+        // Gửi upload hàng loạt
+        const formData = new FormData();
+        batchFiles.forEach((file) => {
+          formData.append("files", file);
+        });
+        formData.append("grade", "9");
+        formData.append("exam_level", "HSG_TINH");
+
+        const res = await fetch("/api/exams/batch-upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (res.ok) {
+          const resData = await res.json();
+          setBatchFiles([]);
+          await fetchSourceExams();
+          alert(`Đã tải lên thành công ${resData.total_uploaded} tài liệu! Hệ thống đang xử lý số hóa.`);
+        } else {
+          alert("Lỗi khi tải lên hàng loạt tài liệu");
+        }
+      } else if (uploadFile && uploadTitle) {
+        // Gửi upload đơn lẻ
+        const formData = new FormData();
+        formData.append("title", uploadTitle);
+        formData.append("file", uploadFile);
+        formData.append("grade", "9");
+
+        const res = await fetch("/api/exams/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          setUploadTitle("");
+          setUploadFile(null);
+          await fetchSourceExams();
+          alert("Tải lên thành công! Tiến trình số hóa đang chạy ngầm.");
+        }
       }
     } catch (err) {
-      alert("Lỗi khi tải lên tài liệu");
+      alert("Lỗi khi kết nối máy chủ tải lên tài liệu");
     } finally {
       setUploading(false);
     }
@@ -861,49 +889,146 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Upload card */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5 h-fit">
-            <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-              <UploadCloud className="w-5 h-5 text-indigo-600" />
-              <span>Tải Lên Đề Thi Gốc (.docx / .pdf)</span>
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <UploadCloud className="w-5 h-5 text-indigo-600" />
+                <span>Số Hóa Đề Thi (.docx / .pdf)</span>
+              </h2>
+              {batchFiles.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setBatchFiles([])}
+                  className="text-xs text-rose-600 hover:text-rose-700 font-semibold"
+                >
+                  Xóa tất cả ({batchFiles.length})
+                </button>
+              )}
+            </div>
 
             <form onSubmit={handleUploadDocument} className="space-y-4">
+              {/* Batch Upload Drag & Drop Area */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tên đề thi</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="VD: Đề thi HSG Toán 9 Tỉnh Hà Tĩnh 2025"
-                  value={uploadTitle}
-                  onChange={(e) => setUploadTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Chọn một hoặc nhiều tệp đề thi (Batch Upload)
+                </label>
+                <div className="relative border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/30 hover:bg-indigo-50/60 rounded-xl p-5 text-center transition-all cursor-pointer group">
+                  <input
+                    type="file"
+                    multiple
+                    accept=".docx,.pdf"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        const newFiles = Array.from(e.target.files);
+                        setBatchFiles((prev) => [...prev, ...newFiles]);
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+                    <UploadCloud className="w-8 h-8 text-indigo-500 group-hover:scale-110 transition-transform" />
+                    <p className="text-xs font-bold text-indigo-900">
+                      Kéo thả hoặc nhấn để chọn nhiều file cùng lúc
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Hỗ trợ hàng loạt định dạng .DOCX và .PDF (Tối đa 50MB/file)
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tệp tài liệu (DOCX hoặc PDF)</label>
-                <input
-                  type="file"
-                  required
-                  accept=".docx,.pdf"
-                  onChange={(e) => setUploadFile(e.target.files ? e.target.files[0] : null)}
-                  className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                />
-              </div>
+              {/* Danh sách tệp đã chọn sẵn sàng tải lên */}
+              {batchFiles.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                    <span>Danh sách hàng đợi ({batchFiles.length} tệp):</span>
+                    <span className="text-indigo-600">
+                      {(batchFiles.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(1)} MB
+                    </span>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                    {batchFiles.map((file, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs"
+                      >
+                        <div className="flex items-center space-x-2 truncate">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            file.name.endsWith(".pdf")
+                              ? "bg-rose-100 text-rose-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}>
+                            {file.name.endsWith(".pdf") ? "PDF" : "DOCX"}
+                          </span>
+                          <span className="truncate max-w-[180px] font-medium text-slate-800" title={file.name}>
+                            {file.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <span className="text-[10px] text-slate-400">
+                            {(file.size / 1024).toFixed(0)} KB
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setBatchFiles((prev) => prev.filter((_, i) => i !== idx))}
+                            className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-rose-600 transition-all"
+                            title="Xóa tệp này"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tùy chọn tải lên đơn lẻ khi chưa chọn batch */}
+              {batchFiles.length === 0 && (
+                <div className="pt-2 border-t border-slate-100 space-y-3">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Hoặc tải lên đơn lẻ có đặt tên:
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Tên đề thi</label>
+                    <input
+                      type="text"
+                      placeholder="VD: Đề thi HSG Toán 9 Tỉnh Hà Tĩnh 2025"
+                      value={uploadTitle}
+                      onChange={(e) => setUploadTitle(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Chọn 1 tệp</label>
+                    <input
+                      type="file"
+                      accept=".docx,.pdf"
+                      onChange={(e) => setUploadFile(e.target.files ? e.target.files[0] : null)}
+                      className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                    />
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"
-                disabled={uploading}
+                disabled={uploading || (batchFiles.length === 0 && (!uploadFile || !uploadTitle))}
                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
               >
                 {uploading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Đang tải lên...</span>
+                    <span>Đang tải lên & nạp Pipeline...</span>
                   </>
                 ) : (
                   <>
                     <UploadCloud className="w-4 h-4" />
-                    <span>Bắt đầu Số Hóa Pipeline</span>
+                    <span>
+                      {batchFiles.length > 0
+                        ? `🚀 Bắt đầu Số Hóa Hàng Loạt (${batchFiles.length} Đề)`
+                        : "Bắt đầu Số Hóa Pipeline"}
+                    </span>
                   </>
                 )}
               </button>
@@ -912,10 +1037,21 @@ export default function Dashboard() {
 
           {/* Source Exams List */}
           <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-              <FileText className="w-5 h-5 text-indigo-600" />
-              <span>Tiến Trình Số Hóa Đề Thi ({sourceExams.length})</span>
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <FileText className="w-5 h-5 text-indigo-600" />
+                <span>Tiến Trình Số Hóa Đề Thi ({sourceExams.length})</span>
+              </h2>
+              <button
+                type="button"
+                onClick={fetchSourceExams}
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1"
+                title="Làm mới danh sách tiến trình"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Làm mới</span>
+              </button>
+            </div>
 
             <div className="divide-y divide-slate-100">
               {sourceExams.map((exam) => (
