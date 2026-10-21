@@ -1,5 +1,6 @@
 import "./globals.css";
 import React from "react";
+import UserNavBadge from "@/components/UserNavBadge";
 
 export const metadata = {
   title: "HSG Math Platform - Hệ Thống Tạo Đề Toán HSG Cấp 2",
@@ -39,15 +40,7 @@ export default function RootLayout({
               <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
                 ● Đã đồng bộ Cloudflare
               </span>
-              <div className="flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                  GV
-                </div>
-                <div className="text-left">
-                  <div className="text-xs font-bold text-slate-900 leading-none">Thầy/Cô Giáo</div>
-                  <div className="text-[10px] text-indigo-700 font-semibold leading-none mt-0.5">THCS Chuyên Lê Quý Đôn • PRO</div>
-                </div>
-              </div>
+              <UserNavBadge />
             </div>
           </div>
         </header>
