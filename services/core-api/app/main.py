@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import os
-from .routers import exams_router, questions_router, generator_router, studio_router
+from .routers import exams_router, questions_router, generator_router, studio_router, auth_router
 from .services.minio_client import get_minio_client
 
 app = FastAPI(
@@ -23,6 +23,7 @@ app.include_router(exams_router)
 app.include_router(questions_router)
 app.include_router(generator_router)
 app.include_router(studio_router)
+app.include_router(auth_router)
 
 @app.on_event("startup")
 def on_startup():

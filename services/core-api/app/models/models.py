@@ -8,6 +8,33 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from pgvector.sqlalchemy import Vector
 from ..database import Base
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    full_name = Column(String(150), nullable=True)
+    avatar_url = Column(Text, nullable=True)
+    role = Column(String(50), default="TEACHER")  # GUEST, TEACHER, SCHOOL_ADMIN, ADMIN
+    subscription_tier = Column(String(50), default="FREE")  # FREE, PRO, SCHOOL
+    tenant_id = Column(String(100), default="default_school")  # Mã trường / đơn vị
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(String(255), unique=True, nullable=False)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class SourceExam(Base):
     __tablename__ = "source_exams"
 
@@ -59,6 +86,7 @@ class Question(Base):
     embedding = Column(Vector(768), nullable=True)
     usage_count = Column(Integer, default=0)
     is_verified = Column(Boolean, default=False)
+    tenant_id = Column(String(100), default="default_school", index=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -88,6 +116,7 @@ class GeneratedExam(Base):
     header_config = Column(JSONB, nullable=False, default=dict)
     health_check_report = Column(JSONB, nullable=True)
     total_target_score = Column(Numeric(4, 2), default=20.00)
+    tenant_id = Column(String(100), default="default_school", index=True)
     exported_docx_key = Column(Text, nullable=True)
     exported_pdf_key = Column(Text, nullable=True)
     template_document = Column(JSONB, nullable=True)

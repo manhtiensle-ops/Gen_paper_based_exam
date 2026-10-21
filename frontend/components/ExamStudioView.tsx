@@ -525,6 +525,16 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     0
   );
 
+  const TOPIC_VI_MAP: Record<string, string> = {
+    ALGEBRA: "Đại số",
+    NUMBER_THEORY: "Số học",
+    PLANE_GEOMETRY: "Hình học phẳng",
+    SOLID_GEOMETRY: "Hình không gian",
+    INEQUALITY_EXTREMA: "Bất đẳng thức & Cực trị",
+    COMBINATORICS_PROBABILITY: "Tổ hợp & Xác suất",
+    REAL_WORLD_MATH: "Toán thực tế",
+  };
+
   return (
     <div className="h-screen w-screen bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden select-none">
       {/* 1. TOPBAR - LIGHT ACADEMIC THEME (TRẮNG NGÀ CHUẨN MỰC) */}
@@ -929,8 +939,8 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
                           {it.max_points} điểm
                         </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">
-                          {snap.main_topic || "ALGEBRA"}
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                          {TOPIC_VI_MAP[snap.main_topic] || snap.main_topic || "Đại số"}
                         </span>
                       </div>
 

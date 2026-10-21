@@ -135,6 +135,17 @@ export default function Dashboard() {
   // Edit Question Modal State
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
 
+  // Ánh xạ nhãn tiếng Việt chuẩn sư phạm cho các chủ đề toán học
+  const TOPIC_VI_MAP: Record<string, string> = {
+    ALGEBRA: "Đại số",
+    NUMBER_THEORY: "Số học",
+    PLANE_GEOMETRY: "Hình học phẳng",
+    SOLID_GEOMETRY: "Hình không gian",
+    INEQUALITY_EXTREMA: "Bất đẳng thức & Cực trị",
+    COMBINATORICS_PROBABILITY: "Tổ hợp & Xác suất",
+    REAL_WORLD_MATH: "Toán thực tế",
+  };
+
   // Quick Difficulty Update Handler
   const handleQuickDifficultyChange = async (questionId: string, newDiff: string) => {
     try {
@@ -703,7 +714,7 @@ export default function Dashboard() {
                             Câu {slot.slot_index}. ({slot.points} điểm)
                           </span>
                           <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-slate-100 text-slate-600">
-                            {slot.main_topic}
+                            {TOPIC_VI_MAP[slot.main_topic] || slot.main_topic}
                           </span>
                           <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-indigo-50 text-indigo-700">
                             {slot.difficulty}
@@ -826,7 +837,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                        {q.main_topic}
+                        {TOPIC_VI_MAP[q.main_topic] || q.main_topic}
                       </span>
                       {/* Interactive Difficulty Selector */}
                       <select
@@ -853,11 +864,11 @@ export default function Dashboard() {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setEditingQuestion(q)}
-                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 transition-all flex items-center space-x-1"
-                        title="Sửa nội dung hoặc lời giải"
+                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-all flex items-center space-x-1"
+                        title="Sửa nội dung, lời giải & gắn thẻ tùy biến"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                        <span>Sửa</span>
+                        <span>Sửa & Gắn nhãn</span>
                       </button>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                         q.is_verified ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
@@ -866,6 +877,17 @@ export default function Dashboard() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Custom tags list */}
+                  {q.custom_tags && q.custom_tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {q.custom_tags.map((tag: string, tIdx: number) => (
+                        <span key={tIdx} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="text-sm text-slate-800">
                     {renderQuestionContent(q)}
@@ -1102,7 +1124,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800">
-                      {q.main_topic}
+                      {TOPIC_VI_MAP[q.main_topic] || q.main_topic}
                     </span>
                     <select
                       value={q.difficulty}
@@ -1199,7 +1221,7 @@ export default function Dashboard() {
                     className="p-4 rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/30 cursor-pointer transition-all space-y-2"
                   >
                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
-                      <span>{c.main_topic} • {c.difficulty}</span>
+                      <span>{TOPIC_VI_MAP[c.main_topic] || c.main_topic} • {c.difficulty}</span>
                       <span className="text-indigo-600">Chọn câu này →</span>
                     </div>
                     <div className="text-xs text-slate-800">
