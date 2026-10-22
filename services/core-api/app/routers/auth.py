@@ -64,6 +64,7 @@ def get_current_user_profile(
     )
 
 class UpdateProfileRequest(BaseModel):
+    email: Optional[str] = None
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
     tenant_id: Optional[str] = None
@@ -75,10 +76,22 @@ def update_user_profile(
     db: Session = Depends(get_db)
 ):
     """Cập nhật thông tin profile của giáo viên."""
-    effective_email = cf_access_email or "giaovien.vinhphat@gmail.com"
+    effective_email = cf_access_email or payload.email or "giaovien.vinhphat@gmail.com"
     user = db.query(User).filter(User.email == effective_email).first()
     if not user:
-        raise HTTPException(404, "Không tìm thấy người dùng")
+        # Nếu chưa có thì khởi tạo user với email tương ứng
+        full_name = payload.full_name or effective_email.split("@")[0].replace(".", " ").title()
+        user = User(
+            id=uuid.uuid4(),
+            email=effective_email,
+            full_name=full_name,
+            role="TEACHER",
+            subscription_tier="PRO",
+            tenant_id=payload.tenant_id or "thcs_le_quy_don"
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
     if payload.full_name is not None:
         user.full_name = payload.full_name.strip()

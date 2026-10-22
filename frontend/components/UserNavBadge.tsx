@@ -4,14 +4,7 @@ import React, { useState, useEffect } from "react";
 import ProfileModal from "@/components/ProfileModal";
 
 export default function UserNavBadge() {
-  const [userProfile, setUserProfile] = useState<any>({
-    id: "default_id",
-    email: "giaovien.vinhphat@gmail.com",
-    full_name: "Thầy/Cô Giáo",
-    role: "TEACHER",
-    subscription_tier: "PRO",
-    tenant_id: "thcs_le_quy_don",
-  });
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -51,18 +44,20 @@ export default function UserNavBadge() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center space-x-2 bg-slate-100 hover:bg-indigo-50 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-indigo-200 transition-all cursor-pointer group text-left"
+        className="flex items-center space-x-2.5 bg-slate-50 hover:bg-white px-3 py-1.5 rounded-2xl border border-slate-200/90 hover:border-indigo-300 shadow-2xs hover:shadow-xs transition-all cursor-pointer group text-left"
         title="Nhấn để xem và chỉnh sửa Hồ sơ cá nhân"
       >
-        <div className="w-7 h-7 rounded-lg bg-indigo-600 group-hover:bg-indigo-700 text-white flex items-center justify-center font-bold text-xs shadow-xs transition-colors">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 group-hover:from-indigo-700 group-hover:to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm transition-all border border-indigo-400/40">
           {getInitials(userProfile?.full_name)}
         </div>
         <div>
-          <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-900 leading-none">
-            {userProfile?.full_name || "Thầy/Cô Giáo"}
+          <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 leading-none transition-colors">
+            {userProfile?.full_name || userProfile?.email?.split("@")[0] || "Đang tải hồ sơ..."}
           </div>
-          <div className="text-[10px] text-indigo-700 font-semibold leading-none mt-1">
-            {getTenantName(userProfile?.tenant_id)} • {userProfile?.subscription_tier || "PRO"}
+          <div className="text-[10px] text-indigo-700 font-semibold leading-none mt-1 flex items-center space-x-1">
+            <span>{getTenantName(userProfile?.tenant_id)}</span>
+            <span>•</span>
+            <span className="text-amber-600 font-bold">{userProfile?.subscription_tier || "PRO"}</span>
           </div>
         </div>
       </button>
