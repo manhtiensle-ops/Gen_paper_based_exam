@@ -85,9 +85,9 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
             <Sparkles className="w-3.5 h-3.5 text-indigo-300 animate-spin" />
             <span>PHÒNG CHỜ KHỞI TẠO ĐỀ THI SÁNG TẠO</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
             Tổ Hợp Đề Thi Toán HSG THCS Chuẩn Quốc Gia
-          </h2>
+          </h1>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
             Thuật toán <span className="text-indigo-300 font-semibold">Zero-Hallucination</span> tự động quét ngân hàng câu hỏi thực tế, cân đối ma trận điểm số vi mô và bảo toàn nguyên khối các bài toán hình học phẳng.
           </p>
