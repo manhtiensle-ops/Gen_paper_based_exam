@@ -45,7 +45,7 @@ export default function RootLayout({
           </div>
         </header>
 
-        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 w-full mx-auto px-4 sm:px-6 py-4 overflow-x-hidden">
           {children}
         </main>
 

@@ -106,6 +106,19 @@ class ExamBlueprint(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+class ExamFolder(Base):
+    __tablename__ = "exam_folders"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(150), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    tenant_id = Column(String(100), default="default_school", index=True)
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("exam_folders.id", ondelete="CASCADE"), nullable=True)
+    color = Column(String(30), default="#4f46e5")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class GeneratedExam(Base):
     __tablename__ = "generated_exams"
 
@@ -117,6 +130,7 @@ class GeneratedExam(Base):
     health_check_report = Column(JSONB, nullable=True)
     total_target_score = Column(Numeric(4, 2), default=20.00)
     tenant_id = Column(String(100), default="default_school", index=True)
+    folder_id = Column(UUID(as_uuid=True), ForeignKey("exam_folders.id", ondelete="SET NULL"), nullable=True)
     exported_docx_key = Column(Text, nullable=True)
     exported_pdf_key = Column(Text, nullable=True)
     template_document = Column(JSONB, nullable=True)

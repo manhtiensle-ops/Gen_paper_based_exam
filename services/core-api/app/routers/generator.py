@@ -5,7 +5,7 @@ import unicodedata
 from typing import List, Optional, Dict, Any
 from urllib.parse import quote
 import requests
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -242,6 +242,104 @@ def swap_question_candidates(payload: SwapQuestionRequest, db: Session = Depends
         limit=5
     )
     return candidates
+
+@router.get("/exams", status_code=status.HTTP_200_OK)
+def list_generated_exams(
+    tenant_id: Optional[str] = None,
+    folder_id: Optional[str] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """Lấy danh sách các đề thi đã tạo phục vụ thanh thư mục quản lý đề."""
+    query = db.query(GeneratedExam)
+    if tenant_id:
+        query = query.filter(GeneratedExam.tenant_id == tenant_id)
+    if folder_id:
+        if folder_id == "root":
+            query = query.filter(GeneratedExam.folder_id.is_(None))
+        else:
+            query = query.filter(GeneratedExam.folder_id == folder_id)
+    exams = query.order_by(GeneratedExam.created_at.desc()).limit(limit).all()
+    return [
+        {
+            "id": str(e.id),
+            "title": e.title,
+            "total_target_score": float(e.total_target_score or 20.0),
+            "folder_id": str(e.folder_id) if e.folder_id else None,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+            "slots_count": len(e.slots_state) if isinstance(e.slots_state, list) else 0,
+            "has_template": e.template_document is not None
+        }
+        for e in exams
+    ]
+
+
+@router.get("/folders", status_code=status.HTTP_200_OK)
+def list_exam_folders(
+    tenant_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Danh sách các thư mục đề thi của giáo viên / trường."""
+    from ..models.models import ExamFolder
+    query = db.query(ExamFolder)
+    if tenant_id:
+        query = query.filter(ExamFolder.tenant_id == tenant_id)
+    folders = query.order_by(ExamFolder.created_at.asc()).all()
+    return [
+        {
+            "id": str(f.id),
+            "name": f.name,
+            "parent_id": str(f.parent_id) if f.parent_id else None,
+            "color": f.color,
+            "tenant_id": f.tenant_id
+        }
+        for f in folders
+    ]
+
+
+@router.post("/folders", status_code=status.HTTP_201_CREATED)
+def create_exam_folder(
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db)
+):
+    """Tạo thư mục mới để phân loại đề thi."""
+    from ..models.models import ExamFolder
+    name = payload.get("name", "Thư mục mới").strip()
+    tenant_id = payload.get("tenant_id", "default_school")
+    parent_id = payload.get("parent_id")
+    folder = ExamFolder(
+        id=uuid.uuid4(),
+        name=name,
+        tenant_id=tenant_id,
+        parent_id=uuid.UUID(parent_id) if parent_id else None,
+        color=payload.get("color", "#4f46e5")
+    )
+    db.add(folder)
+    db.commit()
+    db.refresh(folder)
+    return {
+        "id": str(folder.id),
+        "name": folder.name,
+        "parent_id": str(folder.parent_id) if folder.parent_id else None,
+        "color": folder.color
+    }
+
+
+@router.patch("/exams/{exam_id}/move", status_code=status.HTTP_200_OK)
+def move_exam_to_folder(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db)
+):
+    """Di chuyển đề thi vào thư mục tương ứng."""
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(404, "Không tìm thấy đề thi")
+    folder_id = payload.get("folder_id")
+    exam.folder_id = uuid.UUID(folder_id) if folder_id else None
+    db.commit()
+    return {"status": "SUCCESS", "exam_id": str(exam.id), "folder_id": folder_id}
+
 
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
