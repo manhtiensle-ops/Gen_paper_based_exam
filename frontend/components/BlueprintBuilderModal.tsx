@@ -52,20 +52,20 @@ interface Props {
 }
 
 const TOPICS = [
-  { value: "ALGEBRA", label: "Đại số & Biến đổi căn thức" },
-  { value: "NUMBER_THEORY", label: "Số học & Số nguyên tố" },
+  { value: "ALGEBRA", label: "Đại số & Căn thức" },
+  { value: "NUMBER_THEORY", label: "Số học & Số nguyên" },
   { value: "PLANE_GEOMETRY", label: "Hình học phẳng" },
-  { value: "SOLID_GEOMETRY", label: "Hình học không gian & khối hộp" },
+  { value: "SOLID_GEOMETRY", label: "Hình không gian" },
   { value: "INEQUALITY_EXTREMA", label: "Bất đẳng thức & Cực trị" },
-  { value: "COMBINATORICS_PROBABILITY", label: "Tổ hợp, Xác suất & Dirichlet" },
-  { value: "REAL_WORLD_MATH", label: "Toán thực tế & Chuyển động" },
+  { value: "COMBINATORICS_PROBABILITY", label: "Tổ hợp & Dirichlet" },
+  { value: "REAL_WORLD_MATH", label: "Toán thực tế" },
 ];
 
 const DIFFICULTIES = [
-  { value: "EASY", label: "Dễ / Nhận biết" },
-  { value: "MEDIUM", label: "Trung bình / Thông hiểu" },
-  { value: "HARD", label: "Khó / Vận dụng cao" },
-  { value: "OLYMPIAD", label: "Rất khó / Phân loại HSG" },
+  { value: "EASY", label: "Cơ bản (EASY)" },
+  { value: "MEDIUM", label: "Vận dụng (MEDIUM)" },
+  { value: "HARD", label: "Vận dụng cao (HARD)" },
+  { value: "OLYMPIAD", label: "Học sinh giỏi (OLYMPIAD)" },
 ];
 
 export default function BlueprintBuilderModal({
@@ -308,8 +308,8 @@ export default function BlueprintBuilderModal({
   const customs = blueprints.filter((b) => !b.is_preset);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-6xl h-[92vh] rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden font-sans">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+      <div className="bg-white w-full max-w-7xl h-[92vh] rounded-3xl shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden font-sans">
         {/* HEADER MODAL */}
         <div className="h-14 px-6 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
@@ -588,7 +588,7 @@ export default function BlueprintBuilderModal({
                 </div>
 
                 {/* Danh sách các Phần và Slots câu hỏi (Scrollable) */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 sm:p-6 space-y-5 bg-slate-100/40">
                   {editingBp.sections_config.map((sec, secIdx) => (
                     <div
                       key={secIdx}
@@ -619,14 +619,15 @@ export default function BlueprintBuilderModal({
                       </div>
 
                       {/* Các hàng slot câu hỏi */}
-                      <div className="space-y-2.5">
+                      <div className="space-y-3">
                         {sec.slots.map((slot, sIdx) => (
                           <div
                             key={sIdx}
-                            className="p-3 bg-slate-50/70 hover:bg-slate-50 rounded-xl border border-slate-200 transition-all flex items-center justify-between gap-3 text-xs"
+                            className="p-3.5 bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all space-y-2.5"
                           >
-                            <div className="flex items-center space-x-2 shrink-0">
-                              <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center font-mono text-xs shadow-xs">
+                            {/* Hàng 1: Số thứ tự + Ghi chú nội dung */}
+                            <div className="flex items-center space-x-2.5">
+                              <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center font-mono text-xs shadow-xs shrink-0">
                                 {sIdx + 1}
                               </span>
                               <input
@@ -637,88 +638,95 @@ export default function BlueprintBuilderModal({
                                   clone.sections_config[secIdx].slots[sIdx].title_hint = e.target.value;
                                   setEditingBp(clone);
                                 }}
-                                placeholder="Ghi chú nội dung câu hỏi..."
-                                className="w-56 bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none"
+                                placeholder="Ghi chú nội dung câu hỏi (VD: Rút gọn căn thức, PT vô tỉ, Bài hình ý c...)"
+                                className="flex-1 bg-slate-50/60 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                               />
                             </div>
 
-                            {/* Dropdown Chủ Đề */}
-                            <select
-                              value={slot.main_topic}
-                              onChange={(e) => {
-                                const clone = { ...editingBp };
-                                clone.sections_config[secIdx].slots[sIdx].main_topic = e.target.value;
-                                setEditingBp(clone);
-                              }}
-                              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none"
-                            >
-                              {TOPICS.map((t) => (
-                                <option key={t.value} value={t.value}>
-                                  {t.label}
-                                </option>
-                              ))}
-                            </select>
+                            {/* Hàng 2: Dropdowns Chủ Đề + Độ Khó + Điểm Số + Nút Hành Động */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                              <div className="flex flex-wrap items-center gap-2">
+                                {/* Dropdown Chủ Đề */}
+                                <select
+                                  value={slot.main_topic}
+                                  onChange={(e) => {
+                                    const clone = { ...editingBp };
+                                    clone.sections_config[secIdx].slots[sIdx].main_topic = e.target.value;
+                                    setEditingBp(clone);
+                                  }}
+                                  className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                                >
+                                  {TOPICS.map((t) => (
+                                    <option key={t.value} value={t.value}>
+                                      {t.label}
+                                    </option>
+                                  ))}
+                                </select>
 
-                            {/* Dropdown Độ Khó */}
-                            <select
-                              value={slot.difficulty}
-                              onChange={(e) => {
-                                const clone = { ...editingBp };
-                                clone.sections_config[secIdx].slots[sIdx].difficulty = e.target.value as any;
-                                setEditingBp(clone);
-                              }}
-                              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none"
-                            >
-                              {DIFFICULTIES.map((d) => (
-                                <option key={d.value} value={d.value}>
-                                  {d.label}
-                                </option>
-                              ))}
-                            </select>
+                                {/* Dropdown Độ Khó */}
+                                <select
+                                  value={slot.difficulty}
+                                  onChange={(e) => {
+                                    const clone = { ...editingBp };
+                                    clone.sections_config[secIdx].slots[sIdx].difficulty = e.target.value as any;
+                                    setEditingBp(clone);
+                                  }}
+                                  className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                                >
+                                  {DIFFICULTIES.map((d) => (
+                                    <option key={d.value} value={d.value}>
+                                      {d.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
 
-                            {/* Điểm Số */}
-                            <div className="flex items-center space-x-1 shrink-0">
-                              <input
-                                type="number"
-                                step="0.25"
-                                min="0.25"
-                                max="10.0"
-                                value={slot.points}
-                                onChange={(e) => {
-                                  const clone = { ...editingBp };
-                                  clone.sections_config[secIdx].slots[sIdx].points = parseFloat(e.target.value) || 1.0;
-                                  setEditingBp(clone);
-                                }}
-                                className="w-14 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-indigo-700 text-center font-mono focus:outline-none"
-                              />
-                              <span className="font-bold text-slate-600">đ</span>
-                            </div>
+                              <div className="flex items-center space-x-3">
+                                {/* Điểm Số */}
+                                <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1">
+                                  <input
+                                    type="number"
+                                    step="0.25"
+                                    min="0.25"
+                                    max="10.0"
+                                    value={slot.points}
+                                    onChange={(e) => {
+                                      const clone = { ...editingBp };
+                                      clone.sections_config[secIdx].slots[sIdx].points = parseFloat(e.target.value) || 1.0;
+                                      setEditingBp(clone);
+                                    }}
+                                    className="w-12 bg-transparent text-xs font-bold text-indigo-700 text-center font-mono focus:outline-none"
+                                  />
+                                  <span className="font-bold text-slate-500 text-xs">điểm</span>
+                                </div>
 
-                            {/* Nút điều hướng thứ tự & xóa */}
-                            <div className="flex items-center space-x-1 shrink-0">
-                              <button
-                                onClick={() => handleMoveSlot(secIdx, sIdx, "up")}
-                                disabled={sIdx === 0}
-                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 rounded"
-                                title="Lên trên"
-                              >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleMoveSlot(secIdx, sIdx, "down")}
-                                disabled={sIdx === sec.slots.length - 1}
-                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 rounded"
-                                title="Xuống dưới"
-                              >
-                                <ArrowDown className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteSlot(secIdx, sIdx)}
-                                className="p-1 text-slate-400 hover:text-rose-600 rounded ml-1"
-                                title="Xóa slot này"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                                {/* Nút điều hướng thứ tự & xóa */}
+                                <div className="flex items-center space-x-1">
+                                  <button
+                                    onClick={() => handleMoveSlot(secIdx, sIdx, "up")}
+                                    disabled={sIdx === 0}
+                                    className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+                                    title="Di chuyển lên trên"
+                                  >
+                                    <ArrowUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleMoveSlot(secIdx, sIdx, "down")}
+                                    disabled={sIdx === sec.slots.length - 1}
+                                    className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+                                    title="Di chuyển xuống dưới"
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteSlot(secIdx, sIdx)}
+                                    className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-all cursor-pointer ml-1"
+                                    title="Xóa câu hỏi này"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ))}
