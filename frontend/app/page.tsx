@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [generatedExam, setGeneratedExam] = useState<any | null>(null);
   const [savedExamsList, setSavedExamsList] = useState<any[]>([]);
   const [examFolders, setExamFolders] = useState<any[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [isFolderRailCollapsed, setIsFolderRailCollapsed] = useState<boolean>(false);
   const [selectedBlueprintId, setSelectedBlueprintId] = useState<string>("");
   const [blueprintModalOpen, setBlueprintModalOpen] = useState(false);
@@ -484,6 +485,7 @@ export default function Dashboard() {
         body: JSON.stringify({
           title: examTitle,
           blueprint_id: selectedBlueprintId,
+          folder_id: selectedFolderId || undefined,
           similarity_threshold: 0.65
         })
       });
@@ -491,6 +493,7 @@ export default function Dashboard() {
         const data = await res.json();
         setGeneratedExam(data);
         saveWorkspaceSession(activeTab, data.id, data);
+        await fetchSavedExamsAndFolders();
         if (typeof window !== "undefined") {
           const url = new URL(window.location.href);
           url.searchParams.set("exam_id", data.id);
@@ -719,18 +722,34 @@ export default function Dashboard() {
             exams={savedExamsList}
             folders={examFolders}
             selectedExamId={generatedExam?.id}
+            selectedFolderId={selectedFolderId}
             onSelectExam={handleSelectExamFromRail}
+            onSelectFolder={(fId) => setSelectedFolderId(fId)}
             onCreateFolder={handleCreateNewFolder}
+            onCreateExamInFolder={(fId) => {
+              setSelectedFolderId(fId);
+              const targetFolder = examFolders.find((f) => f.id === fId);
+              if (targetFolder) {
+                setExamTitle(`Đề thi mới - ${targetFolder.name}`);
+              }
+            }}
             isCollapsed={isFolderRailCollapsed}
             onToggleCollapse={() => setIsFolderRailCollapsed(!isFolderRailCollapsed)}
           />
 
           {/* CỘT 2: CẤU HÌNH MA TRẬN & THAM SỐ (360px - Cuộn độc lập) */}
           <div className="w-80 sm:w-96 border-r border-slate-200/80 p-5 overflow-y-auto space-y-5 shrink-0 bg-slate-50/40">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center space-x-2">
-              <Layers className="w-4 h-4 text-indigo-600" />
-              <span>Cấu hình Ma trận Đề thi</span>
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center space-x-2">
+                <Layers className="w-4 h-4 text-indigo-600" />
+                <span>Cấu hình Ma trận Đề thi</span>
+              </h2>
+              {selectedFolderId && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300/80">
+                  📁 {examFolders.find((f) => f.id === selectedFolderId)?.name || "Folder"}
+                </span>
+              )}
+            </div>
 
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700">

@@ -117,6 +117,7 @@ class ExamBlueprintResponse(ExamBlueprintCreate):
 class GenerateExamRequest(BaseModel):
     title: str
     blueprint_id: UUID
+    folder_id: Optional[UUID] = None
     similarity_threshold: float = 0.65
     exclude_question_ids: List[UUID] = Field(default_factory=list)
 
@@ -130,6 +131,7 @@ class GeneratedExamResponse(BaseModel):
     id: UUID
     title: str
     blueprint_id: Optional[UUID] = None
+    folder_id: Optional[UUID] = None
     slots_state: List[Dict[str, Any]]
     header_config: Optional[Dict[str, Any]] = None
     health_check_report: Optional[Dict[str, Any]] = None

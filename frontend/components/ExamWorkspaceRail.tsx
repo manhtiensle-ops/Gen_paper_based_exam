@@ -37,8 +37,11 @@ interface Props {
   exams: ExamItemMeta[];
   folders: FolderItem[];
   selectedExamId?: string | null;
+  selectedFolderId?: string | null;
   onSelectExam: (id: string) => void;
+  onSelectFolder?: (folderId: string | null) => void;
   onCreateFolder: (name: string) => void;
+  onCreateExamInFolder?: (folderId: string | null) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -47,8 +50,11 @@ export default function ExamWorkspaceRail({
   exams,
   folders,
   selectedExamId,
+  selectedFolderId,
   onSelectExam,
+  onSelectFolder,
   onCreateFolder,
+  onCreateExamInFolder,
   isCollapsed,
   onToggleCollapse,
 }: Props) {
@@ -201,12 +207,15 @@ export default function ExamWorkspaceRail({
 
           return (
             <div key={folder.id} className="space-y-1">
-              <button
-                type="button"
-                onClick={() => toggleFolder(folder.id)}
-                className="w-full flex items-center justify-between text-xs font-bold text-slate-600 hover:text-slate-900 py-1 px-1.5 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
-              >
-                <div className="flex items-center space-x-1.5 truncate">
+              <div className="flex items-center justify-between group/header px-1.5 py-1 rounded-lg hover:bg-slate-100 transition-all">
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleFolder(folder.id);
+                    if (onSelectFolder) onSelectFolder(folder.id);
+                  }}
+                  className="flex-1 flex items-center space-x-1.5 truncate text-left text-xs font-bold text-slate-700 hover:text-indigo-600 transition-colors cursor-pointer"
+                >
                   {isOpen ? (
                     <FolderOpen className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   ) : (
@@ -214,9 +223,28 @@ export default function ExamWorkspaceRail({
                   )}
                   <span className="truncate">{folder.name}</span>
                   <span className="text-[10px] text-slate-400 font-mono">({folderExams.length})</span>
+                </button>
+
+                <div className="flex items-center space-x-0.5">
+                  {onCreateExamInFolder && (
+                    <button
+                      type="button"
+                      onClick={() => onCreateExamInFolder(folder.id)}
+                      className="p-1 rounded hover:bg-indigo-100 text-slate-400 hover:text-indigo-700 transition-all cursor-pointer opacity-70 group-hover/header:opacity-100"
+                      title={`Tạo đề mới trong ${folder.name}`}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => toggleFolder(folder.id)}
+                    className="p-1 rounded text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {isOpen ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
+                  </button>
                 </div>
-                {isOpen ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
-              </button>
+              </div>
 
               {isOpen && (
                 <div className="space-y-0.5 pl-2 border-l border-slate-200/80 ml-2">

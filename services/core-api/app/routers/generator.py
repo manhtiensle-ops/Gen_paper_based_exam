@@ -209,6 +209,7 @@ def generate_exam(payload: GenerateExamRequest, db: Session = Depends(get_db)):
     generated_exam = GeneratedExam(
         title=payload.title,
         blueprint_id=bp.id,
+        folder_id=payload.folder_id,
         slots_state=selected_slots
     )
     db.add(generated_exam)
