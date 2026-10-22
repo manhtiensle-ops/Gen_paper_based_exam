@@ -5,6 +5,7 @@ import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
 import ExamStudioView from "@/components/ExamStudioView";
 import BlueprintBuilderModal from "@/components/BlueprintBuilderModal";
+import CreativeEmptyState from "@/components/CreativeEmptyState";
 import {
   saveWorkspaceSession,
   getWorkspaceSession,
@@ -147,7 +148,43 @@ export default function Dashboard() {
     REAL_WORLD_MATH: "Toán thực tế",
   };
 
-  // Quick Difficulty Update Handler
+  // Helper trả về style màu Pastel theo chuyên đề Toán THCS
+  const getTopicBadgeStyle = (topic: string) => {
+    switch (topic) {
+      case "ALGEBRA":
+        return "bg-blue-50 text-blue-700 border-blue-200/80";
+      case "NUMBER_THEORY":
+        return "bg-violet-50 text-violet-700 border-violet-200/80";
+      case "PLANE_GEOMETRY":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200/80";
+      case "SOLID_GEOMETRY":
+        return "bg-teal-50 text-teal-700 border-teal-200/80";
+      case "INEQUALITY_EXTREMA":
+        return "bg-rose-50 text-rose-700 border-rose-200/80";
+      case "COMBINATORICS_PROBABILITY":
+        return "bg-amber-50 text-amber-700 border-amber-200/80";
+      case "REAL_WORLD_MATH":
+        return "bg-cyan-50 text-cyan-700 border-cyan-200/80";
+      default:
+        return "bg-slate-100 text-slate-700 border-slate-200/80";
+    }
+  };
+
+  // Helper trả về style theo 4 mức độ khó
+  const getDifficultyBadgeStyle = (diff: string) => {
+    switch (diff) {
+      case "EASY":
+        return "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20";
+      case "MEDIUM":
+        return "bg-yellow-50 text-yellow-800 ring-1 ring-inset ring-yellow-600/25";
+      case "HARD":
+        return "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-600/25";
+      case "OLYMPIAD":
+        return "bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/25";
+      default:
+        return "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-600/20";
+    }
+  };
   const handleQuickDifficultyChange = async (questionId: string, newDiff: string) => {
     try {
       const res = await fetch(`/api/questions/${questionId}/difficulty`, {
@@ -228,7 +265,47 @@ export default function Dashboard() {
     fetchQuestions();
   }, [filterTopic, filterDifficulty, filterSection]);
 
-  // Handle Batch Document Upload
+  // Quick Preset Selection Handler from Creative Empty State
+  const handleSelectPresetFromEmptyState = async (keyword: string) => {
+    // Tìm blueprint tương ứng theo từ khóa
+    let targetBp = blueprints.find((b) =>
+      b.name.toLowerCase().includes(keyword.toLowerCase().slice(0, 8))
+    );
+    if (!targetBp && blueprints.length > 0) {
+      targetBp = blueprints[0];
+    }
+
+    if (targetBp) {
+      setSelectedBlueprintId(targetBp.id);
+      setExamTitle(`Đề thi chọn HSG Toán 9 - ${targetBp.name.slice(0, 25)}`);
+      // Kích hoạt sinh đề ngay lập tức
+      setGenerating(true);
+      try {
+        const res = await fetch("/api/generator/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: `Đề thi chọn HSG Toán 9 - ${targetBp.name.slice(0, 25)}`,
+            blueprint_id: targetBp.id,
+            similarity_threshold: 0.65,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setGeneratedExam(data);
+          saveWorkspaceSession(activeTab, data.id, data);
+        }
+      } catch (err) {
+        console.error("Generate from preset error:", err);
+      } finally {
+        setGenerating(false);
+      }
+    } else {
+      await handleCreateDefaultBlueprint();
+    }
+  };
+
+  // Handle Document Upload
   const handleUploadDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     if (batchFiles.length === 0 && (!uploadFile || !uploadTitle)) return;
@@ -466,18 +543,18 @@ export default function Dashboard() {
           <MathRenderer content={q.content_latex || "Đang cập nhật nội dung câu hỏi..."} />
         </div>
 
-        {/* 2. Geometric Figure with aspect ratio preserved */}
+        {/* 2. Geometric Figure with aspect ratio preserved on technical grid */}
         {q.figures_meta && q.figures_meta.length > 0 && (
-          <div className="py-2 text-center bg-slate-50/80 rounded-xl p-3 border border-slate-100">
+          <div className="py-2 text-center bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] bg-slate-50/70 rounded-xl p-4 border border-slate-200/80 shadow-2xs">
             {q.figures_meta.map((fig: any, fIdx: number) => (
-              <div key={fIdx} className="space-y-1">
+              <div key={fIdx} className="space-y-1.5">
                 <img
                   src={`/api/assets/${fig.figure_key}`}
                   alt={fig.caption || "Hình vẽ hình học"}
-                  className="w-auto max-h-72 object-contain mx-auto my-2 rounded-lg border border-slate-200 shadow-sm"
+                  className="w-auto max-h-72 object-contain mx-auto my-2 rounded-lg border border-slate-300 bg-white shadow-sm hover:scale-[1.02] transition-transform"
                 />
                 {fig.caption && (
-                  <p className="text-[11px] text-slate-500 italic text-center">{fig.caption}</p>
+                  <p className="text-[11px] text-slate-500 font-medium italic text-center">{fig.caption}</p>
                 )}
               </div>
             ))}
@@ -506,65 +583,68 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-200 bg-white rounded-xl p-1.5 shadow-sm space-x-1">
+      {/* Navigation Tabs (Segmented Sliding Bar) */}
+      <div className="flex bg-slate-200/60 p-1.5 rounded-2xl border border-slate-200/80 shadow-2xs space-x-1.5 overflow-x-auto">
         <button
           onClick={() => handleTabChange("generator")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === "generator"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              ? "bg-white text-indigo-700 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/5"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
-          <Layers className="w-4 h-4" />
+          <Layers className="w-4 h-4 text-indigo-600" />
           <span>Tổ hợp đề thi</span>
         </button>
 
         <button
           onClick={() => handleTabChange("questions")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === "questions"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              ? "bg-white text-indigo-700 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/5"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
-          <BookOpen className="w-4 h-4" />
+          <BookOpen className="w-4 h-4 text-indigo-600" />
           <span>Ngân hàng câu hỏi</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono">
+            {questions.length}
+          </span>
         </button>
 
         <button
           onClick={() => handleTabChange("ingestion")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === "ingestion"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              ? "bg-white text-indigo-700 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/5"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
-          <UploadCloud className="w-4 h-4" />
+          <UploadCloud className="w-4 h-4 text-indigo-600" />
           <span>Số hóa tài liệu</span>
         </button>
 
         <button
           onClick={() => handleTabChange("review")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === "review"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              ? "bg-white text-indigo-700 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/5"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
-          <ShieldCheck className="w-4 h-4" />
+          <ShieldCheck className="w-4 h-4 text-indigo-600" />
           <span>Hàng đợi kiểm duyệt</span>
         </button>
 
         <button
           onClick={() => handleTabChange("studio")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === "studio"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              ? "bg-white text-indigo-700 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/5"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
-          <Scale className="w-4 h-4" />
+          <Scale className="w-4 h-4 text-indigo-600" />
           <span>Exam Studio (Soạn & Barem 0.25đ)</span>
         </button>
       </div>
@@ -644,16 +724,16 @@ export default function Dashboard() {
               <button
                 onClick={handleGenerateExam}
                 disabled={generating}
-                className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                className="w-full py-3.5 px-4 bg-gradient-to-b from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl text-sm shadow-[0_4px_14px_0_rgba(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.45)] active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 disabled:opacity-50 group"
               >
                 {generating ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <RefreshCw className="w-4 h-4 animate-spin text-indigo-200" />
                     <span>Đang tìm kiếm & xếp slot...</span>
                   </>
                 ) : (
                   <>
-                    <Shuffle className="w-4 h-4" />
+                    <Shuffle className="w-4 h-4 text-indigo-200 group-hover:rotate-45 transition-transform duration-300" />
                     <span>Tổ hợp Đề thi Mới (Zero-Hallucination)</span>
                   </>
                 )}
@@ -696,7 +776,7 @@ export default function Dashboard() {
           </div>
 
           {/* Right panel: Exam Preview */}
-          <div className="lg:col-span-2 bg-white p-8 rounded-2xl border border-slate-200 shadow-sm min-h-[600px]">
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/90 shadow-sm min-h-[600px] overflow-hidden flex flex-col">
             {generatedExam ? (
               <div className="space-y-6">
                 <div className="text-center border-b border-slate-200 pb-4">
@@ -755,13 +835,10 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center py-20 text-slate-400">
-                <FileText className="w-16 h-16 stroke-1 mb-3" />
-                <h3 className="font-bold text-slate-700 text-base">Chưa có đề thi được tạo</h3>
-                <p className="text-xs max-w-sm mt-1">
-                  Chọn khung ma trận ở bảng bên trái và nhấn &quot;Tổ hợp Đề thi Mới&quot; để thuật toán tự động chọn lọc câu hỏi chuẩn theo tiêu chí.
-                </p>
-              </div>
+              <CreativeEmptyState
+                onSelectPreset={handleSelectPresetFromEmptyState}
+                isGenerating={generating}
+              />
             )}
           </div>
         </div>
@@ -837,14 +914,14 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${getTopicBadgeStyle(q.main_topic)}`}>
                         {TOPIC_VI_MAP[q.main_topic] || q.main_topic}
                       </span>
                       {/* Interactive Difficulty Selector */}
                       <select
                         value={q.difficulty}
                         onChange={(e) => handleQuickDifficultyChange(q.id, e.target.value)}
-                        className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                        className={`text-xs font-bold px-2 py-0.5 rounded border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer ${getDifficultyBadgeStyle(q.difficulty)}`}
                         title="Bấm để đổi nhanh độ khó"
                       >
                         <option value="EASY">Cơ bản (EASY)</option>
@@ -890,7 +967,7 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  <div className="text-sm text-slate-800">
+                  <div className="text-[15px] font-serif leading-[1.75] text-slate-800 bg-[#FCFBF9] p-3.5 rounded-xl border border-slate-200/70 shadow-[inset_0_1px_2px_rgba(15,23,42,0.02)]">
                     {renderQuestionContent(q)}
                   </div>
 
