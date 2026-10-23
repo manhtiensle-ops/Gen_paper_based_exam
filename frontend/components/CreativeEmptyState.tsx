@@ -83,7 +83,7 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
         <div className="relative z-10 max-w-xl space-y-3">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold tracking-wide">
             <Sparkles className="w-3.5 h-3.5 text-indigo-300 animate-spin" />
-            <span>PHÒNG CHỜ KHỞI TẠO ĐỀ THI SÁNG TẠO</span>
+            <span>GIÁO DỤC VĨNH PHÁT • DẠY HỌC & LUYỆN THI TOÁN HSG</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
             Tổ Hợp Đề Thi Toán HSG THCS Chuẩn Quốc Gia
