@@ -206,15 +206,30 @@ export default function Dashboard() {
   const getDifficultyBadgeStyle = (diff: string) => {
     switch (diff) {
       case "EASY":
-        return "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20";
+        return "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20";
       case "MEDIUM":
-        return "bg-yellow-50 text-yellow-800 ring-1 ring-inset ring-yellow-600/25";
+        return "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/25";
       case "HARD":
-        return "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-600/25";
+        return "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/25";
       case "OLYMPIAD":
         return "bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/25";
       default:
         return "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-600/20";
+    }
+  };
+
+  const getDifficultyLeftBorder = (diff: string) => {
+    switch (diff) {
+      case "OLYMPIAD":
+        return "border-l-4 border-l-purple-600";
+      case "HARD":
+        return "border-l-4 border-l-rose-500";
+      case "MEDIUM":
+        return "border-l-4 border-l-amber-500";
+      case "EASY":
+        return "border-l-4 border-l-emerald-500";
+      default:
+        return "border-l-4 border-l-slate-300";
     }
   };
   const handleQuickDifficultyChange = async (questionId: string, newDiff: string) => {
@@ -647,8 +662,8 @@ export default function Dashboard() {
     if (!q) return null;
     return (
       <div className="space-y-3">
-        {/* 1. Shared Stem or Problem Content */}
-        <div className="text-sm text-slate-900 leading-relaxed">
+        {/* 1. Shared Stem or Problem Content - Vietnamese Typography Fix */}
+        <div className="text-sm text-slate-900 leading-relaxed question-prose">
           <MathRenderer content={q.content_latex || "Đang cập nhật nội dung câu hỏi..."} />
         </div>
 
@@ -692,13 +707,13 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      {/* Navigation Tabs (Segmented Sliding Bar) */}
-      <div className="flex bg-slate-200/60 p-1.5 rounded-2xl border border-slate-200/80 shadow-2xs space-x-1.5 overflow-x-auto">
+      {/* Unified Glassmorphic Segmented Navigation Bar */}
+      <div className="flex bg-slate-200/50 p-1 rounded-2xl border border-slate-200/80 shadow-2xs space-x-1 overflow-x-auto backdrop-blur-sm">
         <button
           onClick={() => handleTabChange("generator")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === "generator"
-              ? "bg-white text-indigo-700 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/5"
+              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
@@ -708,24 +723,24 @@ export default function Dashboard() {
 
         <button
           onClick={() => handleTabChange("questions")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === "questions"
-              ? "bg-white text-indigo-700 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/5"
+              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
           <BookOpen className="w-4 h-4 text-indigo-600" />
           <span>Ngân hàng câu hỏi</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono">
-            {questions.length}
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-mono font-bold">
+            {totalQuestions || questions.length}
           </span>
         </button>
 
         <button
           onClick={() => handleTabChange("ingestion")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === "ingestion"
-              ? "bg-white text-indigo-700 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/5"
+              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
@@ -735,9 +750,9 @@ export default function Dashboard() {
 
         <button
           onClick={() => handleTabChange("review")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === "review"
-              ? "bg-white text-indigo-700 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/5"
+              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
@@ -747,9 +762,9 @@ export default function Dashboard() {
 
         <button
           onClick={() => handleTabChange("studio")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === "studio"
-              ? "bg-white text-indigo-700 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/5"
+              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
@@ -1103,7 +1118,7 @@ export default function Dashboard() {
               {questions.map((q) => (
                 <div
                   key={q.id}
-                  className="p-5 rounded-xl border border-slate-200 bg-white hover:border-indigo-200 transition-all shadow-sm space-y-3"
+                  className={`p-5 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-md transition-all shadow-xs space-y-3.5 ${getDifficultyLeftBorder(q.difficulty)}`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -1476,32 +1491,84 @@ export default function Dashboard() {
             </div>
 
             <div className="divide-y divide-slate-100">
-              {sourceExams.map((exam) => (
-                <div key={exam.id} className="py-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-900">{exam.title}</h4>
-                      <p className="text-xs text-slate-400">Mã file: {exam.original_file_key}</p>
-                    </div>
-
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-                      exam.status === "REVIEW_NEEDED"
-                        ? "bg-amber-100 text-amber-800"
-                        : exam.status === "PUBLISHED"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-blue-100 text-blue-800 animate-pulse"
-                    }`}>
-                      {exam.status}
-                    </span>
+              {sourceExams.length === 0 ? (
+                /* Pipeline Blueprint 4 Bước khi danh sách trống */
+                <div className="py-8 space-y-6">
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-bold text-slate-800">Quy Trình Số Hóa Đề Thi AI Chuẩn Quốc Gia</p>
+                    <p className="text-xs text-slate-400">Các tệp tải lên sẽ tự động chạy qua pipeline 4 bước khép kín:</p>
                   </div>
 
-                  {exam.page_image_keys && exam.page_image_keys.length > 0 && (
-                    <div className="text-xs text-slate-500">
-                      Đã render: <span className="font-bold">{exam.page_image_keys.length}</span> trang ảnh (300 DPI)
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+                    <div className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/60 space-y-2">
+                      <div className="flex items-center space-x-2 text-indigo-700 font-bold text-xs">
+                        <span className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[11px]">1</span>
+                        <span>Phân Tích Cấu Trúc</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Tự động bóc tách từng câu hỏi, hình thức tự luận/điền đáp số từ file .docx hoặc scan .pdf.
+                      </p>
                     </div>
-                  )}
+
+                    <div className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/60 space-y-2">
+                      <div className="flex items-center space-x-2 text-indigo-700 font-bold text-xs">
+                        <span className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[11px]">2</span>
+                        <span>Nhận Diện Công Thức & Hình Vẽ</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Chuyển đổi công thức toán sang chuẩn LaTeX/OMML, crop hình học phẳng độ phân giải cao bằng Pillow.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/60 space-y-2">
+                      <div className="flex items-center space-x-2 text-indigo-700 font-bold text-xs">
+                        <span className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[11px]">3</span>
+                        <span>Gán Nhãn Ma Trận & Độ Khó</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Phân loại chuyên đề (Đại số, Số học, Hình phẳng, BĐT) và ước lượng độ khó chuẩn Sở GD&ĐT.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/60 space-y-2">
+                      <div className="flex items-center space-x-2 text-indigo-700 font-bold text-xs">
+                        <span className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[11px]">4</span>
+                        <span>Hàng Đợi Kiểm Duyệt</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Đưa vào hàng đợi để giáo viên rà soát, duyệt đưa vào Ngân hàng câu hỏi hoặc biên chế trực tiếp.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              ) : (
+                sourceExams.map((exam) => (
+                  <div key={exam.id} className="py-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-900">{exam.title}</h4>
+                        <p className="text-xs text-slate-400">Mã file: {exam.original_file_key}</p>
+                      </div>
+
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+                        exam.status === "REVIEW_NEEDED"
+                          ? "bg-amber-100 text-amber-800"
+                          : exam.status === "PUBLISHED"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-blue-100 text-blue-800 animate-pulse"
+                      }`}>
+                        {exam.status}
+                      </span>
+                    </div>
+
+                    {exam.page_image_keys && exam.page_image_keys.length > 0 && (
+                      <div className="text-xs text-slate-500">
+                        Đã render: <span className="font-bold">{exam.page_image_keys.length}</span> trang ảnh (300 DPI)
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -1509,7 +1576,7 @@ export default function Dashboard() {
 
       {/* TAB 4: REVIEW QUEUE */}
       {activeTab === "review" && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm space-y-6">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm space-y-6 max-w-5xl mx-auto">
           <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
             <ShieldCheck className="w-5 h-5 text-emerald-600" />
             <span>Hàng Đợi Kiểm Duyệt Câu Hỏi Mới Ingest</span>

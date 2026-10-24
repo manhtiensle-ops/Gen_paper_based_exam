@@ -108,11 +108,11 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
           {PRESETS.map((preset) => (
             <div
               key={preset.id}
-              className="group bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_1px_2px_rgba(15,23,42,0.06)] hover:shadow-[0_10px_25px_-5px_rgba(79,70,229,0.12)] hover:border-indigo-300 transition-all flex flex-col justify-between space-y-3.5"
+              className="group bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_1px_2px_rgba(15,23,42,0.06)] hover:shadow-[0_10px_25px_-5px_rgba(79,70,229,0.12)] hover:border-indigo-300 transition-all flex flex-col justify-between space-y-3.5 h-full"
             >
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -148,8 +148,8 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
 
               {/* Card Footer: Score & Action button */}
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center space-x-1">
-                  <span className="text-base font-bold text-slate-900 font-mono">
+                <div className="flex items-baseline space-x-1">
+                  <span className="text-xl font-bold text-slate-900 font-mono tabular-nums">
                     {preset.points.toFixed(1)}
                   </span>
                   <span className="text-xs text-slate-400 font-medium">điểm</span>
@@ -159,7 +159,7 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
                   type="button"
                   disabled={isGenerating}
                   onClick={() => onSelectPreset(preset.title)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 group-hover:bg-indigo-600 text-slate-700 group-hover:text-white text-xs font-bold transition-all flex items-center space-x-1 shadow-2xs group-hover:shadow-md disabled:opacity-50"
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-100 group-hover:bg-indigo-600 text-slate-700 group-hover:text-white text-xs font-bold transition-all flex items-center space-x-1.5 shadow-2xs group-hover:shadow-md disabled:opacity-50 cursor-pointer active:scale-95"
                 >
                   <span>Tổ hợp ngay</span>
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />

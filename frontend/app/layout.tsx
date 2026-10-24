@@ -68,6 +68,13 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <head>
+        {/* Google Fonts: Be Vietnam Pro & JetBrains Mono chuẩn Việt hóa */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
+          rel="stylesheet"
+        />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
@@ -102,24 +109,25 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-50 shadow-2xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
             <a href="/" className="flex items-center space-x-3 group">
-              <div className="w-10 h-10 rounded-lg bg-indigo-600 group-hover:bg-indigo-700 flex items-center justify-center text-white font-bold text-xl shadow-md transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 group-hover:from-indigo-700 group-hover:to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md shadow-indigo-500/20 border border-indigo-400/30 transition-all">
                 ∑
               </div>
               <div>
-                <h1 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 leading-tight transition-colors">
+                <h1 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 leading-tight tracking-tight transition-colors">
                   Giáo Dục Vinh Phát
                 </h1>
-                <p className="text-xs text-slate-500 font-medium">
+                <p className="text-[11px] text-slate-500 font-medium">
                   Dạy Học & Khảo Thí Đề Thi Toán HSG Cấp 2
                 </p>
               </div>
             </a>
             <div className="flex items-center space-x-3">
-              <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                ● Đã đồng bộ Cloudflare
+              <span className="hidden sm:inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Cloudflare Synced</span>
               </span>
               <UserNavBadge />
             </div>

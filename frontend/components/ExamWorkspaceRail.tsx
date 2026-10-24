@@ -294,26 +294,32 @@ export default function ExamWorkspaceRail({
 
           {openFolders["root"] && (
             <div className="space-y-0.5 pl-2 border-l border-slate-200/80 ml-2">
-              {exams.filter((e) => !e.folder_id).map((ex) => (
-                <button
-                  key={`root-${ex.id}`}
-                  type="button"
-                  onClick={() => onSelectExam(ex.id)}
-                  className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer group ${
-                    selectedExamId === ex.id
-                      ? "bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-2xs"
-                      : "text-slate-700 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
-                  }`}
-                >
-                  <div className="flex items-center space-x-2 truncate pr-1">
-                    <FileText className={`w-3.5 h-3.5 shrink-0 ${selectedExamId === ex.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"}`} />
-                    <span className="truncate">{ex.title}</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-400 shrink-0">
-                    {ex.total_target_score}đ
-                  </span>
-                </button>
-              ))}
+              {exams.filter((e) => !e.folder_id).length === 0 ? (
+                <div className="py-2.5 px-2 text-[11px] text-slate-400 italic flex items-center space-x-1.5">
+                  <span>Chưa có đề lưu trữ</span>
+                </div>
+              ) : (
+                exams.filter((e) => !e.folder_id).map((ex) => (
+                  <button
+                    key={`root-${ex.id}`}
+                    type="button"
+                    onClick={() => onSelectExam(ex.id)}
+                    className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer group ${
+                      selectedExamId === ex.id
+                        ? "bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2 truncate pr-1">
+                      <FileText className={`w-3.5 h-3.5 shrink-0 ${selectedExamId === ex.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"}`} />
+                      <span className="truncate">{ex.title}</span>
+                    </div>
+                    <span className="text-[10px] font-mono tabular-nums text-slate-400 shrink-0">
+                      {ex.total_target_score}đ
+                    </span>
+                  </button>
+                ))
+              )}
             </div>
           )}
         </div>

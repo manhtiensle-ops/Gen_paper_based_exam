@@ -1296,7 +1296,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           ) : (
             <div
               ref={canvasScrollRef}
-              className="flex-1 overflow-y-auto overflow-x-hidden p-8 flex flex-col items-center space-y-8 scroll-smooth bg-slate-200/60"
+              className="flex-1 overflow-y-auto overflow-x-hidden p-8 flex flex-col items-center space-y-8 scroll-smooth bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] bg-slate-200/70"
               style={{ scrollBehavior: "smooth" }}
             >
               {previewData?.page_keys && previewData.page_keys.length > 0 ? (
