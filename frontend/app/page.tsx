@@ -1006,30 +1006,17 @@ export default function Dashboard() {
                   Tất cả
                 </button>
                 {currentUser && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setFilterScope("MINE")}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
-                        filterScope === "MINE"
-                          ? "bg-white text-indigo-600 shadow-2xs"
-                          : "text-slate-600 hover:text-slate-900"
-                      }`}
-                    >
-                      <span>⭐ Của tôi</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilterScope("TENANT")}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
-                        filterScope === "TENANT"
-                          ? "bg-white text-indigo-600 shadow-2xs"
-                          : "text-slate-600 hover:text-slate-900"
-                      }`}
-                    >
-                      <span>🏫 Đơn vị</span>
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => setFilterScope("MINE")}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                      filterScope === "MINE"
+                        ? "bg-white text-indigo-600 shadow-2xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <span>⭐ Của tôi</span>
+                  </button>
                 )}
                 <button
                   type="button"

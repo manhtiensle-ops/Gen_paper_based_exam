@@ -132,14 +132,12 @@ export default function UserNavBadge() {
                 {userProfile?.full_name || userProfile?.email?.split("@")[0] || "Đang tải hồ sơ..."}
               </div>
               <div className="text-[10px] text-indigo-700 font-semibold leading-none mt-1 flex items-center space-x-1">
-                <span>{getTenantName(userProfile?.tenant_id)}</span>
-                <span>•</span>
                 <span className={`font-bold ${userProfile?.role === "PRO" ? "text-amber-600" : userProfile?.role === "VIP" ? "text-purple-600" : "text-emerald-600"}`}>
-                  {userProfile?.role || "NORMAL"}
+                  Gói {userProfile?.role || "NORMAL"}
                 </span>
                 {!userProfile?.is_unlimited && (
                   <span className="text-slate-400 font-normal">
-                    ({userProfile?.remaining_quota ?? 100} lượt)
+                    • ({userProfile?.remaining_quota ?? 100} lượt AI)
                   </span>
                 )}
               </div>

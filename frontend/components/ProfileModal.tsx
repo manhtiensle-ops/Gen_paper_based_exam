@@ -145,30 +145,8 @@ export default function ProfileModal({ user, isOpen, onClose, onUpdate }: Props)
             />
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                Đơn vị công tác / Không gian trường học
-              </label>
-              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200/60">
-                Multi-Tenancy
-              </span>
-            </div>
-            <select
-              value={tenantId}
-              onChange={(e) => setTenantId(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-slate-50/50 hover:bg-white text-sm font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all cursor-pointer"
-            >
-              <option value="thcs_le_quy_don">Trường THCS Chuyên Lê Quý Đôn</option>
-              <option value="thcs_amsterdam">Trường THPT Chuyên Hà Nội - Amsterdam</option>
-              <option value="so_gd_ha_tinh">Sở GD&ĐT Tỉnh Hà Tĩnh (Phòng Khảo Thí)</option>
-              <option value="ttgd_vinh_phat">Trung Tâm Giáo Dục Vinh Phát</option>
-              <option value="individual">Không gian cá nhân độc lập</option>
-            </select>
-            <p className="text-[11px] text-slate-400 leading-relaxed pt-0.5">
-              💡 Đề thi và ngân hàng câu hỏi được cách ly và lưu trữ riêng biệt theo từng đơn vị trường học bạn đang chọn.
-            </p>
-          </div>
+          {/* Ẩn mục chọn trường học chưa phát triển tới */}
+          <input type="hidden" value={tenantId} />
 
           {/* Entitlements Card */}
           <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-2.5">
