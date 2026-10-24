@@ -16,6 +16,7 @@ from ..models import Question, User
 from ..services.quota_service import require_authenticated_user, consume_ai_quota
 from ..schemas import (
     QuestionResponse,
+    PaginatedQuestionsResponse,
     QuestionVerifyToggle,
     QuestionUpdatePayload,
     QuestionDifficultyUpdate,
@@ -24,15 +25,15 @@ from ..schemas import (
 
 router = APIRouter(prefix="/api/questions", tags=["Questions Bank"])
 
-@router.get("", response_model=List[QuestionResponse])
+@router.get("", response_model=PaginatedQuestionsResponse)
 def list_questions(
     grade: Optional[int] = Query(None),
     section_type: Optional[str] = Query(None),
     main_topic: Optional[str] = Query(None),
     difficulty: Optional[str] = Query(None),
     is_verified: Optional[bool] = Query(None),
-    limit: int = Query(50, le=200),
-    offset: int = Query(0),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
     query = db.query(Question)
@@ -47,7 +48,18 @@ def list_questions(
     if is_verified is not None:
         query = query.filter(Question.is_verified == is_verified)
 
-    return query.order_by(Question.created_at.desc()).offset(offset).limit(limit).all()
+    total = query.count()
+    offset = (page - 1) * page_size
+    items = query.order_by(Question.created_at.desc()).offset(offset).limit(page_size).all()
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages
+    }
 
 @router.get("/{question_id}", response_model=QuestionResponse)
 def get_question(question_id: UUID, db: Session = Depends(get_db)):

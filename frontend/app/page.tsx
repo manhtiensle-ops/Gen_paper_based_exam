@@ -37,8 +37,12 @@ import {
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"generator" | "questions" | "ingestion" | "review" | "studio">("generator");
   
-  // Questions Bank State
+  // Questions Bank State with Pagination
   const [questions, setQuestions] = useState<any[]>([]);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [filterTopic, setFilterTopic] = useState("");
   const [filterDifficulty, setFilterDifficulty] = useState("");
@@ -213,19 +217,32 @@ export default function Dashboard() {
     }
   };
 
-  // Fetch Questions
-  const fetchQuestions = async () => {
+  // Fetch Questions with Pagination support
+  const fetchQuestions = async (pageOverride?: number) => {
     setLoadingQuestions(true);
     try {
+      const pageToFetch = pageOverride !== undefined ? pageOverride : currentPage;
       const params = new URLSearchParams();
       if (filterTopic) params.append("main_topic", filterTopic);
       if (filterDifficulty) params.append("difficulty", filterDifficulty);
       if (filterSection) params.append("section_type", filterSection);
+      params.append("page", pageToFetch.toString());
+      params.append("page_size", pageSize.toString());
 
       const res = await fetch(`/api/questions?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setQuestions(data);
+        // Hỗ trợ cả payload phân trang mới và mảng fallback
+        if (data && Array.isArray(data.items)) {
+          setQuestions(data.items);
+          setTotalQuestions(data.total || 0);
+          setTotalPages(data.total_pages || 1);
+          setCurrentPage(data.page || 1);
+        } else if (Array.isArray(data)) {
+          setQuestions(data);
+          setTotalQuestions(data.length);
+          setTotalPages(1);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -331,8 +348,10 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    fetchQuestions();
-  }, [filterTopic, filterDifficulty, filterSection]);
+    // Reset về trang 1 khi người dùng đổi bộ lọc
+    setCurrentPage(1);
+    fetchQuestions(1);
+  }, [filterTopic, filterDifficulty, filterSection, pageSize]);
 
   // Quick Preset Selection Handler from Creative Empty State
   const handleSelectPresetFromEmptyState = async (keyword: string) => {
@@ -954,7 +973,7 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
               <BookOpen className="w-5 h-5 text-indigo-600" />
-              <span>Ngân Hàng Câu Hỏi HSG Toán ({questions.length} câu)</span>
+              <span>Ngân Hàng Câu Hỏi HSG Toán ({totalQuestions || questions.length} câu)</span>
             </h2>
 
             {/* Filters */}
@@ -1083,6 +1102,102 @@ export default function Dashboard() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Smart Pagination Bar (Tối ưu tải theo trang 10 câu) */}
+          {!loadingQuestions && totalQuestions > 0 && (
+            <div className="pt-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-xs text-slate-500 font-medium">
+                Đang hiển thị{" "}
+                <span className="font-bold text-slate-800">
+                  {Math.min((currentPage - 1) * pageSize + 1, totalQuestions)}
+                </span>
+                {" - "}
+                <span className="font-bold text-slate-800">
+                  {Math.min(currentPage * pageSize, totalQuestions)}
+                </span>
+                {" trên tổng số "}
+                <span className="font-bold text-indigo-600">{totalQuestions}</span> câu hỏi
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1 || loadingQuestions}
+                  onClick={() => {
+                    const prev = Math.max(1, currentPage - 1);
+                    setCurrentPage(prev);
+                    fetchQuestions(prev);
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-all cursor-pointer"
+                >
+                  ← Trang trước
+                </button>
+
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                    .map((p, idx, arr) => {
+                      const prevPage = arr[idx - 1];
+                      const showEllipsis = prevPage && p - prevPage > 1;
+                      return (
+                        <React.Fragment key={p}>
+                          {showEllipsis && (
+                            <span className="px-1 text-xs text-slate-400 select-none">...</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCurrentPage(p);
+                              fetchQuestions(p);
+                            }}
+                            className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              currentPage === p
+                                ? "bg-indigo-600 text-white shadow-xs"
+                                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages || loadingQuestions}
+                  onClick={() => {
+                    const next = Math.min(totalPages, currentPage + 1);
+                    setCurrentPage(next);
+                    fetchQuestions(next);
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-all cursor-pointer"
+                >
+                  Trang sau →
+                </button>
+              </div>
+
+              {/* Page Size Selector */}
+              <div className="flex items-center space-x-2 text-xs text-slate-500">
+                <span>Số câu:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const newSize = Number(e.target.value);
+                    setPageSize(newSize);
+                    setCurrentPage(1);
+                    fetchQuestions(1);
+                  }}
+                  className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:outline-none"
+                >
+                  <option value={10}>10 câu / trang</option>
+                  <option value={20}>20 câu / trang</option>
+                  <option value={50}>50 câu / trang</option>
+                </select>
+              </div>
             </div>
           )}
         </div>

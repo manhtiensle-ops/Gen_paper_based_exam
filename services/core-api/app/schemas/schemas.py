@@ -55,6 +55,13 @@ class QuestionResponse(QuestionBase):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+class PaginatedQuestionsResponse(BaseModel):
+    items: List[QuestionResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
 class QuestionUpdatePayload(BaseModel):
     content_latex: Optional[str] = None
     sub_questions: Optional[List[Dict[str, Any]]] = None
