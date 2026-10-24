@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import ProfileModal from "@/components/ProfileModal";
+import LoginSlideOverModal from "@/components/LoginSlideOverModal";
 import { User, LogIn, LogOut, Settings, Shield, ChevronDown, Sparkles, ExternalLink } from "lucide-react";
 
 export default function UserNavBadge() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<any>(null);
@@ -145,11 +147,11 @@ export default function UserNavBadge() {
             <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
           </button>
         ) : (
-          /* Nút Đăng Nhập Khi Đã Đăng Xuất (Chế độ Khách / Guest) */
+          /* Nút Đăng Nhập Khi Đã Đăng Xuất (Mở Slide-Over Modal Trượt Từ Trên Xuống) */
           <button
             type="button"
-            onClick={handleLoginRedirect}
-            className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+            onClick={() => setLoginModalOpen(true)}
+            className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition-all cursor-pointer"
           >
             <LogIn className="w-4 h-4" />
             <span>Đăng nhập</span>
@@ -195,7 +197,10 @@ export default function UserNavBadge() {
               {/* Nút Đăng nhập / Chuyển tài khoản Google */}
               <button
                 type="button"
-                onClick={handleLoginRedirect}
+                onClick={() => {
+                  setDropdownOpen(false);
+                  setLoginModalOpen(true);
+                }}
                 className="w-full px-3 py-2 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-50 flex items-center justify-between transition-colors cursor-pointer text-left"
               >
                 <div className="flex items-center space-x-2.5">
@@ -230,6 +235,12 @@ export default function UserNavBadge() {
           onUpdate={(updated) => setUserProfile(updated)}
         />
       )}
+
+      {/* Modal Đăng Nhập Trượt Từ Trên Xuống */}
+      <LoginSlideOverModal
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+      />
     </>
   );
 }
