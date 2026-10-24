@@ -1,112 +1,193 @@
-# KIẾN TRÚC HỆ THỐNG (SYSTEM ARCHITECTURE)
-**HSG Math Exam Studio Platform**
+# KIẾN TRÚC HỆ THỐNG TOÀN DIỆN (SYSTEM ARCHITECTURE SPEC)
+**Nền Tảng Khảo Thí & Biên Soạn Đề Thi HSG Toán — Giáo Dục Vinh Phát**  
+*Mã dự án:* `Gen_paper_based_exam` | *Cập nhật phiên bản:* `v2.4.0 (Tháng 10/2026)`
 
 ---
 
-## 1. Sơ Đồ Khối Tổng Thể (System Architecture)
+## 1. SƠ ĐỒ KHỐI TỔNG THỂ (SYSTEM TOPOLOGY)
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        FRONTEND (Next.js 14)                          │
-│  - App Router, TailwindCSS, KaTeX MathRenderer                        │
-│  - Exam Studio: 2-Panel Workstation + Overleaf-style Live PDF Canvas  │
-│  - Multimodal AI Layout Chat (Dán ảnh Ctrl+V, Quick Knobs)            │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ Reverse Proxy (/api/* -> core-api:8000)
-┌───────────────────────────────────▼────────────────────────────────────┐
-│                       CORE API (FastAPI Backend)                       │
-│  - /api/questions       : Quản lý ngân hàng & OCR lời giải            │
-│  - /api/generator       : Tổ hợp đề thi theo ma trận & Direct Download│
-│  - /api/studio          : Exam Studio, Quanta Rubric & AI Layout Agent│
-│  - /api/assets          : Streaming hình vẽ & file PDF/DOCX từ MinIO  │
-└─────────────┬─────────────────────┬──────────────────────┬─────────────┘
-              │                     │                      │
-   SQLAlchemy │         Celery Task │           REST Call  │
-              ▼                     ▼                      ▼
-┌────────────────────────┐  ┌───────────────┐  ┌─────────────────────────┐
-│     PostgreSQL 16      │  │ INGESTION     │  │     EXPORT SERVICE      │
-│  + pgvector (768-dim)  │  │ WORKER        │  │  - TeX Live Native      │
-│  - source_exams        │  │  (Celery/Py)  │  │    pdflatex + pdftoppm  │
-│  - questions           │  │  - DOCX->PNG  │  │  - Pandoc OMML to DOCX  │
-│  - exam_blueprints     │  │  - Gemini OCR │  │  - RAM Disk /dev/shm    │
-│  - generated_exams     │  │  - Normalizer │  │  - Cache /second_disk   │
-│  - exam_items          │  │  - Embedder   │  └─────────────────────────┘
-└─────────────▲──────────┘  └───────┬───────┘
-              │                     │
-              │ Redis Queue         │ S3 Bucket (hsg-math-assets)
-┌─────────────┴──────────┐  ┌───────▼────────────────────────────────────┐
-│      REDIS BROKER      │  │             MINIO STORAGE                  │
-│      (Cổng 6379)       │  │ (cgr.dev/chainguard/minio:latest)          │
-│  - Celery task broker  │  │ - PDF/DOCX đề thi gốc                      │
-│  - Event coordination  │  │ - Ảnh render trang scan 300 DPI            │
-│                        │  │ - Hình vẽ hình học cắt bằng Pillow         │
-│                        │  │ - File xuất bản TeX Live PDF & DOCX        │
-└────────────────────────┘  └────────────────────────────────────────────┘
+                              INTERNET (Giáo viên / Học sinh)
+                                             │
+                                             ▼
+                      ┌──────────────────────────────────────────────┐
+                      │    CLOUDFLARE ZERO TRUST & ACCESS GATEWAY    │
+                      │  - Tên miền chính thức: dethi.ttgdvinhphat.com│
+                      │  - SSL/TLS Full Strict, DDOS Protection      │
+                      │  - Bypass chính sách cho Web tĩnh/SEO bots   │
+                      └──────────────────────┬───────────────────────┘
+                                             │
+                                             ▼
+                      ┌──────────────────────────────────────────────┐
+                      │    ORACLE CLOUD VPS (Reverse Proxy Gateway)  │
+                      │  - IP Public: 168.110.193.43                 │
+                      │  - WireGuard Server IP: 15.18.16.1           │
+                      │  - Nginx Reverse Proxy điều phối traffic     │
+                      └──────────────────────┬───────────────────────┘
+                                             │ WireGuard Encrypted Tunnel
+                                             ▼
+                      ┌──────────────────────────────────────────────┐
+                      │      LOCAL CT104 SERVER (15.18.16.2:3000)    │
+                      │               Docker Compose Stack           │
+                      └──────────────────────┬───────────────────────┘
+                                             │
+        ┌────────────────────────────────────┼────────────────────────────────────┐
+        ▼                                    ▼                                    ▼
+┌───────────────────────┐        ┌───────────────────────┐        ┌───────────────────────┐
+│ FRONTEND (Next.js 14) │        │  CORE API (FastAPI)   │        │ EXPORT SERVICE (Fast) │
+│ - Port: 3000          │───────▶│ - Port: 8000          │───────▶│ - Port: 8001          │
+│ - Fluid 3-Column Rail │        │ - RBAC 4-Tier Guard   │        │ - TeX Live Native     │
+│ - KaTeX & Pagination  │        │ - Direct Google OAuth │        │ - Pandoc OMML to DOCX │
+│ - Studio A4 Live View │        │ - Quota Engine (Redis)│        │ - RAM Disk (/dev/shm) │
+└───────────────────────┘        └───────────┬───────────┘        └───────────────────────┘
+                                             │
+                     ┌───────────────────────┼───────────────────────┐
+                     ▼                       ▼                       ▼
+         ┌───────────────────────┐┌───────────────────────┐┌───────────────────────┐
+         │  PostgreSQL 16 DB     ││   REDIS BROKER & DB   ││   MINIO OBJECT S3     │
+         │ - Port: 5432          ││ - Port: 6379          ││ - Port: 9000 / 9001   │
+         │ - pgvector (768-dim)  ││ - Celery task broker  ││ - Storage đề gốc/ảnh  │
+         │ - Bảng Users & RBAC   ││ - Daily AI Quota (VN) ││ - Bản in PDF & DOCX   │
+         │ - Exam & Folder Trees ││ - TTL 28h Key Expiry  ││ - Chainguard image    │
+         └───────────────────────┘└───────────────────────┘└───────────────────────┘
+                                             │
+                                             ▼
+                                 ┌───────────────────────┐
+                                 │   INGESTION WORKER    │
+                                 │ - Celery Async Tasks  │
+                                 │ - PyMuPDF / Poppler   │
+                                 │ - OmniRoute Proxy AI  │
+                                 │   (Gemini 3.8 Flash)  │
+                                 └───────────────────────┘
 ```
 
 ---
 
-## 2. Các Microservices Chi Tiết
+## 2. KIẾN TRÚC XÁC THỰC & PHÂN QUYỀN (RBAC & DIRECT GOOGLE OAUTH)
 
-| Service | Container Name | Công nghệ cốt lõi | Chức năng chính |
-| :--- | :--- | :--- | :--- |
-| **Frontend** | `hsg_frontend` | Next.js 14, React 18, TailwindCSS, KaTeX | Giao diện Studio tương tác, hiển thị Live A4 PDF Canvas, quản lý ma trận đề thi và ngân hàng câu hỏi. |
-| **Core API** | `hsg_core_api` | FastAPI, Python 3.11, SQLAlchemy, OpenAI SDK | Cung cấp toàn bộ RESTful API, thuật toán Hybrid Search, điều phối AI Layout Agent và streaming download file nhị phân. |
-| **Ingestion Worker** | `hsg_ingestion_worker` | Celery, PyMuPDF, Pillow, Poppler, OmniRoute | Số hóa đề thi page-by-page từ DOCX/PDF, nhận diện câu hỏi Toán, gom cụm bài hình nguyên khối (`SHARED_STEM`) và cắt hình vẽ. |
-| **Export Service** | `hsg_export_service` | TeX Live (`pdflatex`), Poppler (`pdftoppm`), Pandoc, LibreOffice | Biên dịch tài liệu chuẩn Bộ GD&ĐT: sinh file PDF TeX Live native và ảnh trang 150 DPI tức thời trong `< 0.4s`. |
-| **Database** | `hsg_postgres_db` | PostgreSQL 16, pgvector | Lưu trữ cấu trúc quan hệ, bảng snapshots `exam_items`, và chỉ mục vector HNSW 768 chiều. |
-| **Broker** | `hsg_redis_broker` | Redis 7 Alpine | Hàng đợi tác vụ Celery phục vụ các pipeline số hóa nặng. |
-| **Storage** | `hsg_minio_storage` | MinIO (Chainguard image) | Lưu trữ hướng đối tượng S3 cho hình ảnh, tệp tin đề thi và bản in tài liệu. |
+Hệ thống loại bỏ sự phụ thuộc vào OAuth session của Cloudflare Access bằng cơ chế **Direct Google OAuth 2.0 Flow**:
+
+```
+[ Người dùng bấm Đăng nhập ]
+            │
+            ▼
+[ GET /api/auth/google-login ] ──▶ [ Chuyển hướng tới Google Sign-In ]
+                                                │ (Chọn tài khoản Gmail)
+                                                ▼
+[ Callback: GET /api/auth/callback/google ] ◀───┘ (Kèm Authorization Code)
+            │
+            ├─ 1. Backend đổi code lấy access_token trực tiếp từ Google OAuth
+            ├─ 2. Gọi Google API Userinfo lấy: email, name, avatar
+            ├─ 3. Upsert vào bảng PostgreSQL `users` (gán Role mặc định: NORMAL)
+            ├─ 4. Gắn Cookie an toàn `hsg_user_email` (max_age: 7 ngày, domain: .ttgdvinhphat.com)
+            ▼
+[ Redirect về Trang Chủ dethi.ttgdvinhphat.com ] ──▶ Đã nhận diện danh tính & nạp Quota!
+```
+
+### 2.1. Ma Trận Phân Quyền 4 Tầng (4-Tier Role System)
+
+| Tiêu chí | 1. GUEST (Khách) | 2. NORMAL (Google Free) | 3. VIP (Nạp thử nghiệm) | 4. PRO (Bản quyền toàn phần) |
+|---|:---:|:---:|:---:|:---:|
+| **Điều kiện nhận diện** | Chưa đăng nhập | Đăng nhập tài khoản Google | `role == 'VIP'` & còn hạn | `role == 'PRO'` / Trường học |
+| **Xem Ngân hàng câu hỏi** | Có (Read-only) | Có (Read-only) | Có (Read-only) | Có (Đầy đủ) |
+| **Tổ hợp đề thi (Zero-Hallucination)** | ❌ Bị khóa | Có (Lưu trữ cá nhân) | Có (Lưu trữ cá nhân) | Có (Không giới hạn) |
+| **Định ngạch AI hàng ngày (Daily Quota)** | ❌ **0 lượt** | **100 lượt / ngày** | **500 lượt / ngày** | 👑 **Vô hạn (Unlimited)** |
+| **Cơ chế tính Quota AI** | Không khả dụng | Trừ qua Redis counter | Trừ qua Redis counter | Bỏ qua kiểm tra hạn ngạch |
+| **Thời điểm Reset Quota** | - | **00:00 (Giờ Việt Nam - UTC+7)** | **00:00 (Giờ Việt Nam - UTC+7)** | - |
+| **Xuất file Word (.docx) & PDF** | ❌ Bị khóa | Có | Có | Có |
+| **Phân quyền dữ liệu (Data Isolation)** | Danh sách rỗng `[]` | Chỉ thấy đề của chính mình | Chỉ thấy đề của chính mình | Xem đề cá nhân + đơn vị |
+
+### 2.2. Danh Mục Các Tác Vụ Trừ Quota AI (Cost Mapping)
+* `POST /api/studio/items/{id}/rubric/auto-split`: **-1 lượt** (Chia nhỏ barem KaTeX 0.25đ).
+* `POST /api/studio/exams/{id}/ai-generate-grading-steps`: **-1 lượt** (Tự động sinh bước giải chi tiết).
+* `POST /api/studio/items/{id}/variant`: **-1 lượt** (Sinh bài toán biến thể tương đương).
+* `POST /api/questions/{id}/solution/ocr`: **-1 lượt** (OCR lời giải chữ viết tay / hình ảnh).
+* `POST /api/exams/batch-upload`: **-N lượt** ($N = \text{số lượng file đề thi tải lên}$).
+* *(Các thao tác tổ hợp đề, lọc câu hỏi, đổi câu hỏi tương đương qua SQL/pgvector hoàn toàn **KHÔNG trừ Quota**).*
 
 ---
 
-## 3. Kiến Trúc AI & Kỹ Thuật Chế Bản (AI & LaTeX Engine)
+## 3. CẤU TRÚC DỮ LIỆU & CÔ LẬP NGUYÊN KHỐI (DATA ISOLATION SCHEMA)
 
-### 3.1. Mô Hình AI Chủ Lực: `antigravity/gemini-3.8-flash-tiered`
-- Được định tuyến qua OmniRoute Proxy cục bộ (`http://192.168.1.117:20128/v1`).
-- Đảm bảo độ trễ thấp (`~200ms - 800ms`), chi phí tối thiểu, và hỗ trợ xử lý đa phương thức (Multimodal Vision):
-  - Phân tích ảnh scan đề thi 300 DPI.
-  - Phân tích ảnh chụp màn hình do giáo viên dán (`Ctrl + V`) khoanh tròn chỗ cần sửa.
+### 3.1. Phân tầng Bảng `users` & `generated_exams`
+```sql
+-- Bảng tài khoản người dùng & gói dịch vụ
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    full_name VARCHAR(150),
+    avatar_url TEXT,
+    role VARCHAR(50) DEFAULT 'NORMAL', -- GUEST, NORMAL, VIP, PRO, ADMIN
+    subscription_tier VARCHAR(50) DEFAULT 'NORMAL',
+    tenant_id VARCHAR(100) DEFAULT 'default_school',
+    vip_expires_at TIMESTAMPTZ,
+    pro_expires_at TIMESTAMPTZ,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-### 3.2. Triết Lý "Problem Snapshot Instance"
-- Khi câu hỏi được đưa vào đề thi (`generated_exams`), hệ thống tạo một bản ghi độc lập trong bảng `exam_items`.
-- Giáo viên có thể tùy ý sửa số liệu, đổi câu từ, hoặc chia lại barem điểm mà không làm biến đổi câu hỏi gốc trong ngân hàng.
+-- Bảng thư mục phân loại đề thi
+CREATE TABLE exam_folders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(150) NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    tenant_id VARCHAR(100) DEFAULT 'default_school',
+    parent_id UUID REFERENCES exam_folders(id) ON DELETE CASCADE,
+    color VARCHAR(30) DEFAULT '#4f46e5',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-### 3.3. Thuật Toán Integer Quanta (Barem Điểm 0.25đ Chuẩn)
-- Quy đổi $1 \text{ quantum} = 0.25 \text{ điểm}$.
-- Ép mô hình phân bổ số nguyên quanta và tính dồn `cumulative_quanta` theo JSON Schema $\rightarrow$ Triệt tiêu 100% hiện tượng ảo giác số học và lệch tổng điểm đề thi.
+-- Bảng đề thi đã tổ hợp (gắn chặt quyền sở hữu)
+CREATE TABLE generated_exams (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    blueprint_id UUID REFERENCES exam_blueprints(id) ON DELETE SET NULL,
+    folder_id UUID REFERENCES exam_folders(id) ON DELETE SET NULL,
+    slots_state JSONB NOT NULL,
+    header_config JSONB DEFAULT '{}',
+    total_target_score NUMERIC(4,2) DEFAULT 20.00,
+    tenant_id VARCHAR(100) DEFAULT 'default_school',
+    template_document JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
 
-### 3.4. Turbo-LaTeX Engine & Zero-I/O Compilation
-- Sử dụng TeX Live biên dịch trực tiếp trên phân vùng RAM `tmpfs` (`/dev/shm`).
-- Tích hợp bộ font Times New Roman chuẩn Toán học (`mathptmx`), căn lề A4 chuẩn Bộ GD&ĐT, và xuất ảnh từng trang A4 tức thời bằng `pdftoppm -png -r 150`.
+### 3.2. Chỉ Mục Phân Trang Ngân Hàng Câu Hỏi (Composite Indexing)
+Nhằm đảm bảo ngân hàng câu hỏi mở rộng lên $> 100.000$ bản ghi mà tốc độ truy vấn vẫn $< 15\text{ms}$:
+```sql
+CREATE INDEX idx_questions_query_filter 
+ON questions (grade, section_type, main_topic, difficulty, is_verified, created_at DESC);
+```
+API `/api/questions` áp dụng **Server-side Pagination**:
+- Tham số: `page` (mặc định 1) và `page_size` (10, 20, 50).
+- Trả về payload chuẩn: `{ items: [...], total: 60, page: 1, page_size: 10, total_pages: 6 }`.
 
 ---
 
-## 4. Kiến Trúc Giao Diện UI/UX Studio (Light Academic Theme & Fluid Layout)
+## 4. QUY TRÌNH CHẾ BẢN VÀ XUẤT BẢN ĐỀ THI (LATEX & OMML WORD)
 
-### 4.1. Triết Lý Thiết Kế: "Light Academic Workspace"
-Thay vì sử dụng nền tối đen sì (`#000000` / `#0B0F19`) làm chói gắt và lạc điệu với các phân hệ khác của hệ thống, Exam Studio áp dụng **Light Academic Theme (Trắng ngà / Slate nhã nhặn)**:
-- **Tone màu chủ đạo:**
-  - Nền tổng thể: Trắng (`#FFFFFF`) và xám dịu (`#F8FAFC`, `#F1F5F9`).
-  - Viền phân định: Đường hairline mỏng thanh lịch (`border-slate-200`).
-  - Nền bàn làm việc xem bản in (PDF Canvas): Màu xám trung tính sáng (`#E2E8F0` / `#CBD5E1`), giúp tờ giấy in A4 màu trắng tuyết nổi bật với hiệu ứng đổ bóng đa tầng vật lý (`box-shadow: 0 12px 32px -4px rgba(0,0,0,0.18)`).
-- **Tối đa hóa không gian hiển thị (Screen Real Estate):**
-  - Mở rộng toàn màn hình (`100vw`, `100vh`), loại bỏ mọi khoảng đệm thừa (padding/margin) gây bó hẹp.
-  - Thanh Resizer kéo-thả trực quan ở giữa cho phép giáo viên tùy ý điều chỉnh tỷ lệ: 40/60, 50/50, hoặc 60/40 tùy theo nhu cầu tập trung vào code hay xem bản in.
+### 4.1. Turbo TeX Live Live Preview Engine (<0.3s)
+* Thực thi trên RAM Disk (`/dev/shm`), không ghi đĩa vật lý $\to$ triệt tiêu độ trễ I/O.
+* Tiêu chuẩn trình bày:
+  - Font chữ: Times New Roman toán học (`mathptmx`).
+  - Định dạng: Khổ giấy A4, lề chuẩn Bộ GD&ĐT (Trái 2cm, Phải 1.5cm, Trên 2cm, Dưới 2cm).
+  - Tự động tách ảnh từng trang độ phân giải 150 DPI bằng Poppler `pdftoppm`.
 
-### 4.2. Cơ Chế Preamble Folding ("Focus on Content")
-- Toàn bộ mã kỹ thuật TeX Live (`\documentclass`, `\usepackage`, `\geometry`, các macro hệ thống) được gập gọn vào một khối collapsible banner:
-  ```
-  ▸ [ Cấu hình hệ thống TeX Live & Tiêu chuẩn Bộ GD&ĐT (35 dòng đã ẩn) — Bấm để mở rộng ]
-  ```
-- Khi mở Studio, con trỏ soạn thảo đưa người dùng vào thẳng phần nội dung đề thi (`Câu 1`, `Câu 2`...), giúp giáo viên không bị choáng ngợp bởi mã nguồn nội bộ.
+### 4.2. Engine Xuất Word OMML Bản Quyền (`docx_math_builder.py`)
+* Không dùng ảnh công thức toán (Math as Image) $\to$ Xuất toán học bản địa Word (Office Math Markup Language - OMML).
+* Bảng Barem điểm 3 cột:
+  - Cột 1: Câu/Ý.
+  - Cột 2: Nội dung hướng dẫn giải chi tiết (KaTeX $\to$ OMML).
+  - Cột 3: Điểm số chi tiết mốc 0.25đ.
+* Tự động gộp dòng (`w:vMerge`) cho các bài toán nhiều ý và chống gãy bảng qua trang (`w:cantSplit`).
 
-### 4.3. Tương Tác Hai Chiều & Phím Tắt Overleaf (Ctrl + S)
-- Giáo viên gõ sửa công thức toán hoặc câu từ trực tiếp trên khung soạn thảo bên trái.
-- Nhấn tổ hợp phím **`Ctrl + S`** (hoặc nút *Biên dịch lại*): Mã nguồn TeX được đẩy về backend qua endpoint `/api/studio/exams/{id}/compile-raw`.
-- TeX Live biên dịch ngầm trên RAM Disk trong `< 0.3s`, bản in PDF A4 bên phải cập nhật tức thì.
+---
 
-### 4.4. Ngăn Kéo Trợ Lý AI Đa Phương Thức (Slide-Over Drawer)
-- AI Co-pilot không chiếm cố định một cột gây chật chội màn hình mà hoạt động dưới dạng ngăn kéo thông minh (Drawer) có thể mở/đóng bằng 1 click hoặc phím tắt `Ctrl + K`.
-- Hỗ trợ dán ảnh chụp màn hình trực tiếp từ clipboard (`Ctrl + V`), quan sát vết khoanh tròn của giáo viên và tự động điều chỉnh bố cục/mã câu hỏi.
+## 5. THƯƠNG HIỆU & TIÊU CHUẨN TRÌNH BÀY (BRAND IDENTITY)
 
+* **Tên thương hiệu chính thức:** **Giáo Dục Vinh Phát** (hoặc **Dạy Học Vinh Phát**, **TTGD Vinh Phát**).
+  * *Lưu ý tuyệt đối:* Tên "Vinh" **không có dấu ngã**.
+* **Định vị:** Đơn vị Dạy học & Khảo thí chuyên sâu Toán Học Sinh Giỏi (Lớp 6, 7, 8, 9) và Luyện thi Chuyên Toán vào 10.
+* **Phong cách giao diện:** **Light Academic Workspace** (Trắng tuyết / Slate trung tính nhã nhặn, bố cục 3 cột chống tràn ngang, tối ưu cho màn hình laptop và PC giáo viên).
