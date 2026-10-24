@@ -36,6 +36,21 @@ import {
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"generator" | "questions" | "ingestion" | "review" | "studio">("generator");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Nhận diện tài khoản hiện tại (nếu là GUEST thì currentUser = null)
+  useEffect(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("hsg_logged_out") === "true") {
+      setCurrentUser(null);
+      return;
+    }
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setCurrentUser(data);
+      })
+      .catch(() => setCurrentUser(null));
+  }, []);
   
   // Questions Bank State with Pagination
   const [questions, setQuestions] = useState<any[]>([]);
@@ -1041,6 +1056,8 @@ export default function Dashboard() {
                         {TOPIC_VI_MAP[q.main_topic] || q.main_topic}
                       </span>
                       {/* Interactive Difficulty Selector */}
+                    {currentUser ? (
+                      /* Dropdown đổi độ khó cho Giáo viên đã đăng nhập */
                       <select
                         value={q.difficulty}
                         onChange={(e) => handleQuickDifficultyChange(q.id, e.target.value)}
@@ -1052,31 +1069,39 @@ export default function Dashboard() {
                         <option value="HARD">Vận dụng cao (HARD)</option>
                         <option value="OLYMPIAD">Học sinh giỏi (OLYMPIAD)</option>
                       </select>
-                      {q.user_difficulty && (
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                          {q.user_difficulty}
-                        </span>
-                      )}
-                      <span className="text-xs px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">
-                        {q.section_type === "SHORT_ANSWER" ? "Điền đáp số" : "Tự luận"}
+                    ) : (
+                      /* Badge tĩnh cho Khách vãng lai (GUEST) */
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded select-none ${getDifficultyBadgeStyle(q.difficulty)}`}>
+                        {q.difficulty}
                       </span>
-                    </div>
+                    )}
+                    {q.user_difficulty && (
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                        {q.user_difficulty}
+                      </span>
+                    )}
+                    <span className="text-xs px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">
+                      {q.section_type === "SHORT_ANSWER" ? "Điền đáp số" : "Tự luận"}
+                    </span>
+                  </div>
 
-                    <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2">
+                    {currentUser && (
                       <button
                         onClick={() => setEditingQuestion(q)}
-                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-all flex items-center space-x-1"
+                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-all flex items-center space-x-1 cursor-pointer"
                         title="Sửa nội dung, lời giải & gắn thẻ tùy biến"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>Sửa & Gắn nhãn</span>
                       </button>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                        q.is_verified ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
-                      }`}>
-                        {q.is_verified ? "✓ Đã kiểm duyệt" : "Chờ duyệt"}
-                      </span>
-                    </div>
+                    )}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      q.is_verified ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                    }`}>
+                      {q.is_verified ? "✓ Đã kiểm duyệt" : "Chờ duyệt"}
+                    </span>
+                  </div>
                   </div>
 
                   {/* Custom tags list */}

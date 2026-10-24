@@ -25,10 +25,8 @@ async def upload_source_exam(
     school_or_province: str = Form(None),
     academic_year: str = Form(None),
     duration_minutes: int = Form(120),
-    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
-    consume_ai_quota(current_user, cost=1)
     exam_id = uuid.uuid4()
     filename = file.filename or "exam_document.pdf"
     file_bytes = await file.read()
@@ -71,11 +69,9 @@ async def batch_upload_source_exams(
     exam_level: str = Form("HSG_TINH"),
     academic_year: str = Form(None),
     school_or_province: str = Form(None),
-    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
     """Tiếp nhận nhiều tệp đề thi (.docx / .pdf), lưu trữ MinIO và dispatch Celery tasks ngầm."""
-    consume_ai_quota(current_user, cost=len(files))
     created_records = []
     
     for file in files:

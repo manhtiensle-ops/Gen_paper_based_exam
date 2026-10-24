@@ -72,6 +72,7 @@ def get_question(question_id: UUID, db: Session = Depends(get_db)):
 def update_question(
     question_id: UUID,
     payload: QuestionUpdatePayload,
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
     q = db.query(Question).filter(Question.id == question_id).first()
@@ -117,6 +118,7 @@ def update_question(
 def update_question_difficulty(
     question_id: UUID,
     payload: QuestionDifficultyUpdate,
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
     q = db.query(Question).filter(Question.id == question_id).first()
@@ -251,7 +253,11 @@ def toggle_verify_question(
     return q
 
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_question(question_id: UUID, db: Session = Depends(get_db)):
+def delete_question(
+    question_id: UUID,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
     q = db.query(Question).filter(Question.id == question_id).first()
     if not q:
         raise HTTPException(status_code=404, detail="Question not found")

@@ -283,10 +283,20 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           setItems(freshItems);
         }
       } else {
-        setAgentLog((prev) => [
-          ...prev,
-          { sender: "agent", text: "Xin lỗi, đã xảy ra lỗi khi điều chỉnh bố cục." },
-        ]);
+        if (res.status === 401 || res.status === 403) {
+          setAgentLog((prev) => [
+            ...prev,
+            {
+              sender: "agent",
+              text: "⚠️ Tính năng Trợ lý AI Layout Chat yêu cầu đăng nhập tài khoản. Vui lòng đăng nhập Google để nhận 100 lượt dùng miễn phí mỗi ngày!",
+            },
+          ]);
+        } else {
+          setAgentLog((prev) => [
+            ...prev,
+            { sender: "agent", text: "Xin lỗi, đã xảy ra lỗi khi điều chỉnh bố cục." },
+          ]);
+        }
       }
     } catch (e) {
       setAgentLog((prev) => [

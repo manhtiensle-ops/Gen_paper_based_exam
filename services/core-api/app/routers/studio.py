@@ -527,8 +527,11 @@ def get_exam_latex_preview(
 def run_layout_agent(
     exam_id: UUID,
     payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
+    """Trợ lý AI Layout Chat yêu cầu đăng nhập tài khoản (trừ quota AI)."""
+    consume_ai_quota(current_user, cost=1)
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Không tìm thấy đề thi")
