@@ -16,6 +16,9 @@ class SourceExamCreate(SourceExamBase):
 
 class SourceExamResponse(SourceExamBase):
     id: UUID
+    user_id: Optional[UUID] = None
+    scope: Optional[str] = "PRIVATE"
+    is_public: Optional[bool] = False
     original_file_key: str
     page_image_keys: List[str] = Field(default_factory=list)
     status: str
@@ -49,6 +52,9 @@ class QuestionBase(BaseModel):
 class QuestionResponse(QuestionBase):
     id: UUID
     source_exam_id: Optional[UUID] = None
+    user_id: Optional[UUID] = None
+    scope: Optional[str] = "PUBLIC"
+    is_public: Optional[bool] = True
     normalized_hash: str
     usage_count: int = 0
     is_verified: bool = False

@@ -3,6 +3,7 @@ import re
 import json
 import base64
 import hashlib
+import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
@@ -11,9 +12,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from sqlalchemy.orm import Session
 from openai import OpenAI
 
+from sqlalchemy import or_, and_
 from ..database import get_db
 from ..models import Question, User
-from ..services.quota_service import require_authenticated_user, consume_ai_quota
+from ..services.quota_service import require_authenticated_user, get_current_user_optional, consume_ai_quota
 from ..schemas import (
     QuestionResponse,
     PaginatedQuestionsResponse,
@@ -32,11 +34,42 @@ def list_questions(
     main_topic: Optional[str] = Query(None),
     difficulty: Optional[str] = Query(None),
     is_verified: Optional[bool] = Query(None),
+    scope: str = Query("ALL"),  # ALL, MINE, TENANT, SYSTEM
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     query = db.query(Question)
+
+    # Lọc theo Scope (Cá nhân, Đơn vị, Mẫu chuẩn Vinh Phát)
+    if not current_user:
+        # Khách vãng lai chỉ xem được câu hỏi Mẫu chuẩn công khai
+        query = query.filter(Question.is_public == True)
+    else:
+        scope_upper = scope.upper()
+        if scope_upper == "MINE":
+            # Chỉ câu hỏi do chính tài khoản này tạo / số hóa
+            query = query.filter(Question.user_id == current_user.id)
+        elif scope_upper == "TENANT":
+            # Câu hỏi thuộc đơn vị / trường học của giáo viên
+            query = query.filter(
+                Question.tenant_id == current_user.tenant_id,
+                Question.scope.in_(["TENANT", "PUBLIC"])
+            )
+        elif scope_upper == "SYSTEM":
+            # Kho chuẩn Vinh Phát
+            query = query.filter(Question.is_public == True, Question.user_id.is_(None))
+        else: # "ALL"
+            # Kết hợp: Của tôi + Của đơn vị + Kho chuẩn hệ thống
+            query = query.filter(
+                or_(
+                    Question.user_id == current_user.id,
+                    and_(Question.tenant_id == current_user.tenant_id, Question.scope == "TENANT"),
+                    Question.is_public == True
+                )
+            )
+
     if grade is not None:
         query = query.filter(Question.grade == grade)
     if section_type:
@@ -252,15 +285,49 @@ def toggle_verify_question(
     db.refresh(q)
     return q
 
-@router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_question(
+@router.post("/{question_id}/clone-to-vault", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
+def clone_question_to_my_vault(
     question_id: UUID,
     current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
-    q = db.query(Question).filter(Question.id == question_id).first()
-    if not q:
-        raise HTTPException(status_code=404, detail="Question not found")
-    db.delete(q)
+    """Sao chép một câu hỏi từ kho chung hoặc kho đơn vị về kho cá nhân của giáo viên."""
+    original = db.query(Question).filter(Question.id == question_id).first()
+    if not original:
+        raise HTTPException(status_code=404, detail="Không tìm thấy câu hỏi gốc")
+
+    cloned = Question(
+        id=uuid.uuid4(),
+        source_exam_id=original.source_exam_id,
+        original_question_number=original.original_question_number,
+        section_type=original.section_type,
+        structure_type=original.structure_type,
+        default_points=original.default_points,
+        content_latex=original.content_latex,
+        normalized_hash=f"{original.normalized_hash[:32]}_{uuid.uuid4().hex[:8]}",
+        sub_questions=original.sub_questions,
+        solution_latex=original.solution_latex,
+        final_answer=original.final_answer,
+        has_figure=original.has_figure,
+        figures_meta=original.figures_meta,
+        grade=original.grade,
+        main_topic=original.main_topic,
+        sub_topics=original.sub_topics,
+        solution_methods=original.solution_methods,
+        difficulty=original.difficulty,
+        user_difficulty=original.user_difficulty,
+        custom_tags=list(original.custom_tags or []) + ["bản_sao_cá_nhân"],
+        original_content_latex=original.content_latex,
+        semantic_summary=original.semantic_summary,
+        embedding=original.embedding,
+        is_verified=True,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        scope="PRIVATE",
+        is_public=False
+    )
+    db.add(cloned)
     db.commit()
+    db.refresh(cloned)
+    return cloned
     return None

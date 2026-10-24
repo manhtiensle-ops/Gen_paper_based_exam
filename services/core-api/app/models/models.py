@@ -42,6 +42,9 @@ class SourceExam(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = Column(String(255), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    scope = Column(String(20), default="PRIVATE")  # PRIVATE, TENANT, PUBLIC
+    is_public = Column(Boolean, default=False)
     exam_level = Column(String(100), default="HSG_TINH")
     grade = Column(Integer, nullable=False, default=9)
     school_or_province = Column(String(255), nullable=True)
@@ -89,6 +92,9 @@ class Question(Base):
     usage_count = Column(Integer, default=0)
     is_verified = Column(Boolean, default=False)
     tenant_id = Column(String(100), default="default_school", index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    scope = Column(String(20), default="PUBLIC", index=True)  # PRIVATE, TENANT, PUBLIC
+    is_public = Column(Boolean, default=True, index=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

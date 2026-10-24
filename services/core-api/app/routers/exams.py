@@ -1,6 +1,6 @@
 import os
 import uuid
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from sqlalchemy.orm import Session
 from celery import Celery
@@ -9,7 +9,8 @@ from ..database import get_db
 from ..models import SourceExam, User
 from ..schemas import SourceExamResponse
 from ..services.minio_client import upload_file_bytes
-from ..services.quota_service import require_authenticated_user, consume_ai_quota
+from ..services.quota_service import require_authenticated_user, get_current_user_optional, consume_ai_quota
+from sqlalchemy import or_, and_
 
 router = APIRouter(prefix="/api/exams", tags=["Source Exams"])
 
@@ -25,6 +26,7 @@ async def upload_source_exam(
     school_or_province: str = Form(None),
     academic_year: str = Form(None),
     duration_minutes: int = Form(120),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     exam_id = uuid.uuid4()
@@ -45,7 +47,10 @@ async def upload_source_exam(
         duration_minutes=duration_minutes,
         original_file_key=file_key,
         status="UPLOADED",
-        processing_logs=[{"timestamp": "created", "message": "Document uploaded successfully"}]
+        user_id=current_user.id if current_user else None,
+        scope="PRIVATE" if current_user else "PUBLIC",
+        is_public=False if current_user else True,
+        processing_logs=[{"step": "UPLOAD", "status": "COMPLETED", "message": f"Saved file to {file_key}"}]
     )
     db.add(exam_record)
     db.commit()
@@ -69,6 +74,7 @@ async def batch_upload_source_exams(
     exam_level: str = Form("HSG_TINH"),
     academic_year: str = Form(None),
     school_or_province: str = Form(None),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """Tiếp nhận nhiều tệp đề thi (.docx / .pdf), lưu trữ MinIO và dispatch Celery tasks ngầm."""
@@ -107,8 +113,11 @@ async def batch_upload_source_exams(
             academic_year=academic_year,
             duration_minutes=120,
             original_file_key=file_key,
+            user_id=current_user.id if current_user else None,
+            scope="PRIVATE" if current_user else "PUBLIC",
+            is_public=False if current_user else True,
             status="UPLOADED",
-            processing_logs=[{"timestamp": "created", "message": f"Tệp {filename} đã tải lên thành công qua Batch Pipeline"}]
+            processing_logs=[{"step": "BATCH_UPLOAD", "status": "COMPLETED", "message": f"Saved file to {file_key}"}]
         )
         db.add(exam_record)
         created_records.append(exam_record)
@@ -133,8 +142,30 @@ async def batch_upload_source_exams(
 
 
 @router.get("", response_model=List[SourceExamResponse])
-def list_source_exams(db: Session = Depends(get_db)):
-    return db.query(SourceExam).order_by(SourceExam.created_at.desc()).all()
+def list_source_exams(
+    scope: str = "ALL",
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    query = db.query(SourceExam)
+    if not current_user:
+        # GUEST chỉ xem đề thi mẫu công khai (nếu có)
+        query = query.filter(SourceExam.is_public == True)
+    else:
+        scope_upper = scope.upper()
+        if scope_upper == "MINE":
+            query = query.filter(SourceExam.user_id == current_user.id)
+        elif scope_upper == "SYSTEM":
+            query = query.filter(SourceExam.is_public == True)
+        else: # "ALL"
+            query = query.filter(
+                or_(
+                    SourceExam.user_id == current_user.id,
+                    SourceExam.is_public == True
+                )
+            )
+
+    return query.order_by(SourceExam.created_at.desc()).all()
 
 @router.get("/{exam_id}", response_model=SourceExamResponse)
 def get_source_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):

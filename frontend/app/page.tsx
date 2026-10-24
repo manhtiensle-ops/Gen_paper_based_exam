@@ -31,6 +31,7 @@ import {
   Scale,
   Sliders,
   X,
+  Copy,
   User as UserIcon
 } from "lucide-react";
 
@@ -52,7 +53,7 @@ export default function Dashboard() {
       .catch(() => setCurrentUser(null));
   }, []);
   
-  // Questions Bank State with Pagination
+  // Questions Bank State with Pagination & Scope
   const [questions, setQuestions] = useState<any[]>([]);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,6 +63,7 @@ export default function Dashboard() {
   const [filterTopic, setFilterTopic] = useState("");
   const [filterDifficulty, setFilterDifficulty] = useState("");
   const [filterSection, setFilterSection] = useState("");
+  const [filterScope, setFilterScope] = useState<"ALL" | "MINE" | "TENANT" | "SYSTEM">("ALL");
 
   // Source Exams State
   const [sourceExams, setSourceExams] = useState<any[]>([]);
@@ -232,15 +234,17 @@ export default function Dashboard() {
     }
   };
 
-  // Fetch Questions with Pagination support
-  const fetchQuestions = async (pageOverride?: number) => {
+  // Fetch Questions with Pagination & Scope support
+  const fetchQuestions = async (pageOverride?: number, scopeOverride?: string) => {
     setLoadingQuestions(true);
     try {
       const pageToFetch = pageOverride !== undefined ? pageOverride : currentPage;
+      const effectiveScope = scopeOverride !== undefined ? scopeOverride : filterScope;
       const params = new URLSearchParams();
       if (filterTopic) params.append("main_topic", filterTopic);
       if (filterDifficulty) params.append("difficulty", filterDifficulty);
       if (filterSection) params.append("section_type", filterSection);
+      if (effectiveScope) params.append("scope", effectiveScope);
       params.append("page", pageToFetch.toString());
       params.append("page_size", pageSize.toString());
 
@@ -266,10 +270,10 @@ export default function Dashboard() {
     }
   };
 
-  // Fetch Source Exams
+  // Fetch Source Exams with Scope (Chỉ xem đề của chính tài khoản)
   const fetchSourceExams = async () => {
     try {
-      const res = await fetch("/api/exams");
+      const res = await fetch("/api/exams?scope=MINE");
       if (res.ok) {
         const data = await res.json();
         setSourceExams(data);
@@ -363,10 +367,10 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    // Reset về trang 1 khi người dùng đổi bộ lọc
+    // Reset về trang 1 khi người dùng đổi bộ lọc hoặc scope
     setCurrentPage(1);
-    fetchQuestions(1);
-  }, [filterTopic, filterDifficulty, filterSection, pageSize]);
+    fetchQuestions(1, filterScope);
+  }, [filterTopic, filterDifficulty, filterSection, filterScope, pageSize]);
 
   // Quick Preset Selection Handler from Creative Empty State
   const handleSelectPresetFromEmptyState = async (keyword: string) => {
@@ -982,10 +986,64 @@ export default function Dashboard() {
       {activeTab === "questions" && (
         <div className="flex-1 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm space-y-6 overflow-y-auto">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
-            <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-              <BookOpen className="w-5 h-5 text-indigo-600" />
-              <span>Ngân Hàng Câu Hỏi HSG Toán ({totalQuestions || questions.length} câu)</span>
-            </h2>
+            <div className="space-y-2">
+              <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <BookOpen className="w-5 h-5 text-indigo-600" />
+                <span>Ngân Hàng Câu Hỏi HSG Toán ({totalQuestions || questions.length} câu)</span>
+              </h2>
+
+              {/* Scope Segmented Switch: Của tôi / Đơn vị / Mẫu Vinh Phát / Tất cả */}
+              <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/80 space-x-1">
+                <button
+                  type="button"
+                  onClick={() => setFilterScope("ALL")}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    filterScope === "ALL"
+                      ? "bg-white text-indigo-600 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Tất cả
+                </button>
+                {currentUser && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setFilterScope("MINE")}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                        filterScope === "MINE"
+                          ? "bg-white text-indigo-600 shadow-2xs"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      <span>⭐ Của tôi</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterScope("TENANT")}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                        filterScope === "TENANT"
+                          ? "bg-white text-indigo-600 shadow-2xs"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      <span>🏫 Đơn vị</span>
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setFilterScope("SYSTEM")}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                    filterScope === "SYSTEM"
+                      ? "bg-white text-indigo-600 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>📚 Mẫu chuẩn Vinh Phát</span>
+                </button>
+              </div>
+            </div>
 
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2">
@@ -1035,9 +1093,23 @@ export default function Dashboard() {
               <p className="text-sm">Đang tải câu hỏi từ ngân hàng...</p>
             </div>
           ) : questions.length === 0 ? (
-            <div className="py-20 text-center text-slate-400">
-              <AlertCircle className="w-10 h-10 mx-auto mb-2" />
-              <p className="text-sm">Chưa có câu hỏi nào khớp với bộ lọc.</p>
+            <div className="py-20 text-center text-slate-400 space-y-3">
+              <AlertCircle className="w-10 h-10 mx-auto text-slate-400" />
+              {filterScope === "MINE" ? (
+                <div>
+                  <p className="text-sm font-bold text-slate-700">Kho cá nhân của bạn hiện chưa có câu hỏi nào</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Hãy vào tab <strong>Số hóa tài liệu</strong> để tải lên đề thi Word/PDF riêng của bạn, hoặc bấm nút <strong>Sao chép</strong> trên các câu hỏi Mẫu Vinh Phát để lưu về kho cá nhân!
+                  </p>
+                </div>
+              ) : filterScope === "TENANT" ? (
+                <div>
+                  <p className="text-sm font-bold text-slate-700">Chưa có câu hỏi nào được chia sẻ trong đơn vị của bạn</p>
+                  <p className="text-xs text-slate-500 mt-1">Các câu hỏi do đồng nghiệp cùng trường chia sẻ sẽ xuất hiện ở đây.</p>
+                </div>
+              ) : (
+                <p className="text-sm">Chưa có câu hỏi nào khớp với bộ lọc.</p>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1082,7 +1154,30 @@ export default function Dashboard() {
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    {currentUser && (
+                    {/* Nút Sao chép về kho cá nhân nếu câu hỏi không phải của user */}
+                    {currentUser && q.user_id !== currentUser.id && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/questions/${q.id}/clone-to-vault`, { method: "POST" });
+                            if (res.ok) {
+                              alert("Đã sao chép câu hỏi về Kho cá nhân của bạn thành công!");
+                              fetchQuestions();
+                            }
+                          } catch (e) {
+                            alert("Không thể sao chép câu hỏi.");
+                          }
+                        }}
+                        className="text-xs font-semibold px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all flex items-center space-x-1 cursor-pointer"
+                        title="Sao chép câu này về kho cá nhân để chỉnh sửa riêng"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Sao chép</span>
+                      </button>
+                    )}
+
+                    {currentUser && (!q.user_id || q.user_id === currentUser.id) && (
                       <button
                         onClick={() => setEditingQuestion(q)}
                         className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-all flex items-center space-x-1 cursor-pointer"
