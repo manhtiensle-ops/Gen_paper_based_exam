@@ -12,6 +12,13 @@ export default function UserNavBadge() {
   const timeoutRef = useRef<any>(null);
 
   useEffect(() => {
+    // Nếu người dùng đã chủ động đăng xuất
+    const isLoggedOut = typeof window !== "undefined" && localStorage.getItem("hsg_logged_out") === "true";
+    if (isLoggedOut) {
+      setUserProfile(null);
+      return;
+    }
+
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -68,21 +75,22 @@ export default function UserNavBadge() {
 
   // Hàm chuyển hướng đến trang đăng nhập Cloudflare Access
   const handleLoginRedirect = () => {
+    try {
+      localStorage.removeItem("hsg_logged_out");
+    } catch (e) {}
     window.location.href = "https://chiuluon.cloudflareaccess.com/cdn-cgi/access/login/dethi.ttgdvinhphat.com";
   };
 
-  // Hàm đăng xuất an toàn: Xóa cookie ngầm trong nền rồi tự động chuyển thẳng về trang chủ
+  // Hàm đăng xuất: xóa sạch cookie, lưu cờ logged_out, xóa session và reload
   const handleLogout = async () => {
-    // 1. Dọn sạch storage và cookie phía client
     try {
       localStorage.clear();
       sessionStorage.clear();
+      localStorage.setItem("hsg_logged_out", "true");
       document.cookie = "CF_Authorization=; Path=/; Domain=.ttgdvinhphat.com; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
       document.cookie = "CF_Authorization=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
     } catch (e) {}
 
-    // 2. Gửi lệnh logout ngầm tới Cloudflare Access qua fetch (chế độ no-cors để không bị chặn)
-    // Người dùng sẽ KHÔNG bị chuyển đến trang Cloudflare thông báo hay báo lỗi xấu nữa
     try {
       await fetch("https://dethi.ttgdvinhphat.com/cdn-cgi/access/logout", {
         method: "GET",
@@ -91,7 +99,6 @@ export default function UserNavBadge() {
       });
     } catch (e) {}
 
-    // 3. Tự động điều hướng mượt mà về trang chủ dethi.ttgdvinhphat.com
     window.location.replace("https://dethi.ttgdvinhphat.com");
   };
 
@@ -103,31 +110,43 @@ export default function UserNavBadge() {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Nút Tài Khoản Chính (Hover / Click) */}
-        <button
-          type="button"
-          onClick={() => setDropdownOpen((prev) => !prev)}
-          className="flex items-center space-x-2.5 bg-slate-50 hover:bg-white px-3 py-1.5 rounded-2xl border border-slate-200/90 hover:border-indigo-300 shadow-2xs hover:shadow-xs transition-all cursor-pointer group text-left"
-          title="Tài khoản & Tùy chọn đăng nhập"
-        >
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 group-hover:from-indigo-700 group-hover:to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm transition-all border border-indigo-400/40 shrink-0">
-            {getInitials(userProfile?.full_name)}
-          </div>
-          <div className="hidden sm:block">
-            <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 leading-none transition-colors">
-              {userProfile?.full_name || userProfile?.email?.split("@")[0] || "Đang tải hồ sơ..."}
+        {userProfile ? (
+          /* Nút Tài Khoản Chính Khi Đã Đăng Nhập (Hover / Click) */
+          <button
+            type="button"
+            onClick={() => setDropdownOpen((prev) => !prev)}
+            className="flex items-center space-x-2.5 bg-slate-50 hover:bg-white px-3 py-1.5 rounded-2xl border border-slate-200/90 hover:border-indigo-300 shadow-2xs hover:shadow-xs transition-all cursor-pointer group text-left"
+            title="Tài khoản & Tùy chọn đăng nhập"
+          >
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 group-hover:from-indigo-700 group-hover:to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm transition-all border border-indigo-400/40 shrink-0">
+              {getInitials(userProfile?.full_name)}
             </div>
-            <div className="text-[10px] text-indigo-700 font-semibold leading-none mt-1 flex items-center space-x-1">
-              <span>{getTenantName(userProfile?.tenant_id)}</span>
-              <span>•</span>
-              <span className="text-amber-600 font-bold">{userProfile?.subscription_tier || "PRO"}</span>
+            <div className="hidden sm:block">
+              <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 leading-none transition-colors">
+                {userProfile?.full_name || userProfile?.email?.split("@")[0] || "Đang tải hồ sơ..."}
+              </div>
+              <div className="text-[10px] text-indigo-700 font-semibold leading-none mt-1 flex items-center space-x-1">
+                <span>{getTenantName(userProfile?.tenant_id)}</span>
+                <span>•</span>
+                <span className="text-amber-600 font-bold">{userProfile?.subscription_tier || "PRO"}</span>
+              </div>
             </div>
-          </div>
-          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
-        </button>
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
+          </button>
+        ) : (
+          /* Nút Đăng Nhập Khi Đã Đăng Xuất (Chế độ Khách / Guest) */
+          <button
+            type="button"
+            onClick={handleLoginRedirect}
+            className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>Đăng nhập</span>
+          </button>
+        )}
 
-        {/* Menu Dropdown Xuất Hiện Phía Dưới */}
-        {dropdownOpen && (
+        {/* Menu Dropdown Xuất Hiện Phía Dưới Khi Đã Đăng Nhập */}
+        {dropdownOpen && userProfile && (
           <div className="absolute right-0 top-full mt-2 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_15px_35px_-5px_rgba(15,23,42,0.18)] border border-slate-200/90 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
             {/* User Info Header inside menu */}
             <div className="px-4 py-2.5 border-b border-slate-100 mb-1">
@@ -170,7 +189,7 @@ export default function UserNavBadge() {
               >
                 <div className="flex items-center space-x-2.5">
                   <LogIn className="w-4 h-4 text-indigo-600 shrink-0" />
-                  <span>Đăng nhập / Đổi tài khoản</span>
+                  <span>Đổi tài khoản đăng nhập</span>
                 </div>
                 <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
               </button>

@@ -34,8 +34,10 @@ def get_current_user_profile(
     """
     effective_email = cf_access_email
     if not effective_email or effective_email == "":
-        # Header fallback cho môi trường local development
-        effective_email = "giaovien.vinhphat@gmail.com"
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Chưa đăng nhập. Vui lòng xác thực qua Cloudflare Access."
+        )
 
     user = db.query(User).filter(User.email == effective_email).first()
     if not user:
@@ -76,7 +78,9 @@ def update_user_profile(
     db: Session = Depends(get_db)
 ):
     """Cập nhật thông tin profile của giáo viên."""
-    effective_email = cf_access_email or payload.email or "giaovien.vinhphat@gmail.com"
+    effective_email = cf_access_email or payload.email
+    if not effective_email:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Chưa xác thực người dùng")
     user = db.query(User).filter(User.email == effective_email).first()
     if not user:
         # Nếu chưa có thì khởi tạo user với email tương ứng
@@ -120,7 +124,9 @@ def switch_tenant(
     db: Session = Depends(get_db)
 ):
     """Cho phép giáo viên / nhà trường chuyển đổi không gian làm việc (Tenant)."""
-    effective_email = cf_access_email or "giaovien.vinhphat@gmail.com"
+    effective_email = cf_access_email
+    if not effective_email:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Chưa xác thực người dùng")
     user = db.query(User).filter(User.email == effective_email).first()
     if not user:
         raise HTTPException(404, "Không tìm thấy người dùng")

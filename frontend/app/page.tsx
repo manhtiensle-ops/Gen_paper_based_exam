@@ -99,6 +99,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    // Nếu người dùng đã đăng xuất: Xóa sạch dữ liệu bài thi cũ trên view
+    if (localStorage.getItem("hsg_logged_out") === "true") {
+      setGeneratedExam(null);
+      return;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const urlTab = urlParams.get("tab") as any;
     const urlExamId = urlParams.get("exam_id");
