@@ -71,9 +71,15 @@ export default function UserNavBadge() {
     window.location.href = "https://chiuluon.cloudflareaccess.com/cdn-cgi/access/login/dethi.ttgdvinhphat.com";
   };
 
-  // Hàm đăng xuất Cloudflare Access
+  // Hàm đăng xuất Cloudflare Access an toàn và tự động quay về trang chủ
   const handleLogout = () => {
-    window.location.href = "https://chiuluon.cloudflareaccess.com/cdn-cgi/access/logout";
+    // 1. Xóa cookie CF_Authorization ở domain hiện tại (nếu có)
+    document.cookie = "CF_Authorization=; Path=/; Domain=.ttgdvinhphat.com; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    document.cookie = "CF_Authorization=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    
+    // 2. Gọi endpoint logout trên chính domain dethi.ttgdvinhphat.com của ứng dụng
+    // Endpoint chuẩn của Cloudflare Access trên domain ứng dụng là /cdn-cgi/access/logout
+    window.location.href = "https://dethi.ttgdvinhphat.com/cdn-cgi/access/logout";
   };
 
   return (
