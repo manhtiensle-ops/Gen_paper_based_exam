@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 from celery import Celery
 
 from ..database import get_db
-from ..models import SourceExam
+from ..models import SourceExam, User
 from ..schemas import SourceExamResponse
 from ..services.minio_client import upload_file_bytes
+from ..services.quota_service import require_authenticated_user, consume_ai_quota
 
 router = APIRouter(prefix="/api/exams", tags=["Source Exams"])
 
@@ -17,15 +18,17 @@ celery_client = Celery("hsg_worker", broker=broker_url)
 
 @router.post("/upload", response_model=SourceExamResponse, status_code=status.HTTP_201_CREATED)
 async def upload_source_exam(
+    file: UploadFile = File(...),
     title: str = Form(...),
     exam_level: str = Form("HSG_TINH"),
     grade: int = Form(9),
     school_or_province: str = Form(None),
     academic_year: str = Form(None),
     duration_minutes: int = Form(120),
-    file: UploadFile = File(...),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
+    consume_ai_quota(current_user, cost=1)
     exam_id = uuid.uuid4()
     filename = file.filename or "exam_document.pdf"
     file_bytes = await file.read()
@@ -68,9 +71,11 @@ async def batch_upload_source_exams(
     exam_level: str = Form("HSG_TINH"),
     academic_year: str = Form(None),
     school_or_province: str = Form(None),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
     """Tiếp nhận nhiều tệp đề thi (.docx / .pdf), lưu trữ MinIO và dispatch Celery tasks ngầm."""
+    consume_ai_quota(current_user, cost=len(files))
     created_records = []
     
     for file in files:

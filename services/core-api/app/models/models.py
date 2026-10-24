@@ -15,9 +15,11 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     full_name = Column(String(150), nullable=True)
     avatar_url = Column(Text, nullable=True)
-    role = Column(String(50), default="TEACHER")  # GUEST, TEACHER, SCHOOL_ADMIN, ADMIN
-    subscription_tier = Column(String(50), default="FREE")  # FREE, PRO, SCHOOL
+    role = Column(String(50), default="NORMAL")  # GUEST, NORMAL, VIP, PRO, ADMIN
+    subscription_tier = Column(String(50), default="NORMAL")  # NORMAL, VIP, PRO
     tenant_id = Column(String(100), default="default_school")  # Mã trường / đơn vị
+    vip_expires_at = Column(DateTime(timezone=True), nullable=True)
+    pro_expires_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -124,6 +126,7 @@ class GeneratedExam(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = Column(String(255), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     blueprint_id = Column(UUID(as_uuid=True), ForeignKey("exam_blueprints.id", ondelete="SET NULL"), nullable=True)
     slots_state = Column(JSONB, nullable=False)
     header_config = Column(JSONB, nullable=False, default=dict)

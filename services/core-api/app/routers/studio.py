@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from openai import OpenAI
 
 from app.database import get_db
-from app.models.models import GeneratedExam, ExamItem, Question
+from app.models.models import GeneratedExam, ExamItem, Question, User
+from app.services.quota_service import require_authenticated_user, consume_ai_quota
 from app.schemas.schemas import (
     ExamItemResponse,
     UpdateExamHeaderRequest,
@@ -179,7 +180,13 @@ def update_exam_item(item_id: UUID, payload: Dict[str, Any] = Body(...), db: Ses
 # ==================== AI: AUTO-SPLIT RUBRIC 0.25 QUANTA ====================
 
 @router.post("/items/{item_id}/rubric/auto-split", response_model=ExamItemResponse)
-def auto_split_rubric(item_id: UUID, req: AutoSplitRubricRequest, db: Session = Depends(get_db)):
+def auto_split_rubric(
+    item_id: UUID,
+    req: AutoSplitRubricRequest,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    consume_ai_quota(current_user, cost=1)
     item = db.query(ExamItem).filter(ExamItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Không tìm thấy câu hỏi")
@@ -270,7 +277,13 @@ Trả về DUY NHẤT một JSON hợp lệ tuân thủ cấu trúc sau:
 # ==================== AI: VARIANT GENERATION (REVERSE CONSTRUCT) ====================
 
 @router.post("/items/{item_id}/variant", response_model=ExamItemResponse)
-def generate_clean_variant(item_id: UUID, req: GenerateVariantRequest, db: Session = Depends(get_db)):
+def generate_clean_variant(
+    item_id: UUID,
+    req: GenerateVariantRequest,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    consume_ai_quota(current_user, cost=1)
     item = db.query(ExamItem).filter(ExamItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Không tìm thấy câu hỏi")
@@ -855,11 +868,13 @@ def update_template_document(
 @router.post("/exams/{exam_id}/ai-generate-grading-steps")
 def ai_generate_grading_steps(
     exam_id: UUID,
-    body: Dict[str, Any] = Body(...),
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
+    consume_ai_quota(current_user, cost=1)
     """Gọi Gemini Flash sinh grading_steps cho 1 câu tự luận."""
-    item_id = body.get("item_id")
+    item_id = payload.get("item_id")
     if not item_id:
         raise HTTPException(400, "Thiếu item_id")
 

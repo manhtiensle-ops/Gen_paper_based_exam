@@ -18,6 +18,8 @@ from ..schemas import (
 )
 from ..services.hybrid_search import search_candidate_questions
 from ..services.minio_client import get_minio_client
+from ..services.quota_service import get_current_user_optional, require_authenticated_user
+from ..models.models import ExamFolder, User
 
 router = APIRouter(prefix="/api/generator", tags=["Exam Generator & Blueprints"])
 
@@ -138,7 +140,11 @@ def delete_blueprint(blueprint_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # Algorithmic Exam Generation (Zero-hallucination via SQL + pgvector)
 @router.post("/generate", response_model=GeneratedExamResponse)
-def generate_exam(payload: GenerateExamRequest, db: Session = Depends(get_db)):
+def generate_exam(
+    payload: GenerateExamRequest,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
     bp = db.query(ExamBlueprint).filter(ExamBlueprint.id == payload.blueprint_id).first()
     if not bp:
         raise HTTPException(status_code=404, detail="Blueprint not found")
@@ -210,6 +216,8 @@ def generate_exam(payload: GenerateExamRequest, db: Session = Depends(get_db)):
         title=payload.title,
         blueprint_id=bp.id,
         folder_id=payload.folder_id,
+        user_id=current_user.id,
+        tenant_id=current_user.tenant_id,
         slots_state=selected_slots
     )
     db.add(generated_exam)
@@ -249,10 +257,19 @@ def list_generated_exams(
     tenant_id: Optional[str] = None,
     folder_id: Optional[str] = None,
     limit: int = 50,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    """Lấy danh sách các đề thi đã tạo phục vụ thanh thư mục quản lý đề."""
+    """Lấy danh sách các đề thi đã tạo. Nếu là GUEST (chưa đăng nhập) -> trả về mảng rỗng [] bảo mật."""
+    if not current_user:
+        return []
+
     query = db.query(GeneratedExam)
+    # Lọc nghiêm ngặt theo chủ sở hữu (user_id) hoặc tenant
+    query = query.filter(
+        (GeneratedExam.user_id == current_user.id) | 
+        ((GeneratedExam.user_id.is_(None)) & (GeneratedExam.tenant_id == current_user.tenant_id))
+    )
     if tenant_id:
         query = query.filter(GeneratedExam.tenant_id == tenant_id)
     if folder_id:
@@ -278,11 +295,18 @@ def list_generated_exams(
 @router.get("/folders", status_code=status.HTTP_200_OK)
 def list_exam_folders(
     tenant_id: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    """Danh sách các thư mục đề thi của giáo viên / trường."""
-    from ..models.models import ExamFolder
+    """Danh sách các thư mục đề thi. Nếu là GUEST (chưa đăng nhập) -> trả về [] bảo mật."""
+    if not current_user:
+        return []
+
     query = db.query(ExamFolder)
+    query = query.filter(
+        (ExamFolder.user_id == current_user.id) |
+        ((ExamFolder.user_id.is_(None)) & (ExamFolder.tenant_id == current_user.tenant_id))
+    )
     if tenant_id:
         query = query.filter(ExamFolder.tenant_id == tenant_id)
     folders = query.order_by(ExamFolder.created_at.asc()).all()
@@ -301,16 +325,17 @@ def list_exam_folders(
 @router.post("/folders", status_code=status.HTTP_201_CREATED)
 def create_exam_folder(
     payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
     """Tạo thư mục mới để phân loại đề thi."""
-    from ..models.models import ExamFolder
     name = payload.get("name", "Thư mục mới").strip()
-    tenant_id = payload.get("tenant_id", "default_school")
+    tenant_id = current_user.tenant_id or payload.get("tenant_id", "default_school")
     parent_id = payload.get("parent_id")
     folder = ExamFolder(
         id=uuid.uuid4(),
         name=name,
+        user_id=current_user.id,
         tenant_id=tenant_id,
         parent_id=uuid.UUID(parent_id) if parent_id else None,
         color=payload.get("color", "#4f46e5")

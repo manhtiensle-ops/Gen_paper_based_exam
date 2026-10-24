@@ -6,6 +6,11 @@ import uuid
 
 from ..database import get_db
 from ..models.models import User
+from ..services.quota_service import (
+    require_authenticated_user,
+    get_user_ai_quota_info,
+    consume_ai_quota,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication & Multi-tenancy"])
 
@@ -17,44 +22,20 @@ class UserProfileResponse(BaseModel):
     role: str
     subscription_tier: str
     tenant_id: str
+    daily_quota: int
+    used_today: int
+    remaining_quota: int
+    is_unlimited: bool
 
 class SwitchTenantRequest(BaseModel):
     tenant_id: str
 
 @router.get("/me", response_model=UserProfileResponse)
 def get_current_user_profile(
-    request: Request,
-    cf_access_email: Optional[str] = Header(None, alias="cf-access-authenticated-user-email"),
-    db: Session = Depends(get_db)
+    user: User = Depends(require_authenticated_user)
 ):
-    """
-    Xác thực định danh người dùng:
-    - Nếu qua Cloudflare Zero Trust: Đọc email từ header cf-access-authenticated-user-email
-    - Nếu chạy nội bộ / demo: Mặc định lấy tài khoản giáo viên demo
-    """
-    effective_email = cf_access_email
-    if not effective_email or effective_email == "":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Chưa đăng nhập. Vui lòng xác thực qua Cloudflare Access."
-        )
-
-    user = db.query(User).filter(User.email == effective_email).first()
-    if not user:
-        # Tự động tạo người dùng mới khi đăng nhập lần đầu
-        full_name = effective_email.split("@")[0].replace(".", " ").title()
-        user = User(
-            id=uuid.uuid4(),
-            email=effective_email,
-            full_name=full_name,
-            role="TEACHER",
-            subscription_tier="PRO",
-            tenant_id="thcs_le_quy_don"
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
+    """Lấy thông tin tài khoản hiện tại cùng định mức Quota AI hôm nay."""
+    quota = get_user_ai_quota_info(user)
     return UserProfileResponse(
         id=str(user.id),
         email=user.email,
@@ -62,7 +43,11 @@ def get_current_user_profile(
         avatar_url=user.avatar_url,
         role=user.role,
         subscription_tier=user.subscription_tier,
-        tenant_id=user.tenant_id
+        tenant_id=user.tenant_id,
+        daily_quota=quota["daily_quota"],
+        used_today=quota["used_today"],
+        remaining_quota=quota["remaining"],
+        is_unlimited=quota["is_unlimited"]
     )
 
 class UpdateProfileRequest(BaseModel):

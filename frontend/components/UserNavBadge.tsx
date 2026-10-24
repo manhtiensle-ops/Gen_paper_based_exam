@@ -73,12 +73,13 @@ export default function UserNavBadge() {
     }
   };
 
-  // Hàm chuyển hướng đến trang đăng nhập Cloudflare Access
+  // Hàm chuyển hướng đến trang đăng nhập chuẩn của Cloudflare Access
   const handleLoginRedirect = () => {
     try {
       localStorage.removeItem("hsg_logged_out");
     } catch (e) {}
-    window.location.href = "https://chiuluon.cloudflareaccess.com/cdn-cgi/access/login/dethi.ttgdvinhphat.com";
+    // Endpoint xác thực chuẩn của ứng dụng trên domain
+    window.location.href = "https://dethi.ttgdvinhphat.com/cdn-cgi/access/login";
   };
 
   // Hàm đăng xuất: xóa sạch cookie, lưu cờ logged_out, xóa session và reload
@@ -128,7 +129,14 @@ export default function UserNavBadge() {
               <div className="text-[10px] text-indigo-700 font-semibold leading-none mt-1 flex items-center space-x-1">
                 <span>{getTenantName(userProfile?.tenant_id)}</span>
                 <span>•</span>
-                <span className="text-amber-600 font-bold">{userProfile?.subscription_tier || "PRO"}</span>
+                <span className={`font-bold ${userProfile?.role === "PRO" ? "text-amber-600" : userProfile?.role === "VIP" ? "text-purple-600" : "text-emerald-600"}`}>
+                  {userProfile?.role || "NORMAL"}
+                </span>
+                {!userProfile?.is_unlimited && (
+                  <span className="text-slate-400 font-normal">
+                    ({userProfile?.remaining_quota ?? 100} lượt)
+                  </span>
+                )}
               </div>
             </div>
             <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
@@ -157,11 +165,11 @@ export default function UserNavBadge() {
                 {userProfile?.email}
               </p>
               <div className="flex items-center space-x-1.5 mt-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300/60">
-                  ★ Bản quyền {userProfile?.subscription_tier || "PRO"}
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border ${userProfile?.role === "PRO" ? "bg-amber-100 text-amber-800 border-amber-300/60" : userProfile?.role === "VIP" ? "bg-purple-100 text-purple-800 border-purple-300/60" : "bg-emerald-100 text-emerald-800 border-emerald-300/60"}`}>
+                  ★ Gói {userProfile?.role || "NORMAL"}
                 </span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-                  {userProfile?.role || "TEACHER"}
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                  {userProfile?.is_unlimited ? "AI Vô hạn" : `AI: ${userProfile?.remaining_quota ?? 100}/${userProfile?.daily_quota ?? 100}`}
                 </span>
               </div>
             </div>

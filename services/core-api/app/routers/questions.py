@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session
 from openai import OpenAI
 
 from ..database import get_db
-from ..models import Question
+from ..models import Question, User
+from ..services.quota_service import require_authenticated_user, consume_ai_quota
 from ..schemas import (
     QuestionResponse,
     QuestionVerifyToggle,
@@ -124,8 +125,10 @@ def update_question_difficulty(
 async def ocr_solution_for_question(
     question_id: UUID,
     file: UploadFile = File(...),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
+    consume_ai_quota(current_user, cost=1)
     """
     Upload an image/PDF containing a solution.
     Invokes OmniRoute Flash (antigravity/gemini-3.8-flash-tiered) to OCR into LaTeX and attaches it to the question.

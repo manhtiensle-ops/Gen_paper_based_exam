@@ -506,6 +506,10 @@ export default function Dashboard() {
           window.history.replaceState(null, "", url.toString());
         }
       } else {
+        if (res.status === 401) {
+          alert("Tính năng tổ hợp và lưu trữ đề thi yêu cầu bạn đăng nhập tài khoản Google. Vui lòng nhấn nút 'Đăng nhập' ở góc trên bên phải.");
+          return;
+        }
         let errDetail = `Lỗi máy chủ (${res.status})`;
         try {
           const errJson = await res.json();
