@@ -66,6 +66,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     ports:
       - "${CORE_API_PORT:-8000}:8000"
     volumes:
