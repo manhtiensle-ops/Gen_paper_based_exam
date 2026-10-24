@@ -71,17 +71,28 @@ export default function UserNavBadge() {
     window.location.href = "https://chiuluon.cloudflareaccess.com/cdn-cgi/access/login/dethi.ttgdvinhphat.com";
   };
 
-  // Hàm đăng xuất: xóa sạch cookie xác thực và điều hướng trở lại màn hình đăng nhập / trang chủ
-  const handleLogout = () => {
-    // 1. Dọn dẹp cookie token cục bộ trên trình duyệt
-    document.cookie = "CF_Authorization=; Path=/; Domain=.ttgdvinhphat.com; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-    document.cookie = "CF_Authorization=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    // 2. Chuyển hướng qua endpoint đăng xuất của Cloudflare Access
-    // Kèm tham số returnUrl=https://dethi.ttgdvinhphat.com để sau khi hủy phiên Cloudflare sẽ điều hướng thẳng về lại web
-    window.location.href = "https://dethi.ttgdvinhphat.com/cdn-cgi/access/logout?returnUrl=https%3A%2F%2Fdethi.ttgdvinhphat.com";
+  // Hàm đăng xuất an toàn: Xóa cookie ngầm trong nền rồi tự động chuyển thẳng về trang chủ
+  const handleLogout = async () => {
+    // 1. Dọn sạch storage và cookie phía client
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      document.cookie = "CF_Authorization=; Path=/; Domain=.ttgdvinhphat.com; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      document.cookie = "CF_Authorization=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    } catch (e) {}
+
+    // 2. Gửi lệnh logout ngầm tới Cloudflare Access qua fetch (chế độ no-cors để không bị chặn)
+    // Người dùng sẽ KHÔNG bị chuyển đến trang Cloudflare thông báo hay báo lỗi xấu nữa
+    try {
+      await fetch("https://dethi.ttgdvinhphat.com/cdn-cgi/access/logout", {
+        method: "GET",
+        mode: "no-cors",
+        credentials: "include",
+      });
+    } catch (e) {}
+
+    // 3. Tự động điều hướng mượt mà về trang chủ dethi.ttgdvinhphat.com
+    window.location.replace("https://dethi.ttgdvinhphat.com");
   };
 
   return (
