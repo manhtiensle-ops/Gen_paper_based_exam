@@ -58,9 +58,9 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
   ];
 
   return (
-    <div className="h-full flex flex-col justify-between p-6 sm:p-8 space-y-8 animate-in fade-in duration-300">
+    <div className="w-full flex flex-col justify-start p-5 sm:p-7 space-y-6 animate-in fade-in duration-300">
       {/* 1. Header Banner & SVG Mathematical Artwork */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 text-white p-6 sm:p-8 shadow-xl border border-slate-800">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 text-white p-5 sm:p-6 shadow-xl border border-slate-800 shrink-0">
         {/* Background Decorative SVG Math Grid */}
         <div className="absolute inset-0 opacity-15 pointer-events-none">
           <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
@@ -83,7 +83,7 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
         <div className="relative z-10 max-w-xl space-y-3">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold tracking-wide">
             <Sparkles className="w-3.5 h-3.5 text-indigo-300 animate-spin" />
-            <span>GIÁO DỤC VĨNH PHÁT • DẠY HỌC & LUYỆN THI TOÁN HSG</span>
+            <span>GIÁO DỤC VINH PHÁT • DẠY HỌC & LUYỆN THI TOÁN HSG</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
             Tổ Hợp Đề Thi Toán HSG THCS Chuẩn Quốc Gia
@@ -112,7 +112,7 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
           {PRESETS.map((preset) => (
             <div
               key={preset.id}
-              className="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_1px_2px_rgba(15,23,42,0.06)] hover:shadow-[0_10px_25px_-5px_rgba(79,70,229,0.12)] hover:border-indigo-300 transition-all flex flex-col justify-between space-y-4"
+              className="group bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_1px_2px_rgba(15,23,42,0.06)] hover:shadow-[0_10px_25px_-5px_rgba(79,70,229,0.12)] hover:border-indigo-300 transition-all flex flex-col justify-between space-y-3.5"
             >
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -171,7 +171,7 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
       </div>
 
       {/* 3. Footer Guidance Notice */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs text-slate-500">
+      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs text-slate-500 shrink-0">
         <div className="flex items-center space-x-2">
           <Layers className="w-4 h-4 text-indigo-500 shrink-0" />
           <span>

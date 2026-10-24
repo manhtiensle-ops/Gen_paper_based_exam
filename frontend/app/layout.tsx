@@ -126,17 +126,17 @@ export default function RootLayout({
           </div>
         </header>
 
-        <main className="flex-1 w-full mx-auto px-4 sm:px-6 py-4 overflow-x-hidden">
+        <main className="flex-1 w-full mx-auto px-4 sm:px-6 py-4">
           {children}
         </main>
 
-        <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500">
-          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+        <footer className="bg-white border-t border-slate-200 py-3 text-xs text-slate-500 shrink-0">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
             <div>
               <p className="font-bold text-slate-800">Giáo Dục Vinh Phát — Dạy Học & Luyện Thi Toán HSG</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">Trung tâm Dạy học Vinh Phát • Khảo thí & Tổ hợp đề thi học sinh giỏi Toán THCS • Barem điểm chuẩn Sở</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Trung tâm Dạy học Vinh Phát • Khảo thí & Tổ hợp đề thi học sinh giỏi Toán THCS • Barem điểm chuẩn Sở</p>
             </div>
-            <div className="flex items-center space-x-4 text-[11px] font-semibold text-indigo-600">
+            <div className="flex items-center space-x-4 text-[10px] font-semibold text-indigo-600">
               <a href="#tinh-nang" className="hover:underline">Tính năng</a>
               <a href="#ma-tran" className="hover:underline">Khung ma trận</a>
               <a href="https://dethi.ttgdvinhphat.com/sitemap.xml" target="_blank" rel="noopener noreferrer" className="hover:underline">Sitemap</a>

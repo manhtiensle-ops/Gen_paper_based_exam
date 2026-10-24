@@ -647,7 +647,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Navigation Tabs (Segmented Sliding Bar) */}
       <div className="flex bg-slate-200/60 p-1.5 rounded-2xl border border-slate-200/80 shadow-2xs space-x-1.5 overflow-x-auto">
         <button
@@ -716,7 +716,7 @@ export default function Dashboard() {
 
       {/* TAB 1: EXAM GENERATOR & THREE-COLUMN FLUID WORKSPACE */}
       {activeTab === "generator" && (
-        <div className="flex bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden h-[calc(100vh-140px)] min-h-[660px]">
+        <div className="flex bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden min-h-[640px]">
           {/* CỘT 1: LEFT EXAM EXPLORER RAIL */}
           <ExamWorkspaceRail
             exams={savedExamsList}
@@ -737,8 +737,8 @@ export default function Dashboard() {
             onToggleCollapse={() => setIsFolderRailCollapsed(!isFolderRailCollapsed)}
           />
 
-          {/* CỘT 2: CẤU HÌNH MA TRẬN & THAM SỐ (360px - Cuộn độc lập) */}
-          <div className="w-80 sm:w-96 border-r border-slate-200/80 p-5 overflow-y-auto space-y-5 shrink-0 bg-slate-50/40">
+          {/* CỘT 2: CẤU HÌNH MA TRẬN & THAM SỐ (360px) */}
+          <div className="w-80 sm:w-96 border-r border-slate-200/80 p-5 space-y-5 shrink-0 bg-slate-50/40">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center space-x-2">
                 <Layers className="w-4 h-4 text-indigo-600" />
@@ -867,8 +867,8 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* CỘT 3: CANVAS XEM TRƯỚC VÀ DUYỆT ĐỀ THI (Flex-1, Cuộn dọc mượt mà, CHỐNG TRÀN NGANG) */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 bg-slate-100/50 flex flex-col items-center">
+          {/* CỘT 3: CANVAS XEM TRƯỚC VÀ DUYỆT ĐỀ THI (Flex-1, Cuộn dọc tự nhiên, CHỐNG TRÀN NGANG) */}
+          <div className="flex-1 overflow-x-hidden p-5 sm:p-7 bg-slate-100/50 flex flex-col items-center">
             {generatedExam ? (
               <div className="w-full max-w-3xl bg-white p-7 sm:p-9 rounded-2xl border border-slate-200/90 shadow-sm space-y-7">
                 <div className="text-center border-b border-slate-200 pb-5 space-y-1">
@@ -940,7 +940,7 @@ export default function Dashboard() {
 
       {/* TAB 2: QUESTIONS BANK */}
       {activeTab === "questions" && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+        <div className="flex-1 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm space-y-6 overflow-y-auto">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
               <BookOpen className="w-5 h-5 text-indigo-600" />
@@ -1281,7 +1281,7 @@ export default function Dashboard() {
 
       {/* TAB 4: REVIEW QUEUE */}
       {activeTab === "review" && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm space-y-6">
           <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
             <ShieldCheck className="w-5 h-5 text-emerald-600" />
             <span>Hàng Đợi Kiểm Duyệt Câu Hỏi Mới Ingest</span>

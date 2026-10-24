@@ -99,7 +99,7 @@ export default function ExamWorkspaceRail({
   }
 
   return (
-    <div className="w-64 sm:w-72 bg-white border-r border-slate-200/80 flex flex-col h-full shrink-0 select-none transition-all">
+    <div className="w-64 sm:w-72 bg-white border-r border-slate-200/80 flex flex-col shrink-0 select-none transition-all">
       {/* 1. Header Toolbar */}
       <div className="h-12 border-b border-slate-100 px-4 flex items-center justify-between bg-slate-50/50">
         <div className="flex items-center space-x-2">
