@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ProfileModal from "@/components/ProfileModal";
+import { User, LogIn, LogOut, Settings, Shield, ChevronDown, Sparkles, ExternalLink } from "lucide-react";
 
 export default function UserNavBadge() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<any>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -15,6 +19,28 @@ export default function UserNavBadge() {
       })
       .catch((err) => console.error("Fetch profile error:", err));
   }, []);
+
+  // Đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setDropdownOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setDropdownOpen(false);
+    }, 250);
+  };
 
   const getInitials = (name: string) => {
     if (!name) return "GV";
@@ -40,28 +66,113 @@ export default function UserNavBadge() {
     }
   };
 
+  // Hàm chuyển hướng đến trang đăng nhập Cloudflare Access
+  const handleLoginRedirect = () => {
+    window.location.href = "https://chiuluon.cloudflareaccess.com/cdn-cgi/access/login/dethi.ttgdvinhphat.com";
+  };
+
+  // Hàm đăng xuất Cloudflare Access
+  const handleLogout = () => {
+    window.location.href = "https://chiuluon.cloudflareaccess.com/cdn-cgi/access/logout";
+  };
+
   return (
     <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="flex items-center space-x-2.5 bg-slate-50 hover:bg-white px-3 py-1.5 rounded-2xl border border-slate-200/90 hover:border-indigo-300 shadow-2xs hover:shadow-xs transition-all cursor-pointer group text-left"
-        title="Nhấn để xem và chỉnh sửa Hồ sơ cá nhân"
+      <div
+        ref={dropdownRef}
+        className="relative"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 group-hover:from-indigo-700 group-hover:to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm transition-all border border-indigo-400/40">
-          {getInitials(userProfile?.full_name)}
-        </div>
-        <div>
-          <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 leading-none transition-colors">
-            {userProfile?.full_name || userProfile?.email?.split("@")[0] || "Đang tải hồ sơ..."}
+        {/* Nút Tài Khoản Chính (Hover / Click) */}
+        <button
+          type="button"
+          onClick={() => setDropdownOpen((prev) => !prev)}
+          className="flex items-center space-x-2.5 bg-slate-50 hover:bg-white px-3 py-1.5 rounded-2xl border border-slate-200/90 hover:border-indigo-300 shadow-2xs hover:shadow-xs transition-all cursor-pointer group text-left"
+          title="Tài khoản & Tùy chọn đăng nhập"
+        >
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 group-hover:from-indigo-700 group-hover:to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm transition-all border border-indigo-400/40 shrink-0">
+            {getInitials(userProfile?.full_name)}
           </div>
-          <div className="text-[10px] text-indigo-700 font-semibold leading-none mt-1 flex items-center space-x-1">
-            <span>{getTenantName(userProfile?.tenant_id)}</span>
-            <span>•</span>
-            <span className="text-amber-600 font-bold">{userProfile?.subscription_tier || "PRO"}</span>
+          <div className="hidden sm:block">
+            <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 leading-none transition-colors">
+              {userProfile?.full_name || userProfile?.email?.split("@")[0] || "Đang tải hồ sơ..."}
+            </div>
+            <div className="text-[10px] text-indigo-700 font-semibold leading-none mt-1 flex items-center space-x-1">
+              <span>{getTenantName(userProfile?.tenant_id)}</span>
+              <span>•</span>
+              <span className="text-amber-600 font-bold">{userProfile?.subscription_tier || "PRO"}</span>
+            </div>
           </div>
-        </div>
-      </button>
+          <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
+        </button>
 
+        {/* Menu Dropdown Xuất Hiện Phía Dưới */}
+        {dropdownOpen && (
+          <div className="absolute right-0 top-full mt-2 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_15px_35px_-5px_rgba(15,23,42,0.18)] border border-slate-200/90 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+            {/* User Info Header inside menu */}
+            <div className="px-4 py-2.5 border-b border-slate-100 mb-1">
+              <p className="text-xs font-bold text-slate-900 truncate">
+                {userProfile?.full_name || "Thầy/Cô Giáo"}
+              </p>
+              <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                {userProfile?.email}
+              </p>
+              <div className="flex items-center space-x-1.5 mt-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300/60">
+                  ★ Bản quyền {userProfile?.subscription_tier || "PRO"}
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+                  {userProfile?.role || "TEACHER"}
+                </span>
+              </div>
+            </div>
+
+            {/* Menu Actions */}
+            <div className="space-y-0.5 px-1.5">
+              {/* Nút Xem & Sửa Hồ Sơ */}
+              <button
+                type="button"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  setIsOpen(true);
+                }}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-indigo-700 hover:bg-indigo-50/70 flex items-center space-x-2.5 transition-colors cursor-pointer text-left"
+              >
+                <Settings className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span>Chỉnh sửa hồ sơ cá nhân</span>
+              </button>
+
+              {/* Nút Đăng nhập / Chuyển tài khoản Google */}
+              <button
+                type="button"
+                onClick={handleLoginRedirect}
+                className="w-full px-3 py-2 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-50 flex items-center justify-between transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center space-x-2.5">
+                  <LogIn className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span>Đăng nhập / Đổi tài khoản</span>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+              </button>
+
+              <div className="my-1 border-t border-slate-100" />
+
+              {/* Nút Đăng xuất */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center space-x-2.5 transition-colors cursor-pointer text-left"
+              >
+                <LogOut className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>Đăng xuất khỏi thiết bị</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Modal Profile */}
       {userProfile && (
         <ProfileModal
           isOpen={isOpen}
