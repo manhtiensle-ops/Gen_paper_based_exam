@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, ShieldCheck, Sparkles, CheckCircle2, Lock, ArrowRight } from "lucide-react";
 
 interface LoginSlideOverModalProps {
@@ -10,6 +11,11 @@ interface LoginSlideOverModalProps {
 
 export default function LoginSlideOverModal({ isOpen, onClose }: LoginSlideOverModalProps) {
   const [animating, setAnimating] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -20,9 +26,12 @@ export default function LoginSlideOverModal({ isOpen, onClose }: LoginSlideOverM
       document.body.style.overflow = "unset";
       return () => clearTimeout(timer);
     }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
   }, [isOpen]);
 
-  if (!isOpen && !animating) return null;
+  if ((!isOpen && !animating) || !mounted) return null;
 
   const handleGoogleLogin = () => {
     try {
@@ -32,23 +41,24 @@ export default function LoginSlideOverModal({ isOpen, onClose }: LoginSlideOverM
     window.location.href = "https://dethi.ttgdvinhphat.com/api/auth/google-login";
   };
 
-  return (
+  const modalContent = (
     <div
-      className={`fixed inset-0 z-[100] flex justify-center items-start transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[9999] flex justify-center items-start transition-opacity duration-300 ${
         isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
     >
-      {/* Backdrop Mờ Kính */}
+      {/* Backdrop Mờ Kính phủ kín 100% toàn bộ viewport */}
       <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-950/65 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal Trượt Từ Trên Xuống (Slide Down Panel) */}
       <div
-        className={`relative w-full max-w-lg bg-white rounded-b-3xl sm:rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden transform transition-all duration-300 ease-out sm:mt-12 ${
+        className={`relative w-full max-w-lg bg-white rounded-b-3xl sm:rounded-3xl shadow-[0_25px_60px_-15px_rgba(15,23,42,0.35)] border border-slate-200/90 overflow-hidden transform transition-all duration-300 ease-out mt-4 sm:mt-12 mb-8 ${
           isOpen ? "translate-y-0 opacity-100 scale-100" : "-translate-y-12 opacity-0 scale-95"
         }`}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Thanh trang trí gradient trên đỉnh */}
         <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-amber-500" />
@@ -58,6 +68,7 @@ export default function LoginSlideOverModal({ isOpen, onClose }: LoginSlideOverM
           onClick={onClose}
           type="button"
           className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+          title="Đóng (Esc)"
         >
           <X className="w-5 h-5" />
         </button>
@@ -92,7 +103,7 @@ export default function LoginSlideOverModal({ isOpen, onClose }: LoginSlideOverM
               </div>
               <div className="flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Trợ lý AI Layout Chat trong Exam Studio (<kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px]">Ctrl+K</kbd>)</span>
+                <span>Trợ lý AI Layout Chat trong Exam Studio (<kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">Ctrl+K</kbd>)</span>
               </div>
             </div>
           </div>
@@ -102,7 +113,7 @@ export default function LoginSlideOverModal({ isOpen, onClose }: LoginSlideOverM
             <button
               type="button"
               onClick={handleGoogleLogin}
-              className="w-full py-3 px-4 bg-white hover:bg-slate-50 text-slate-800 rounded-2xl border border-slate-300 hover:border-slate-400 shadow-sm hover:shadow transition-all font-bold text-sm flex items-center justify-center space-x-3 cursor-pointer group"
+              className="w-full py-3 px-4 bg-white hover:bg-slate-50 text-slate-800 rounded-2xl border border-slate-300 hover:border-slate-400 shadow-sm hover:shadow transition-all font-bold text-sm flex items-center justify-center space-x-3 cursor-pointer group active:scale-95"
             >
               {/* Google SVG Logo */}
               <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -137,4 +148,6 @@ export default function LoginSlideOverModal({ isOpen, onClose }: LoginSlideOverM
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
