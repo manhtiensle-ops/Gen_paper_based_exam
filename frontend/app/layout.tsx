@@ -5,47 +5,47 @@ import UserNavBadge from "@/components/UserNavBadge";
 export const metadata = {
   metadataBase: new URL("https://dethi.ttgdvinhphat.com"),
   title: {
-    default: "Giáo Dục Vĩnh Phát - Dạy Học & Luyện Thi HSG Toán | Đề Thi & Barem Điểm",
-    template: "%s | Giáo Dục Vĩnh Phát",
+    default: "Giáo Dục Vinh Phát - Dạy Học & Luyện Thi HSG Toán | Đề Thi & Barem Điểm",
+    template: "%s | Giáo Dục Vinh Phát",
   },
   description:
-    "Trung tâm Giáo dục Vĩnh Phát — Đơn vị dạy học, bồi dưỡng học sinh giỏi và luyện thi chuyên Toán cấp 2 (Lớp 6, 7, 8, 9). Hệ thống số hóa đề thi thông minh, ngân hàng đề thi HSG có barem điểm chi tiết 0.25đ chuẩn Bộ GD&ĐT.",
+    "Trung tâm Giáo dục Vinh Phát — Đơn vị dạy học, bồi dưỡng học sinh giỏi và luyện thi chuyên Toán cấp 2 (Lớp 6, 7, 8, 9). Hệ thống số hóa đề thi thông minh, ngân hàng đề thi HSG có barem điểm chi tiết 0.25đ chuẩn Bộ GD&ĐT.",
   keywords: [
-    "vĩnh phát",
-    "giáo dục vĩnh phát",
-    "dạy học vĩnh phát",
-    "ttgd vĩnh phát",
-    "trung tâm giáo dục vĩnh phát",
-    "luyện thi hsg toán vĩnh phát",
-    "đề thi vĩnh phát",
+    "vinh phát",
+    "giáo dục vinh phát",
+    "dạy học vinh phát",
+    "ttgd vinh phát",
+    "trung tâm giáo dục vinh phát",
+    "luyện thi hsg toán vinh phát",
+    "đề thi vinh phát",
     "dethi vinhphat",
-    "học toán vĩnh phát",
+    "học toán vinh phát",
     "đề thi hsg toán 9",
     "đề thi học sinh giỏi toán thcs",
     "barem điểm toán 9",
     "luyện thi chuyên toán vào 10",
   ],
-  authors: [{ name: "Giáo Dục Vĩnh Phát", url: "https://dethi.ttgdvinhphat.com" }],
-  creator: "Giáo Dục Vĩnh Phát",
-  publisher: "Giáo Dục Vĩnh Phát",
+  authors: [{ name: "Giáo Dục Vinh Phát", url: "https://dethi.ttgdvinhphat.com" }],
+  creator: "Giáo Dục Vinh Phát",
+  publisher: "Giáo Dục Vinh Phát",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
   openGraph: {
-    title: "Giáo Dục Vĩnh Phát - Dạy Học, Khảo Thí & Tổ Hợp Đề Thi Toán HSG",
+    title: "Giáo Dục Vinh Phát - Dạy Học, Khảo Thí & Tổ Hợp Đề Thi Toán HSG",
     description:
-      "Trung tâm Giáo dục Vĩnh Phát: Dạy học chất lượng cao, ngân hàng đề thi HSG Toán THCS, chia mốc điểm 0.25đ chuẩn mực.",
+      "Trung tâm Giáo dục Vinh Phát: Dạy học chất lượng cao, ngân hàng đề thi HSG Toán THCS, chia mốc điểm 0.25đ chuẩn mực.",
     url: "https://dethi.ttgdvinhphat.com",
-    siteName: "Giáo Dục Vĩnh Phát",
+    siteName: "Giáo Dục Vinh Phát",
     locale: "vi_VN",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Giáo Dục Vĩnh Phát - Dạy Học & Luyện Thi HSG Toán",
-    description: "Trung tâm Giáo dục Vĩnh Phát: Nền tảng khảo thí, dạy học và luyện thi HSG Toán cấp 2.",
+    title: "Giáo Dục Vinh Phát - Dạy Học & Luyện Thi HSG Toán",
+    description: "Trung tâm Giáo dục Vinh Phát: Nền tảng khảo thí, dạy học và luyện thi HSG Toán cấp 2.",
   },
   robots: {
     index: true,
@@ -81,8 +81,8 @@ export default function RootLayout({
               "@graph": [
                 {
                   "@type": "EducationalOrganization",
-                  "name": "Giáo Dục Vĩnh Phát",
-                  "alternateName": ["Dạy Học Vĩnh Phát", "Trung Tâm Giáo Dục Vĩnh Phát", "TTGD Vĩnh Phát"],
+                  "name": "Giáo Dục Vinh Phát",
+                  "alternateName": ["Dạy Học Vinh Phát", "Trung Tâm Giáo Dục Vinh Phát", "TTGD Vinh Phát"],
                   "url": "https://dethi.ttgdvinhphat.com",
                   "description": "Trung tâm Dạy học & Luyện thi Toán Học Sinh Giỏi, Chuyên Toán cấp 2 tại Việt Nam.",
                   "knowsAbout": ["Toán Học Sinh Giỏi", "Khảo thí THCS", "Chuyên Toán 9", "Barem điểm chuẩn Sở"]
@@ -90,10 +90,10 @@ export default function RootLayout({
                 {
                   "@type": "WebSite",
                   "url": "https://dethi.ttgdvinhphat.com",
-                  "name": "Dạy Học & Đề Thi Vĩnh Phát",
+                  "name": "Dạy Học & Đề Thi Vinh Phát",
                   "publisher": {
                     "@type": "Organization",
-                    "name": "Giáo Dục Vĩnh Phát"
+                    "name": "Giáo Dục Vinh Phát"
                   }
                 }
               ]
@@ -110,7 +110,7 @@ export default function RootLayout({
               </div>
               <div>
                 <h1 className="text-lg font-bold text-slate-900 leading-tight">
-                  Giáo Dục Vĩnh Phát
+                  Giáo Dục Vinh Phát
                 </h1>
                 <p className="text-xs text-slate-500 font-medium">
                   Dạy Học & Khảo Thí Đề Thi Toán HSG Cấp 2
@@ -133,8 +133,8 @@ export default function RootLayout({
         <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500">
           <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
             <div>
-              <p className="font-bold text-slate-800">Giáo Dục Vĩnh Phát — Dạy Học & Luyện Thi Toán HSG</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">Trung tâm Dạy học Vĩnh Phát • Khảo thí & Tổ hợp đề thi học sinh giỏi Toán THCS • Barem điểm chuẩn Sở</p>
+              <p className="font-bold text-slate-800">Giáo Dục Vinh Phát — Dạy Học & Luyện Thi Toán HSG</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Trung tâm Dạy học Vinh Phát • Khảo thí & Tổ hợp đề thi học sinh giỏi Toán THCS • Barem điểm chuẩn Sở</p>
             </div>
             <div className="flex items-center space-x-4 text-[11px] font-semibold text-indigo-600">
               <a href="#tinh-nang" className="hover:underline">Tính năng</a>

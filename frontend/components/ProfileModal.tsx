@@ -162,7 +162,7 @@ export default function ProfileModal({ user, isOpen, onClose, onUpdate }: Props)
               <option value="thcs_le_quy_don">Trường THCS Chuyên Lê Quý Đôn</option>
               <option value="thcs_amsterdam">Trường THPT Chuyên Hà Nội - Amsterdam</option>
               <option value="so_gd_ha_tinh">Sở GD&ĐT Tỉnh Hà Tĩnh (Phòng Khảo Thí)</option>
-              <option value="ttgd_vinh_phat">Trung Tâm Giáo Dục Vĩnh Phát</option>
+              <option value="ttgd_vinh_phat">Trung Tâm Giáo Dục Vinh Phát</option>
               <option value="individual">Không gian cá nhân độc lập</option>
             </select>
             <p className="text-[11px] text-slate-400 leading-relaxed pt-0.5">

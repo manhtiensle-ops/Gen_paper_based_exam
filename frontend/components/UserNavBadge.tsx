@@ -34,7 +34,7 @@ export default function UserNavBadge() {
       case "so_gd_ha_tinh":
         return "Sở GD&ĐT Hà Tĩnh";
       case "ttgd_vinh_phat":
-        return "TTGD Vĩnh Phát";
+        return "TTGD Vinh Phát";
       default:
         return "Cá nhân";
     }
