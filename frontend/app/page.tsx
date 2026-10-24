@@ -841,7 +841,7 @@ export default function Dashboard() {
                   <select
                     value={selectedBlueprintId}
                     onChange={(e) => setSelectedBlueprintId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none cursor-pointer"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none cursor-pointer truncate"
                   >
                     {blueprints.map((b) => (
                       <option key={b.id} value={b.id}>

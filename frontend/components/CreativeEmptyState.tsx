@@ -159,10 +159,10 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
                   type="button"
                   disabled={isGenerating}
                   onClick={() => onSelectPreset(preset.title)}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-100 group-hover:bg-indigo-600 text-slate-700 group-hover:text-white text-xs font-bold transition-all flex items-center space-x-1.5 shadow-2xs group-hover:shadow-md disabled:opacity-50 cursor-pointer active:scale-95"
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-100 group-hover:bg-indigo-600 text-slate-700 group-hover:text-white text-xs font-bold transition-all flex items-center space-x-1.5 shadow-2xs group-hover:shadow-md disabled:opacity-50 cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
                 >
-                  <span>Tổ hợp ngay</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  <span className="whitespace-nowrap">Tổ hợp ngay</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform shrink-0" />
                 </button>
               </div>
             </div>

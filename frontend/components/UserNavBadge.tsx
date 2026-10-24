@@ -117,12 +117,12 @@ export default function UserNavBadge() {
         onMouseLeave={handleMouseLeave}
       >
         {userProfile ? (
-          /* Nút Tài Khoản Chính Khi Đã Đăng Nhập (Hover / Click) */
+          /* Nút Tài Khoản Chính Khi Đã Đăng Nhập (Bấm để mở Slide-down Profile Sheet) */
           <button
             type="button"
-            onClick={() => setDropdownOpen((prev) => !prev)}
+            onClick={() => setIsOpen(true)}
             className="flex items-center space-x-2.5 bg-slate-50 hover:bg-white px-3 py-1.5 rounded-2xl border border-slate-200/90 hover:border-indigo-300 shadow-2xs hover:shadow-xs transition-all cursor-pointer group text-left"
-            title="Tài khoản & Tùy chọn đăng nhập"
+            title="Nhấn để mở Bảng Hồ sơ & Cài đặt tài khoản"
           >
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 group-hover:from-indigo-700 group-hover:to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm transition-all border border-indigo-400/40 shrink-0">
               {getInitials(userProfile?.full_name)}
@@ -224,13 +224,15 @@ export default function UserNavBadge() {
         )}
       </div>
 
-      {/* Modal Profile */}
+      {/* Modal Profile dạng Slide-Down trượt mượt mà */}
       {userProfile && (
         <ProfileModal
           isOpen={isOpen}
           user={userProfile}
           onClose={() => setIsOpen(false)}
           onUpdate={(updated) => setUserProfile(updated)}
+          onLogout={handleLogout}
+          onOpenLoginModal={() => setLoginModalOpen(true)}
         />
       )}
 
