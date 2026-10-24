@@ -79,8 +79,14 @@ export default function ProfileModal({ user, isOpen, onClose, onUpdate }: Props)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-[0_25px_60px_-15px_rgba(15,23,42,0.3)] border border-slate-200/90 overflow-hidden transform animate-in zoom-in-95 duration-200">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-lg rounded-3xl shadow-[0_25px_60px_-15px_rgba(15,23,42,0.3)] border border-slate-200/90 overflow-hidden transform animate-in zoom-in-95 duration-200 my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Luxury Academic Header */}
         <div className="relative bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 text-white p-7 overflow-hidden">
           {/* Background Decorative Rings */}

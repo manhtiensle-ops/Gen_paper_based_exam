@@ -158,7 +158,7 @@ export default function UserNavBadge() {
 
         {/* Menu Dropdown Xuất Hiện Phía Dưới Khi Đã Đăng Nhập */}
         {dropdownOpen && userProfile && (
-          <div className="absolute right-0 top-full mt-2 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_15px_35px_-5px_rgba(15,23,42,0.18)] border border-slate-200/90 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="absolute right-0 top-full mt-2 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_15px_35px_-5px_rgba(15,23,42,0.18)] border border-slate-200/90 py-2 z-40 animate-in fade-in zoom-in-95 duration-150">
             {/* User Info Header inside menu */}
             <div className="px-4 py-2.5 border-b border-slate-100 mb-1">
               <p className="text-xs font-bold text-slate-900 truncate">
