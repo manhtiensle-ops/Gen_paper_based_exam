@@ -142,7 +142,7 @@ def delete_blueprint(blueprint_id: uuid.UUID, db: Session = Depends(get_db)):
 @router.post("/generate", response_model=GeneratedExamResponse)
 def generate_exam(
     payload: GenerateExamRequest,
-    current_user: User = Depends(require_authenticated_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     bp = db.query(ExamBlueprint).filter(ExamBlueprint.id == payload.blueprint_id).first()
@@ -216,8 +216,8 @@ def generate_exam(
         title=payload.title,
         blueprint_id=bp.id,
         folder_id=payload.folder_id,
-        user_id=current_user.id,
-        tenant_id=current_user.tenant_id,
+        user_id=current_user.id if current_user else None,
+        tenant_id=current_user.tenant_id if current_user else "default_school",
         slots_state=selected_slots
     )
     db.add(generated_exam)
