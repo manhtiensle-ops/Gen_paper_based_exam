@@ -104,19 +104,19 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
         <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+            <a href="/" className="flex items-center space-x-3 group">
+              <div className="w-10 h-10 rounded-lg bg-indigo-600 group-hover:bg-indigo-700 flex items-center justify-center text-white font-bold text-xl shadow-md transition-colors">
                 ∑
               </div>
               <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-tight">
+                <h1 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 leading-tight transition-colors">
                   Giáo Dục Vinh Phát
                 </h1>
                 <p className="text-xs text-slate-500 font-medium">
                   Dạy Học & Khảo Thí Đề Thi Toán HSG Cấp 2
                 </p>
               </div>
-            </div>
+            </a>
             <div className="flex items-center space-x-3">
               <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
                 ● Đã đồng bộ Cloudflare
