@@ -73,13 +73,19 @@ export default function UserNavBadge() {
     }
   };
 
-  // Hàm chuyển hướng đến trang đăng nhập chuẩn của Cloudflare Access
+  // Hàm chuyển hướng đến trang đăng nhập Google OAuth chính thống qua Cloudflare Access
   const handleLoginRedirect = () => {
     try {
       localStorage.removeItem("hsg_logged_out");
     } catch (e) {}
-    // Endpoint xác thực chuẩn của ứng dụng trên domain
-    window.location.href = "https://dethi.ttgdvinhphat.com/cdn-cgi/access/login";
+
+    // Cổng xác thực Google OAuth 2.0 chuẩn liên kết với Cloudflare Zero Trust (Team: chiuluon)
+    const clientId = "999837415682-ovunpoc6g6lp3emj1ti27juloo695gqu.apps.googleusercontent.com";
+    const redirectUri = encodeURIComponent("https://chiuluon.cloudflareaccess.com/cdn-cgi/access/callback");
+    const stateParam = encodeURIComponent("https://dethi.ttgdvinhphat.com");
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20email%20profile&state=${stateParam}&prompt=select_account`;
+
+    window.location.href = googleAuthUrl;
   };
 
   // Hàm đăng xuất: xóa sạch cookie, lưu cờ logged_out, xóa session và reload
