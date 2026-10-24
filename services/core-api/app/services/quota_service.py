@@ -2,7 +2,7 @@ import os
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
-from fastapi import Header, HTTPException, status, Depends
+from fastapi import Header, Cookie, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 import redis
 
@@ -27,16 +27,20 @@ ROLE_AI_DAILY_QUOTA = {
 
 def get_current_user_optional(
     cf_access_email: Optional[str] = Header(None, alias="cf-access-authenticated-user-email"),
+    app_user_email: Optional[str] = Cookie(None, alias="hsg_user_email"),
     db: Session = Depends(get_db)
 ) -> Optional[User]:
     """
-    Nhận diện user nếu có header Cloudflare Access.
-    Nếu chưa đăng nhập / không có header -> trả về None (GUEST).
+    Nhận diện user qua:
+    1. Header Cloudflare Access (cf-access-authenticated-user-email)
+    2. Cookie phiên trực tiếp (hsg_user_email) cấp từ Google OAuth trực tiếp
+    Nếu chưa đăng nhập -> trả về None (GUEST).
     """
-    if not cf_access_email or not cf_access_email.strip():
+    effective_email = cf_access_email or app_user_email
+    if not effective_email or not effective_email.strip():
         return None
 
-    email = cf_access_email.strip().lower()
+    email = effective_email.strip().lower()
     user = db.query(User).filter(User.email == email).first()
     if not user:
         # Tự động khởi tạo tài khoản NORMAL khi đăng nhập Google lần đầu

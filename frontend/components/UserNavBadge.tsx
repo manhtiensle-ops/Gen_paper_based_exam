@@ -73,19 +73,14 @@ export default function UserNavBadge() {
     }
   };
 
-  // Hàm chuyển hướng đến trang đăng nhập Google OAuth chính thống qua Cloudflare Access
+  // Hàm chuyển hướng đến luồng đăng nhập Google OAuth trực tiếp của ứng dụng
   const handleLoginRedirect = () => {
     try {
       localStorage.removeItem("hsg_logged_out");
     } catch (e) {}
 
-    // Cổng xác thực Google OAuth 2.0 chuẩn liên kết với Cloudflare Zero Trust (Team: chiuluon)
-    const clientId = "999837415682-ovunpoc6g6lp3emj1ti27juloo695gqu.apps.googleusercontent.com";
-    const redirectUri = encodeURIComponent("https://chiuluon.cloudflareaccess.com/cdn-cgi/access/callback");
-    const stateParam = encodeURIComponent("https://dethi.ttgdvinhphat.com");
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20email%20profile&state=${stateParam}&prompt=select_account`;
-
-    window.location.href = googleAuthUrl;
+    // Gọi trực tiếp endpoint backend của ứng dụng, tránh qua trang trung gian Access
+    window.location.href = "https://dethi.ttgdvinhphat.com/api/auth/google-login";
   };
 
   // Hàm đăng xuất: xóa sạch cookie, lưu cờ logged_out, xóa session và reload
@@ -94,6 +89,8 @@ export default function UserNavBadge() {
       localStorage.clear();
       sessionStorage.clear();
       localStorage.setItem("hsg_logged_out", "true");
+      document.cookie = "hsg_user_email=; Path=/; Domain=.ttgdvinhphat.com; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      document.cookie = "hsg_user_email=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
       document.cookie = "CF_Authorization=; Path=/; Domain=.ttgdvinhphat.com; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
       document.cookie = "CF_Authorization=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
     } catch (e) {}
