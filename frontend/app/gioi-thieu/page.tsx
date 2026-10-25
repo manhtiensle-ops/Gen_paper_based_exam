@@ -27,6 +27,26 @@ export const metadata = {
 export default function GioiThieuPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-12 py-4 animate-in fade-in duration-300">
+      {/* Schema.org AboutPage for Google SEO Entity Recognition */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "AboutPage",
+            "name": "Giới thiệu Giáo Dục Vinh Phát",
+            "description": "Trung tâm Giáo dục Vinh Phát — Đơn vị dạy học, khảo thí và bồi dưỡng Toán học sinh giỏi cấp 2 chuẩn mực tại Việt Nam.",
+            "url": "https://dethi.ttgdvinhphat.com/gioi-thieu",
+            "mainEntity": {
+              "@type": "EducationalOrganization",
+              "name": "Giáo Dục Vinh Phát",
+              "alternateName": ["Dạy Học Vinh Phát", "TTGD Vinh Phát"],
+              "url": "https://dethi.ttgdvinhphat.com",
+              "email": "lienhe@ttgdvinhphat.com"
+            }
+          }),
+        }}
+      />
       {/* Breadcrumb & Navigation Back */}
       <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500">
         <Link href="/" className="hover:text-indigo-600 transition-colors">

@@ -24,6 +24,42 @@ export const metadata = {
 export default function HoTroPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-10 py-4 animate-in fade-in duration-300">
+      {/* Schema.org FAQPage for Google SEO Rich Snippets */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Tài khoản Khách (GUEST) có dùng được AI không?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Khách vãng lai chưa đăng nhập có thể tổ hợp đề thi và xem câu hỏi mẫu bình thường. Tuy nhiên, các tính năng gọi AI (chia barem 0.25đ, OCR lời giải) yêu cầu đăng nhập tài khoản Google để nhận 100 lượt miễn phí mỗi ngày."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Hạn mức 100 lượt AI làm mới vào lúc nào?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Hệ thống tự động làm mới số lượt sử dụng về 100 vào đúng 00:00 hàng ngày theo giờ Việt Nam (UTC+7)."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "File Word tải về có sửa được công thức Toán không?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Có. Hệ thống sử dụng engine Word OMML Native chuẩn Microsoft Office, toàn bộ công thức là đối tượng toán học gốc, không phải hình ảnh nên thầy cô có thể gõ sửa trực tiếp."
+                }
+              }
+            ]
+          }),
+        }}
+      />
       {/* Breadcrumb */}
       <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500">
         <Link href="/" className="hover:text-indigo-600 transition-colors">

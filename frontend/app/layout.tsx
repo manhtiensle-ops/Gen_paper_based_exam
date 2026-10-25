@@ -1,6 +1,7 @@
 import "./globals.css";
 import React from "react";
 import UserNavBadge from "@/components/UserNavBadge";
+import HeaderNavLinks from "@/components/HeaderNavLinks";
 
 export const metadata = {
   metadataBase: new URL("https://dethi.ttgdvinhphat.com"),
@@ -125,26 +126,7 @@ export default function RootLayout({
               </div>
             </a>
             <div className="flex items-center space-x-3">
-              <nav className="hidden md:flex items-center space-x-1 text-xs font-bold mr-2">
-                <a
-                  href="/"
-                  className="px-2.5 py-1 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
-                >
-                  Workspace
-                </a>
-                <a
-                  href="/gioi-thieu"
-                  className="px-2.5 py-1 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
-                >
-                  Giới thiệu
-                </a>
-                <a
-                  href="/ho-tro"
-                  className="px-2.5 py-1 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
-                >
-                  Hỗ trợ
-                </a>
-              </nav>
+              <HeaderNavLinks />
 
               <span className="hidden sm:inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
