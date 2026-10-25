@@ -125,6 +125,27 @@ export default function RootLayout({
               </div>
             </a>
             <div className="flex items-center space-x-3">
+              <nav className="hidden md:flex items-center space-x-1 text-xs font-bold mr-2">
+                <a
+                  href="/"
+                  className="px-2.5 py-1 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+                >
+                  Workspace
+                </a>
+                <a
+                  href="/gioi-thieu"
+                  className="px-2.5 py-1 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+                >
+                  Giới thiệu
+                </a>
+                <a
+                  href="/ho-tro"
+                  className="px-2.5 py-1 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+                >
+                  Hỗ trợ
+                </a>
+              </nav>
+
               <span className="hidden sm:inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Cloudflare Synced</span>
@@ -144,9 +165,9 @@ export default function RootLayout({
               <p className="font-bold text-slate-800">Giáo Dục Vinh Phát — Dạy Học & Luyện Thi Toán HSG</p>
               <p className="text-[10px] text-slate-400 mt-0.5">Trung tâm Dạy học Vinh Phát • Khảo thí & Tổ hợp đề thi học sinh giỏi Toán THCS • Barem điểm chuẩn Sở</p>
             </div>
-            <div className="flex items-center space-x-4 text-[10px] font-semibold text-indigo-600">
-              <a href="#tinh-nang" className="hover:underline">Tính năng</a>
-              <a href="#ma-tran" className="hover:underline">Khung ma trận</a>
+            <div className="flex items-center space-x-4 text-[11px] font-semibold text-indigo-600">
+              <a href="/gioi-thieu" className="hover:underline">Giới thiệu</a>
+              <a href="/ho-tro" className="hover:underline">Hướng dẫn & Hỗ trợ</a>
               <a href="https://dethi.ttgdvinhphat.com/sitemap.xml" target="_blank" rel="noopener noreferrer" className="hover:underline">Sitemap</a>
             </div>
           </div>
