@@ -71,6 +71,7 @@ export default function Dashboard() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; stage: string } | null>(null);
 
   // Generator & Assembled Exam State
   const [blueprints, setBlueprints] = useState<any[]>([]);
@@ -433,37 +434,77 @@ export default function Dashboard() {
     if (batchFiles.length === 0 && (!uploadFile || !uploadTitle)) return;
 
     setUploading(true);
+    setUploadProgress(null);
 
     try {
       if (batchFiles.length > 0) {
-        // Gửi upload hàng loạt
-        const formData = new FormData();
-        batchFiles.forEach((file) => {
-          formData.append("files", file);
-        });
-        formData.append("grade", "9");
-        formData.append("exam_level", "HSG_TINH");
+        // GIAI ĐOẠN 1: Chia nhỏ upload từng file độc lập lên Server/MinIO
+        const total = batchFiles.length;
+        const uploadedExamIds: string[] = [];
+        let failedCount = 0;
 
-        const res = await fetch("/api/exams/batch-upload", {
-          method: "POST",
-          body: formData,
-        });
+        setUploadProgress({ current: 0, total, stage: "Đang tải dữ liệu thô lên máy chủ..." });
 
-        if (res.ok) {
-          const resData = await res.json();
-          setBatchFiles([]);
-          await fetchSourceExams();
-          alert(`Đã tải lên thành công ${resData.total_uploaded} tài liệu! Hệ thống đang xử lý số hóa.`);
-        } else {
-          let errDetail = `Lỗi máy chủ (${res.status})`;
+        for (let i = 0; i < total; i++) {
+          const file = batchFiles[i];
+          setUploadProgress({ 
+            current: i + 1, 
+            total, 
+            stage: `Đang lưu file (${i + 1}/${total}): ${file.name.slice(0, 30)}...` 
+          });
+
+          const singleForm = new FormData();
+          singleForm.append("file", file);
+          singleForm.append("grade", "9");
+          singleForm.append("exam_level", "HSG_TINH");
+
           try {
-            const errJson = await res.json();
-            errDetail = errJson.detail || errDetail;
-          } catch (_) {
-            const errText = await res.text().catch(() => "");
-            if (errText) errDetail = errText;
+            const res = await fetch("/api/exams/stage-single", {
+              method: "POST",
+              body: singleForm,
+            });
+
+            if (res.ok) {
+              const resData = await res.json();
+              if (resData.exam_id) {
+                uploadedExamIds.push(resData.exam_id);
+              }
+            } else {
+              failedCount++;
+              console.error(`Lỗi tải file ${file.name}: status ${res.status}`);
+            }
+          } catch (fileErr) {
+            failedCount++;
+            console.error(`Lỗi kết nối khi gửi ${file.name}:`, fileErr);
           }
-          alert(`Lỗi khi tải lên hàng loạt tài liệu: ${errDetail}`);
+        }
+
+        // GIAI ĐOẠN 2: Kích hoạt Celery OCR ngầm đồng loạt cho toàn bộ các file đã Stage thành công
+        if (uploadedExamIds.length > 0) {
+          setUploadProgress({ 
+            current: uploadedExamIds.length, 
+            total, 
+            stage: "Đang kích hoạt hàng đợi OCR LLM đồng loạt..." 
+          });
+
+          try {
+            await fetch("/api/exams/trigger-batch-ocr", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ exam_ids: uploadedExamIds }),
+            });
+          } catch (triggerErr) {
+            console.error("Lỗi kích hoạt OCR batch:", triggerErr);
+          }
+        }
+
+        setBatchFiles([]);
+        await fetchSourceExams();
+
+        if (failedCount === 0) {
+          alert(`Đã nạp thành công toàn bộ ${uploadedExamIds.length} tài liệu vào máy chủ! Hệ thống Celery đang kích hoạt OCR xử lý ngầm.`);
+        } else {
+          alert(`Đã lưu thành công ${uploadedExamIds.length}/${total} tài liệu vào hàng đợi OCR. Có ${failedCount} tệp gặp lỗi đường truyền.`);
         }
       } else if (uploadFile && uploadTitle) {
         // Gửi upload đơn lẻ
@@ -487,6 +528,7 @@ export default function Dashboard() {
       alert(`Lỗi khi kết nối máy chủ tải lên tài liệu: ${err?.message || err}`);
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -1459,22 +1501,32 @@ export default function Dashboard() {
               <button
                 type="submit"
                 disabled={uploading || (batchFiles.length === 0 && (!uploadFile || !uploadTitle))}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition-all flex flex-col items-center justify-center space-y-1 disabled:opacity-50"
               >
                 {uploading ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Đang tải lên & nạp Pipeline...</span>
+                    <div className="flex items-center space-x-2">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>{uploadProgress ? uploadProgress.stage : "Đang xử lý..."}</span>
+                    </div>
+                    {uploadProgress && (
+                      <div className="w-full max-w-xs bg-indigo-950/40 rounded-full h-1.5 overflow-hidden mt-1">
+                        <div
+                          className="bg-emerald-400 h-1.5 transition-all duration-200"
+                          style={{ width: `${Math.round((uploadProgress.current / uploadProgress.total) * 100)}%` }}
+                        />
+                      </div>
+                    )}
                   </>
                 ) : (
-                  <>
+                  <div className="flex items-center space-x-2">
                     <UploadCloud className="w-4 h-4" />
                     <span>
                       {batchFiles.length > 0
                         ? `🚀 Bắt đầu Số Hóa Hàng Loạt (${batchFiles.length} Đề)`
                         : "Bắt đầu Số Hóa Pipeline"}
                     </span>
-                  </>
+                  </div>
                 )}
               </button>
             </form>

@@ -1,6 +1,7 @@
 import os
 import uuid
 from typing import List, Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from sqlalchemy.orm import Session
 from celery import Celery
@@ -66,6 +67,107 @@ async def upload_source_exam(
         print(f"[Celery Dispatch Error] {exc}")
 
     return exam_record
+
+@router.post("/stage-single", status_code=status.HTTP_201_CREATED)
+async def stage_single_source_exam(
+    file: UploadFile = File(...),
+    grade: int = Form(9),
+    exam_level: str = Form("HSG_TINH"),
+    academic_year: str = Form(None),
+    school_or_province: str = Form(None),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """
+    Giai đoạn 1: Lưu trữ nhanh 1 file đề thi thô vào MinIO và tạo bản ghi STAGED trong DB.
+    Không gọi LLM/OCR ngay để tránh nghẽn mạng và timeout khi tải hàng loạt.
+    """
+    filename = file.filename or "exam_document.pdf"
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="File nội dung rỗng")
+        
+    exam_id = uuid.uuid4()
+    
+    clean_title = filename
+    for ext in [".docx", ".pdf", ".DOCX", ".PDF"]:
+        if clean_title.endswith(ext):
+            clean_title = clean_title[:-len(ext)]
+            break
+    clean_title = clean_title.replace("_", " ").replace("-", " ").strip()
+    
+    file_key = f"exams/{exam_id}/original/{filename}"
+    upload_file_bytes(
+        file_bytes, 
+        file_key, 
+        content_type=file.content_type or "application/octet-stream"
+    )
+
+    exam_record = SourceExam(
+        id=exam_id,
+        title=clean_title,
+        exam_level=exam_level,
+        grade=grade,
+        school_or_province=school_or_province,
+        academic_year=academic_year,
+        duration_minutes=120,
+        original_file_key=file_key,
+        user_id=current_user.id if current_user else None,
+        scope="PRIVATE" if current_user else "PUBLIC",
+        is_public=False if current_user else True,
+        status="UPLOADED",
+        processing_logs=[{"step": "STAGE_UPLOAD", "status": "COMPLETED", "message": f"Saved file to {file_key}"}]
+    )
+    db.add(exam_record)
+    db.commit()
+    db.refresh(exam_record)
+
+    return {
+        "status": "STAGED",
+        "exam_id": str(exam_record.id),
+        "title": exam_record.title,
+        "file_key": exam_record.original_file_key
+    }
+
+
+class TriggerBatchOcrRequest(BaseModel):
+    exam_ids: List[str]
+
+
+@router.post("/trigger-batch-ocr")
+def trigger_batch_ocr(
+    payload: TriggerBatchOcrRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """
+    Giai đoạn 2: Tiếp nhận danh sách các exam_id đã stage thành công và nạp vào Celery Worker để chạy OCR đồng loạt.
+    """
+    if not payload.exam_ids:
+        return {"status": "SUCCESS", "dispatched_count": 0}
+
+    valid_exams = db.query(SourceExam).filter(SourceExam.id.in_(payload.exam_ids)).all()
+    dispatched = []
+
+    for exam in valid_exams:
+        try:
+            celery_client.send_task(
+                "worker.tasks.process_exam_document",
+                args=[str(exam.id), exam.original_file_key]
+            )
+            exam.status = "QUEUED_OCR"
+            dispatched.append(str(exam.id))
+        except Exception as exc:
+            print(f"[Celery Batch Trigger Error for {exam.id}]: {exc}")
+
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "dispatched_count": len(dispatched),
+        "dispatched_ids": dispatched
+    }
+
 
 @router.post("/batch-upload", status_code=status.HTTP_201_CREATED)
 async def batch_upload_source_exams(
