@@ -72,13 +72,13 @@ def insert_extracted_question(
                     default_points, content_latex, normalized_hash, sub_questions,
                     solution_latex, final_answer, has_figure, figures_meta, grade,
                     main_topic, sub_topics, solution_methods, difficulty,
-                    semantic_summary, embedding, is_verified
+                    semantic_summary, embedding, is_verified, scope, is_public
                 ) VALUES (
                     :source_exam_id, :original_question_number, :section_type, :structure_type,
                     :default_points, :content_latex, :normalized_hash, CAST(:sub_questions AS jsonb),
                     :solution_latex, :final_answer, :has_figure, CAST(:figures_meta AS jsonb), :grade,
                     :main_topic, CAST(:sub_topics AS jsonb), CAST(:solution_methods AS jsonb), :difficulty,
-                    :semantic_summary, CAST(:embedding AS vector), TRUE
+                    :semantic_summary, CAST(:embedding AS vector), FALSE, 'PRIVATE', FALSE
                 )
             """),
             {

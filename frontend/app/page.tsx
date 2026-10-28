@@ -455,7 +455,15 @@ export default function Dashboard() {
           await fetchSourceExams();
           alert(`Đã tải lên thành công ${resData.total_uploaded} tài liệu! Hệ thống đang xử lý số hóa.`);
         } else {
-          alert("Lỗi khi tải lên hàng loạt tài liệu");
+          let errDetail = `Lỗi máy chủ (${res.status})`;
+          try {
+            const errJson = await res.json();
+            errDetail = errJson.detail || errDetail;
+          } catch (_) {
+            const errText = await res.text().catch(() => "");
+            if (errText) errDetail = errText;
+          }
+          alert(`Lỗi khi tải lên hàng loạt tài liệu: ${errDetail}`);
         }
       } else if (uploadFile && uploadTitle) {
         // Gửi upload đơn lẻ
@@ -475,8 +483,8 @@ export default function Dashboard() {
           alert("Tải lên thành công! Tiến trình số hóa đang chạy ngầm.");
         }
       }
-    } catch (err) {
-      alert("Lỗi khi kết nối máy chủ tải lên tài liệu");
+    } catch (err: any) {
+      alert(`Lỗi khi kết nối máy chủ tải lên tài liệu: ${err?.message || err}`);
     } finally {
       setUploading(false);
     }
