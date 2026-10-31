@@ -49,10 +49,8 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: 📥 Kéo mã nguồn mới nhất về Server
-        run: |
-          cd /home/manhtien/Gen_paper_based_exam
-          git pull origin main
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
 
       - name: 🔍 Phát hiện dịch vụ có thay đổi
         id: changes
