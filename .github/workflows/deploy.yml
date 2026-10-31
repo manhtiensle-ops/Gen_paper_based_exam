@@ -1,0 +1,114 @@
+name: Production CI/CD Pipeline (Cloud Test -> Local Deploy)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # =========================================================================
+  # GIAI ĐOẠN 1: KIỂM THỬ TỰ ĐỘNG TRÊN GITHUB CLOUD (0 VNĐ - Miễn phí)
+  # =========================================================================
+  cloud-test:
+    name: 🧪 Automated Test on GitHub Cloud
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package.json
+
+      - name: 🔍 Frontend Lint & Syntax Check
+        run: |
+          cd frontend
+          npm ci
+          npm run lint
+
+      - name: 🐍 Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🔍 Backend Code Quality & Syntax Check
+        run: |
+          pip install ruff
+          ruff check services/core-api/app
+
+  # =========================================================================
+  # GIAI ĐOẠN 2: KÍCH HOẠT GITHUB AGENT DƯỚI MÁY CHỦ (CHỈ KHI TEST PASS 100%)
+  # =========================================================================
+  local-deploy:
+    name: 🚀 Deploy to Vinh Phat Server
+    needs: cloud-test
+    runs-on: self-hosted
+
+    steps:
+      - name: 📥 Kéo mã nguồn mới nhất về Server
+        run: |
+          cd /home/manhtien/Gen_paper_based_exam
+          git pull origin main
+
+      - name: 🔍 Phát hiện dịch vụ có thay đổi
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            core_api:
+              - 'services/core-api/**'
+            export_service:
+              - 'services/export-service/**'
+            ingestion_worker:
+              - 'services/ingestion-worker/**'
+
+      - name: 🔄 Rebuild & Restart Frontend (nếu có đổi code frontend)
+        if: steps.changes.outputs.frontend == 'true'
+        run: |
+          cd /home/manhtien/Gen_paper_based_exam
+          docker compose build frontend
+          docker stop hsg_frontend && docker rm hsg_frontend
+          docker compose up -d frontend
+
+      - name: 🔄 Restart Backend Services (nếu có đổi code backend)
+        if: steps.changes.outputs.core_api == 'true'
+        run: |
+          cd /home/manhtien/Gen_paper_based_exam
+          docker compose restart core-api
+
+      - name: 🔄 Restart Export Service (nếu có đổi)
+        if: steps.changes.outputs.export_service == 'true'
+        run: |
+          cd /home/manhtien/Gen_paper_based_exam
+          docker compose restart export-service
+
+      - name: 🩺 Kiểm tra sức khỏe dịch vụ (Smoke Test)
+        run: |
+          sleep 5
+          curl -f http://127.0.0.1:3000 > /dev/null || exit 1
+          curl -f http://127.0.0.1:8000/api/health > /dev/null || exit 1
+
+      - name: 📱 Gửi thông báo kết quả lên Telegram
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          BOT_TOKEN="8832474900:AAGUPsAI0KwApC1cLqCGvG3i9GbdYy0vJS4"
+          CHAT_ID="6560430166"
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          
+          if [ "$STATUS" = "success" ]; then
+            TEXT="✅ *DEPLOY THÀNH CÔNG LÊN SERVER*%0A🏛 *Hệ thống:* Giáo Dục Vinh Phát%0A📅 *Commit:* \`${{ github.sha }}\`%0A📝 *Nội dung:* ${COMMIT_MSG}"
+          else
+            TEXT="❌ *DEPLOY THẤT BẠI*%0A🏛 *Hệ thống:* Giáo Dục Vinh Phát%0A⚠️ Vui lòng kiểm tra log trên GitHub Actions."
+          fi
+          
+          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${CHAT_ID}" \
+            -d "text=${TEXT}" \
+            -d "parse_mode=Markdown"
