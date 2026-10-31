@@ -577,8 +577,18 @@ export default function Dashboard() {
   };
 
   // Trigger Algorithmic Exam Generation
-  const handleGenerateExam = async () => {
-    if (!selectedBlueprintId) {
+  const handleGenerateExam = async (customConfig?: any) => {
+    // Phòng thủ chặt chẽ: Loại trừ trường hợp React MouseEvent bị truyền ngầm vào tham số đầu tiên
+    const isValidCustomConfig =
+      customConfig &&
+      typeof customConfig === "object" &&
+      !("nativeEvent" in customConfig) &&
+      !("target" in customConfig) &&
+      (Array.isArray(customConfig.sections_config) || typeof customConfig.name === "string");
+
+    const activeConfig = isValidCustomConfig ? customConfig : undefined;
+
+    if (!activeConfig && !selectedBlueprintId) {
       if (blueprints.length === 0) {
         await handleCreateDefaultBlueprint();
         return;
@@ -588,15 +598,22 @@ export default function Dashboard() {
 
     setGenerating(true);
     try {
+      const payload: any = {
+        title: activeConfig?.name || examTitle,
+        folder_id: selectedFolderId || undefined,
+        similarity_threshold: 0.65
+      };
+
+      if (activeConfig) {
+        payload.custom_blueprint_config = activeConfig;
+      } else {
+        payload.blueprint_id = selectedBlueprintId;
+      }
+
       const res = await fetch("/api/generator/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: examTitle,
-          blueprint_id: selectedBlueprintId,
-          folder_id: selectedFolderId || undefined,
-          similarity_threshold: 0.65
-        })
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const data = await res.json();
@@ -923,7 +940,7 @@ export default function Dashboard() {
 
             <div className="pt-1">
               <button
-                onClick={handleGenerateExam}
+                onClick={() => handleGenerateExam()}
                 disabled={generating}
                 className="w-full py-3 px-4 bg-gradient-to-b from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl text-xs sm:text-sm shadow-[0_4px_14px_0_rgba(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.45)] active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 disabled:opacity-50 group cursor-pointer"
               >
@@ -1804,6 +1821,10 @@ export default function Dashboard() {
               setBlueprints(data);
             }
           } catch (e) {}
+        }}
+        onGenerateFromCustomConfig={async (customConfig) => {
+          setBlueprintModalOpen(false);
+          await handleGenerateExam(customConfig);
         }}
       />
     </div>
