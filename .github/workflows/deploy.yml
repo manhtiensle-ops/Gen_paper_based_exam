@@ -90,7 +90,7 @@ jobs:
         run: |
           sleep 5
           curl -f http://127.0.0.1:3000 > /dev/null || exit 1
-          curl -f http://127.0.0.1:8000/api/health > /dev/null || exit 1
+          curl -f http://127.0.0.1:8000/health > /dev/null || exit 1
 
       - name: 📱 Gửi thông báo kết quả lên Telegram
         if: always()
