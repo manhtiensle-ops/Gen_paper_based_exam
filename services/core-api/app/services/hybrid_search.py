@@ -48,4 +48,24 @@ def search_candidate_questions(
     else:
         query = query.order_by(Question.usage_count.asc(), Question.created_at.desc())
 
-    return query.limit(limit).all()
+    results = query.limit(limit).all()
+
+    # THUẬT TOÁN FALLBACK THÔNG MINH CHO SHORT_ANSWER:
+    # Nếu slot yêu cầu SHORT_ANSWER mà ngân hàng chưa có, tự động tìm câu ESSAY có đáp số ngắn (final_answer) để lấp slot
+    if not results and section_type == "SHORT_ANSWER":
+        fallback_query = db.query(Question).filter(
+            Question.is_verified == True,
+            Question.grade == grade,
+            Question.final_answer.isnot(None)
+        )
+        if main_topic:
+            fallback_query = fallback_query.filter(Question.main_topic == main_topic)
+        if difficulty:
+            fallback_query = fallback_query.filter(Question.difficulty == difficulty)
+        if exclude_ids:
+            fallback_query = fallback_query.filter(~Question.id.in_(exclude_ids))
+        
+        fallback_query = fallback_query.order_by(Question.usage_count.asc(), Question.created_at.desc())
+        results = fallback_query.limit(limit).all()
+
+    return results

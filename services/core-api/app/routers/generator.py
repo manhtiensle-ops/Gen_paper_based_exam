@@ -8,6 +8,7 @@ import requests
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_
 
 from ..database import get_db
 from ..models import ExamBlueprint, GeneratedExam, Question, ExamItem
@@ -145,15 +146,28 @@ def generate_exam(
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    bp = db.query(ExamBlueprint).filter(ExamBlueprint.id == payload.blueprint_id).first()
-    if not bp:
-        raise HTTPException(status_code=404, detail="Blueprint not found")
+    # Hỗ trợ cả Blueprint lưu sẵn trong DB lẫn cấu hình trực tiếp từ Matrix Studio
+    bp_grade = 9
+    sections_config = []
+    actual_bp_id = payload.blueprint_id
+
+    if payload.custom_blueprint_config:
+        sections_config = payload.custom_blueprint_config.get("sections_config", [])
+        bp_grade = payload.custom_blueprint_config.get("grade", 9)
+    elif payload.blueprint_id:
+        bp = db.query(ExamBlueprint).filter(ExamBlueprint.id == payload.blueprint_id).first()
+        if not bp:
+            raise HTTPException(status_code=404, detail="Blueprint not found")
+        sections_config = bp.sections_config
+        bp_grade = bp.grade
+    else:
+        raise HTTPException(status_code=400, detail="Cần cung cấp blueprint_id hoặc custom_blueprint_config")
 
     selected_slots = []
     used_ids = list(payload.exclude_question_ids)
 
     # Assemble each slot deterministically
-    for section in bp.sections_config:
+    for section in sections_config:
         section_type = section.get("section_type", "ESSAY")
         slots = section.get("slots", [])
         for slot in slots:
@@ -172,7 +186,7 @@ def generate_exam(
 
             candidates = search_candidate_questions(
                 db=db,
-                grade=bp.grade,
+                grade=bp_grade,
                 section_type=section_type,
                 main_topic=main_topic,
                 difficulty=difficulty,
@@ -214,7 +228,7 @@ def generate_exam(
 
     generated_exam = GeneratedExam(
         title=payload.title,
-        blueprint_id=bp.id,
+        blueprint_id=actual_bp_id,
         folder_id=payload.folder_id,
         user_id=current_user.id if current_user else None,
         tenant_id=current_user.tenant_id if current_user else "default_school",
@@ -229,28 +243,64 @@ def generate_exam(
 # Slot Swapping: Retrieve alternative questions for a given slot
 @router.post("/swap", response_model=List[QuestionResponse])
 def swap_question_candidates(payload: SwapQuestionRequest, db: Session = Depends(get_db)):
-    current_q = db.query(Question).filter(Question.id == payload.current_question_id).first()
-    if not current_q:
-        raise HTTPException(status_code=404, detail="Reference question not found")
+    """
+    Cơ chế tìm kiếm câu hỏi thay thế linh hoạt cho Slot:
+    - Nếu có current_question_id: Cho phép gợi ý tương đồng ngữ nghĩa qua embedding.
+    - Nếu không có (slot trống) hoặc người dùng chọn filter tự do: Tìm kiếm linh hoạt theo từ khóa/chuyên đề/độ khó/hình thức.
+    """
+    current_q = None
+    if payload.current_question_id:
+        current_q = db.query(Question).filter(Question.id == payload.current_question_id).first()
 
-    main_topic = payload.main_topic or current_q.main_topic
-    difficulty = payload.difficulty or current_q.difficulty
-    exclude_ids = list(payload.exclude_question_ids) + [current_q.id]
+    exclude_ids = list(payload.exclude_question_ids)
+    if current_q:
+        exclude_ids.append(current_q.id)
 
-    ref_embedding = current_q.embedding if current_q.embedding is not None else None
+    # Nếu người dùng có truyền từ khóa hoặc lọc tự do (không bị trói buộc vào câu hiện tại)
+    if payload.keyword or payload.main_topic or payload.difficulty or payload.section_type:
+        query = db.query(Question).filter(Question.is_verified == True)
+        if payload.main_topic and payload.main_topic != "ALL":
+            query = query.filter(Question.main_topic == payload.main_topic)
+        if payload.difficulty and payload.difficulty != "ALL":
+            query = query.filter(Question.difficulty == payload.difficulty)
+        if payload.section_type and payload.section_type != "ALL":
+            query = query.filter(Question.section_type == payload.section_type)
+        if payload.keyword:
+            kw = f"%{payload.keyword.strip()}%"
+            query = query.filter(
+                or_(
+                    Question.content_latex.ilike(kw),
+                    Question.semantic_summary.ilike(kw)
+                )
+            )
+        if exclude_ids:
+            query = query.filter(~Question.id.in_(exclude_ids))
 
-    candidates = search_candidate_questions(
-        db=db,
-        grade=current_q.grade,
-        section_type=current_q.section_type,
-        main_topic=main_topic,
-        difficulty=difficulty,
-        structure_type=current_q.structure_type,
-        reference_embedding=ref_embedding,
-        exclude_ids=exclude_ids,
-        limit=5
-    )
-    return candidates
+        offset = (payload.page - 1) * payload.page_size
+        candidates = query.order_by(Question.created_at.desc()).offset(offset).limit(payload.page_size).all()
+        return candidates
+
+    # Ngược lại: Gợi ý theo câu hiện tại nếu có
+    if current_q:
+        ref_embedding = current_q.embedding if current_q.embedding is not None else None
+        candidates = search_candidate_questions(
+            db=db,
+            grade=current_q.grade,
+            section_type=current_q.section_type,
+            main_topic=current_q.main_topic,
+            difficulty=current_q.difficulty,
+            structure_type=current_q.structure_type,
+            reference_embedding=ref_embedding,
+            exclude_ids=exclude_ids,
+            limit=payload.page_size
+        )
+        return candidates
+
+    # Trường hợp slot trống và không có bộ lọc: Trả về các câu hỏi đã kiểm duyệt mới nhất
+    query = db.query(Question).filter(Question.is_verified == True)
+    if exclude_ids:
+        query = query.filter(~Question.id.in_(exclude_ids))
+    return query.order_by(Question.created_at.desc()).limit(payload.page_size).all()
 
 @router.get("/exams", status_code=status.HTTP_200_OK)
 def list_generated_exams(

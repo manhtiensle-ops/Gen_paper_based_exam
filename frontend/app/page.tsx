@@ -30,6 +30,7 @@ import {
   Sparkles,
   Scale,
   Sliders,
+  Plus,
   X,
   Copy,
   User as UserIcon
@@ -161,11 +162,17 @@ export default function Dashboard() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  // Swap Slot Modal State
+  // Swap Slot Modal State (Universal Question Swapper)
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [activeSlotIdx, setActiveSlotIdx] = useState<number | null>(null);
+  const [activeSlotCurrentQuestionId, setActiveSlotCurrentQuestionId] = useState<string | null>(null);
   const [swapCandidates, setSwapCandidates] = useState<any[]>([]);
   const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [swapMode, setSwapMode] = useState<"smart" | "bank">("smart");
+  const [swapFilterTopic, setSwapFilterTopic] = useState<string>("ALL");
+  const [swapFilterDifficulty, setSwapFilterDifficulty] = useState<string>("ALL");
+  const [swapFilterSection, setSwapFilterSection] = useState<string>("ALL");
+  const [swapSearchQuery, setSwapSearchQuery] = useState<string>("");
 
   // Edit Question Modal State
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
@@ -644,17 +651,59 @@ export default function Dashboard() {
   };
 
   // Open Swap Question Modal
-  const openSwapModal = async (slotIdx: number, questionId: string) => {
+  const openSwapModal = async (
+    slotIdx: number,
+    questionId?: string | null,
+    defaultTopic?: string,
+    defaultDiff?: string
+  ) => {
     setActiveSlotIdx(slotIdx);
+    setActiveSlotCurrentQuestionId(questionId || null);
     setSwapModalOpen(true);
+    setSwapMode(questionId ? "smart" : "bank");
+    if (defaultTopic) setSwapFilterTopic(defaultTopic);
+    else setSwapFilterTopic("ALL");
+    if (defaultDiff) setSwapFilterDifficulty(defaultDiff);
+    else setSwapFilterDifficulty("ALL");
+    setSwapFilterSection("ALL");
+    setSwapSearchQuery("");
+
+    await fetchSwapCandidates({
+      current_question_id: questionId || undefined,
+      mode: questionId ? "smart" : "bank",
+      main_topic: defaultTopic && !questionId ? defaultTopic : undefined,
+      difficulty: defaultDiff && !questionId ? defaultDiff : undefined,
+    });
+  };
+
+  const fetchSwapCandidates = async (overrideParams?: any) => {
     setLoadingCandidates(true);
     try {
+      const mode = overrideParams?.mode ?? swapMode;
+      const qId = overrideParams?.current_question_id ?? activeSlotCurrentQuestionId;
+      const topic = overrideParams?.main_topic ?? swapFilterTopic;
+      const diff = overrideParams?.difficulty ?? swapFilterDifficulty;
+      const section = overrideParams?.section_type ?? swapFilterSection;
+      const kw = overrideParams?.keyword ?? swapSearchQuery;
+
+      const payload: any = {
+        page: 1,
+        page_size: 15,
+      };
+
+      if (mode === "smart" && qId) {
+        payload.current_question_id = qId;
+      } else {
+        if (topic && topic !== "ALL") payload.main_topic = topic;
+        if (diff && diff !== "ALL") payload.difficulty = diff;
+        if (section && section !== "ALL") payload.section_type = section;
+        if (kw && kw.trim()) payload.keyword = kw.trim();
+      }
+
       const res = await fetch("/api/generator/swap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          current_question_id: questionId
-        })
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         const data = await res.json();
@@ -684,7 +733,9 @@ export default function Dashboard() {
         main_topic: replacement.main_topic,
         difficulty: replacement.difficulty
       };
-      setGeneratedExam({ ...generatedExam, slots_state: updatedSlots });
+      const updatedExam = { ...generatedExam, slots_state: updatedSlots };
+      setGeneratedExam(updatedExam);
+      saveWorkspaceSession(activeTab, updatedExam.id, updatedExam);
     }
     setSwapModalOpen(false);
   };
@@ -1021,19 +1072,21 @@ export default function Dashboard() {
                         </div>
                         {slot.question && (
                           <div className="flex items-center space-x-1">
+                            {slot.question && (
+                              <button
+                                onClick={() => setEditingQuestion(slot.question)}
+                                className="text-xs text-slate-500 hover:text-slate-800 font-semibold flex items-center space-x-1 py-1 px-2.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span>Sửa</span>
+                              </button>
+                            )}
                             <button
-                              onClick={() => setEditingQuestion(slot.question)}
-                              className="text-xs text-slate-600 hover:text-indigo-600 font-semibold flex items-center space-x-1 py-1 px-2 rounded-lg hover:bg-slate-100 cursor-pointer"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              <span>Sửa</span>
-                            </button>
-                            <button
-                              onClick={() => openSwapModal(slot.slot_index, slot.question.id)}
+                              onClick={() => openSwapModal(slot.slot_index, slot.question?.id, slot.main_topic, slot.difficulty)}
                               className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1 py-1 px-2.5 rounded-lg hover:bg-indigo-50 cursor-pointer"
                             >
                               <Shuffle className="w-3 h-3" />
-                              <span>Đổi câu khác</span>
+                              <span>{slot.question ? "Đổi câu khác" : "Chọn câu lấp slot này"}</span>
                             </button>
                           </div>
                         )}
@@ -1044,8 +1097,18 @@ export default function Dashboard() {
                           {renderQuestionContent(slot.question)}
                         </div>
                       ) : (
-                        <div className="p-4 bg-amber-50 text-amber-700 text-xs rounded-xl border border-amber-200">
-                          Chưa tìm thấy câu hỏi phù hợp trong ngân hàng cho slot này. Hãy bổ sung câu hỏi vào ngân hàng!
+                        <div className="p-4 bg-amber-50 text-amber-800 text-xs rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-amber-500">⚠️</span>
+                            <span>Chưa tìm thấy câu hỏi phù hợp tự động cho vị trí này. Thầy cô có thể chọn câu hỏi tùy ý từ kho.</span>
+                          </div>
+                          <button
+                            onClick={() => openSwapModal(slot.slot_index, null, slot.main_topic, slot.difficulty)}
+                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shadow-xs transition-all flex items-center space-x-1 shrink-0 cursor-pointer self-start sm:self-auto"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>+ Chọn câu lấp slot này</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -1726,55 +1789,212 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* SWAP QUESTION MODAL */}
+      {/* SWAP QUESTION MODAL (UNIVERSAL QUESTION SWAPPER) */}
       {swapModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-5 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
-                <Shuffle className="w-5 h-5 text-indigo-600" />
-                <span>Chọn câu hỏi thay thế cho Slot {activeSlotIdx}</span>
-              </h3>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-2xs">
+                  <Shuffle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center space-x-2">
+                    <span>Thay Thế Câu Hỏi Cho Vị Trí Slot {activeSlotIdx}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      Tự Do & Linh Hoạt
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Thầy cô có thể chọn gợi ý tương đồng theo AI hoặc duyệt tự do toàn bộ ngân hàng câu hỏi
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setSwapModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <p className="text-xs text-slate-500">
-              Các câu hỏi dưới đây được lọc theo cùng tiêu chí độ khó, chủ đề và xếp hạng tương đồng ngữ nghĩa bằng Vector Cosine Distance (pgvector).
-            </p>
+            {/* Mode Switcher Tabs */}
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 shrink-0">
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl gap-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setSwapMode("smart");
+                    await fetchSwapCandidates({ mode: "smart" });
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                    swapMode === "smart"
+                      ? "bg-white text-indigo-700 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Gợi ý thông minh (AI & Cùng dạng)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setSwapMode("bank");
+                    await fetchSwapCandidates({ mode: "bank" });
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                    swapMode === "bank"
+                      ? "bg-white text-indigo-700 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Duyệt toàn bộ ngân hàng</span>
+                </button>
+              </div>
 
-            {loadingCandidates ? (
-              <div className="py-12 text-center text-slate-400">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-600" />
-                <p className="text-xs">Đang tìm các ứng viên tương đồng...</p>
-              </div>
-            ) : swapCandidates.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs">
-                Không tìm thấy câu hỏi thay thế khả dụng.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {swapCandidates.map((c) => (
-                  <div
-                    key={c.id}
-                    onClick={() => handleSelectReplacement(c)}
-                    className="p-4 rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/30 cursor-pointer transition-all space-y-2"
-                  >
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
-                      <span>{TOPIC_VI_MAP[c.main_topic] || c.main_topic} • {c.difficulty}</span>
-                      <span className="text-indigo-600">Chọn câu này →</span>
-                    </div>
-                    <div className="text-xs text-slate-800">
-                      {renderQuestionContent(c)}
-                    </div>
-                  </div>
-                ))}
+              <span className="text-xs text-slate-500 font-semibold hidden sm:inline">
+                Tìm thấy {swapCandidates.length} câu hỏi khả dụng
+              </span>
+            </div>
+
+            {/* Dynamic Filter Bar (Khi ở chế độ Duyệt toàn bộ ngân hàng) */}
+            {swapMode === "bank" && (
+              <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 flex flex-wrap items-center gap-2 shrink-0">
+                <div className="flex-1 min-w-[180px] relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={swapSearchQuery}
+                    onChange={(e) => setSwapSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        fetchSwapCandidates();
+                      }
+                    }}
+                    placeholder="Tìm theo từ khóa (VD: đa giác, nghiệm nguyên...)"
+                    className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <select
+                  value={swapFilterTopic}
+                  onChange={(e) => {
+                    setSwapFilterTopic(e.target.value);
+                    fetchSwapCandidates({ main_topic: e.target.value });
+                  }}
+                  className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Tất cả Chuyên đề</option>
+                  <option value="ALGEBRA">Đại số</option>
+                  <option value="NUMBER_THEORY">Số học</option>
+                  <option value="PLANE_GEOMETRY">Hình học phẳng</option>
+                  <option value="INEQUALITY_EXTREMA">BĐT & Cực trị</option>
+                  <option value="COMBINATORICS_PROBABILITY">Tổ hợp & Xác suất</option>
+                  <option value="REAL_WORLD_MATH">Toán thực tế</option>
+                </select>
+
+                <select
+                  value={swapFilterDifficulty}
+                  onChange={(e) => {
+                    setSwapFilterDifficulty(e.target.value);
+                    fetchSwapCandidates({ difficulty: e.target.value });
+                  }}
+                  className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Tất cả Độ khó</option>
+                  <option value="EASY">Cơ bản (EASY)</option>
+                  <option value="MEDIUM">Vận dụng (MEDIUM)</option>
+                  <option value="HARD">Vận dụng cao (HARD)</option>
+                  <option value="OLYMPIAD">Học sinh giỏi (OLYMPIAD)</option>
+                </select>
+
+                <select
+                  value={swapFilterSection}
+                  onChange={(e) => {
+                    setSwapFilterSection(e.target.value);
+                    fetchSwapCandidates({ section_type: e.target.value });
+                  }}
+                  className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                >
+                  <option value="ALL">Tất cả Hình thức</option>
+                  <option value="SHORT_ANSWER">Điền đáp số ngắn</option>
+                  <option value="ESSAY">Tự luận</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => fetchSwapCandidates()}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Tìm kiếm
+                </button>
               </div>
             )}
+
+            {/* Candidates List (Scrollable) */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {loadingCandidates ? (
+                <div className="py-16 text-center text-slate-400">
+                  <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-600" />
+                  <p className="text-xs">Đang tìm các câu hỏi khả dụng từ kho...</p>
+                </div>
+              ) : swapCandidates.length === 0 ? (
+                <div className="py-16 text-center text-slate-400 text-xs space-y-2">
+                  <p>Không tìm thấy câu hỏi phù hợp với bộ lọc hiện tại.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSwapFilterTopic("ALL");
+                      setSwapFilterDifficulty("ALL");
+                      setSwapFilterSection("ALL");
+                      setSwapSearchQuery("");
+                      fetchSwapCandidates({ main_topic: "ALL", difficulty: "ALL", section_type: "ALL", keyword: "" });
+                    }}
+                    className="text-indigo-600 font-bold hover:underline cursor-pointer"
+                  >
+                    Xóa bộ lọc để xem toàn bộ câu hỏi
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {swapCandidates.map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => handleSelectReplacement(c)}
+                      className="p-4 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/20 cursor-pointer transition-all space-y-2.5 bg-white shadow-2xs group"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-slate-500">
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            {TOPIC_VI_MAP[c.main_topic] || c.main_topic}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                            {c.difficulty}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700">
+                            {c.section_type === "SHORT_ANSWER" ? "Điền đáp số" : "Tự luận"}
+                          </span>
+                          {c.final_answer && (
+                            <span className="text-slate-600 font-mono text-[10px]">
+                              Đáp số: {c.final_answer}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-indigo-600 font-bold group-hover:translate-x-1 transition-transform flex items-center space-x-1">
+                          <span>Chọn câu này</span>
+                          <span>→</span>
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-800 font-serif leading-relaxed line-clamp-3">
+                        {renderQuestionContent(c)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
