@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   ArrowUp,
   ArrowDown,
+  ChevronsUp,
+  ChevronsDown,
   RefreshCw,
   Send,
   ZoomIn,
@@ -536,15 +538,22 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
   }, [sidebarTab, rawLatexCode, activeMode, compiling, items, layoutKnobs]);
 
   // Reorder Item
-  const moveItem = async (index: number, direction: "up" | "down") => {
-    if (direction === "up" && index === 0) return;
-    if (direction === "down" && index === items.length - 1) return;
+  const moveItem = async (index: number, direction: "up" | "down" | "top" | "bottom") => {
+    if ((direction === "up" || direction === "top") && index === 0) return;
+    if ((direction === "down" || direction === "bottom") && index === items.length - 1) return;
 
-    const targetIdx = direction === "up" ? index - 1 : index + 1;
     const reordered = [...items];
-    const temp = reordered[index];
-    reordered[index] = reordered[targetIdx];
-    reordered[targetIdx] = temp;
+    const targetItem = reordered.splice(index, 1)[0];
+
+    if (direction === "up") {
+      reordered.splice(index - 1, 0, targetItem);
+    } else if (direction === "down") {
+      reordered.splice(index + 1, 0, targetItem);
+    } else if (direction === "top") {
+      reordered.unshift(targetItem);
+    } else if (direction === "bottom") {
+      reordered.push(targetItem);
+    }
 
     const payload = reordered.map((it, idx) => ({
       item_id: it.id,
@@ -1277,10 +1286,18 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
+                          onClick={() => moveItem(idx, "top")}
+                          disabled={idx === 0}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg disabled:opacity-20 transition-all"
+                          title="Đưa lên đầu đề thi"
+                        >
+                          <ChevronsUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => moveItem(idx, "up")}
                           disabled={idx === 0}
                           className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-20 transition-all"
-                          title="Chuyển lên"
+                          title="Chuyển lên 1 nấc"
                         >
                           <ArrowUp className="w-3.5 h-3.5" />
                         </button>
@@ -1288,9 +1305,17 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                           onClick={() => moveItem(idx, "down")}
                           disabled={idx === items.length - 1}
                           className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-20 transition-all"
-                          title="Chuyển xuống"
+                          title="Chuyển xuống 1 nấc"
                         >
                           <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => moveItem(idx, "bottom")}
+                          disabled={idx === items.length - 1}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg disabled:opacity-20 transition-all"
+                          title="Đưa xuống cuối đề thi"
+                        >
+                          <ChevronsDown className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>

@@ -10,7 +10,8 @@ import {
   Maximize2,
   FileDown,
   RotateCcw,
-  QrCode
+  QrCode,
+  Eye
 } from "lucide-react";
 
 interface QuestionItem {
@@ -50,6 +51,7 @@ export default function A4PaperPreview({
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [isTwoColumns, setIsTwoColumns] = useState<boolean>(true);
   const [showSolutions, setShowSolutions] = useState<boolean>(false);
+  const [isEyeCarePaper, setIsEyeCarePaper] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -110,6 +112,21 @@ export default function A4PaperPreview({
             {showSolutions ? "Ẩn Đáp án" : "Hiện Đáp án"}
           </button>
 
+          {/* Toggle Eye-Care Warm Paper */}
+          <button
+            type="button"
+            onClick={() => setIsEyeCarePaper(!isEyeCarePaper)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isEyeCarePaper
+                ? "bg-amber-100/90 border-amber-300 text-amber-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Mô phỏng màu giấy ngà chống lóa mắt khi soạn ban đêm"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>{isEyeCarePaper ? "Giấy ngà chống lóa" : "Giấy trắng A4"}</span>
+          </button>
+
           {/* Zoom Controls */}
           <div className="flex items-center bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">
             <button
@@ -157,7 +174,9 @@ export default function A4PaperPreview({
             width: "210mm",
             minHeight: "297mm",
           }}
-          className="bg-white paper-sheet-elevation rounded-sm p-[20mm] text-slate-900 font-serif leading-relaxed transition-transform duration-150 print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative"
+          className={`${
+            isEyeCarePaper ? "bg-[#fbf7ee] text-stone-900 border-[#ebdcc4]" : "bg-white text-slate-900"
+          } paper-sheet-elevation rounded-sm p-[20mm] font-serif leading-relaxed transition-all duration-200 print:bg-white print:text-black print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative`}
         >
           {/* Header sư phạm chuẩn Sở GD&ĐT / Trung tâm Vinh Phát */}
           <div className="grid grid-cols-2 gap-4 pb-4 border-b-2 border-slate-900 mb-5 text-center text-xs">
