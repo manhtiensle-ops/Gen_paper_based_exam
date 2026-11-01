@@ -26,7 +26,8 @@ import {
   ShieldCheck,
   Bookmark,
   Type,
-  Droplet
+  Droplet,
+  PenLine
 } from "lucide-react";
 
 interface QuestionItem {
@@ -84,6 +85,7 @@ export default function A4PaperPreview({
   const [showPocketKeyStrip, setShowPocketKeyStrip] = useState<boolean>(false);
   const [isLargePrintMode, setIsLargePrintMode] = useState<boolean>(false);
   const [isEcoInkMode, setIsEcoInkMode] = useState<boolean>(false);
+  const [isGuidedNotesMode, setIsGuidedNotesMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -263,6 +265,21 @@ export default function A4PaperPreview({
           >
             <Droplet className="w-3.5 h-3.5" />
             <span>{isEcoInkMode ? "Tiết Kiệm Mực (Bật)" : "Tiết Kiệm Mực"}</span>
+          </button>
+
+          {/* Home Study Guided Notes Exam Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsGuidedNotesMode(!isGuidedNotesMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isGuidedNotesMode
+                ? "bg-purple-100 border-purple-300 text-purple-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Chế độ in luyện tập tại nhà: bổ sung lề ghi chú Cornell Notes cho học sinh"
+          >
+            <PenLine className="w-3.5 h-3.5" />
+            <span>{isGuidedNotesMode ? "Ghi Chú Cornell (Bật)" : "Ghi Chú Cornell"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -565,6 +582,21 @@ export default function A4PaperPreview({
           )}
 
           {/* Flashcard Cutout Layout Simulation */}
+          {/* Home Study Cornell Notes Margin Notice */}
+          {isGuidedNotesMode && (
+            <div className="mb-4 p-2.5 rounded border border-dashed border-purple-300 bg-purple-50/50 flex items-center justify-between text-xs text-purple-900 print:bg-white print:border-slate-400">
+              <div className="flex items-center gap-2">
+                <PenLine className="w-4 h-4 text-purple-700 shrink-0" />
+                <div>
+                  <span className="font-bold">CHẾ ĐỘ TỰ HỌC & LUYỆN TẬP TẠI NHÀ (CORNELL STUDY FORMAT):</span> Dành 25% lề phải cho học sinh ghi chép bước giải then chốt, công thức áp dụng và phân tích lỗi sai (Error Log).
+                </div>
+              </div>
+              <span className="text-[10px] font-mono font-bold bg-purple-200/70 px-2 py-0.5 rounded text-purple-800 shrink-0 ml-2">
+                CORNELL-NOTES
+              </span>
+            </div>
+          )}
+
           {isFlashcardCutoutMode ? (
             <div className="grid grid-cols-2 gap-4 py-2">
               {questions.map((q, idx) => (
@@ -594,32 +626,35 @@ export default function A4PaperPreview({
           ) : (
             /* Exam Body Container with Column Switch */
             <div
-              className={
-              isBookletMode
-                ? `columns-2 gap-[12mm] border-l-0 ${
-                    spacingDensity === "compact"
-                      ? "text-[10px] leading-tight"
-                      : spacingDensity === "relaxed"
-                      ? "text-[12px] leading-loose"
-                      : "text-[11px] leading-normal"
-                  }`
-                : isTwoColumns
-                ? `columns-1 md:columns-2 gap-[8mm] ${
-                    spacingDensity === "compact"
-                      ? "text-[11px] leading-tight"
-                      : spacingDensity === "relaxed"
-                      ? "text-[13px] leading-loose"
-                      : "text-[12px] leading-normal"
-                  }`
-                : `${
-                    spacingDensity === "compact"
-                      ? "space-y-2 text-[12px] leading-normal"
-                      : spacingDensity === "relaxed"
-                      ? "space-y-6 text-[14px] leading-loose"
-                      : "space-y-4 text-[13px] leading-relaxed"
-                  }`
-            }
-          >
+              className={`grid ${isGuidedNotesMode ? "grid-cols-4 gap-4" : "grid-cols-1"}`}
+            >
+              <div
+                className={`${isGuidedNotesMode ? "col-span-3" : ""} ${
+                  isBookletMode
+                    ? `columns-2 gap-[12mm] border-l-0 ${
+                        spacingDensity === "compact"
+                          ? "text-[10px] leading-tight"
+                          : spacingDensity === "relaxed"
+                          ? "text-[12px] leading-loose"
+                          : "text-[11px] leading-normal"
+                      }`
+                    : isTwoColumns
+                    ? `columns-1 md:columns-2 gap-[8mm] ${
+                        spacingDensity === "compact"
+                          ? "text-[11px] leading-tight"
+                          : spacingDensity === "relaxed"
+                          ? "text-[13px] leading-loose"
+                          : "text-[12px] leading-normal"
+                      }`
+                    : `${
+                        spacingDensity === "compact"
+                          ? "space-y-2 text-[12px] leading-normal"
+                          : spacingDensity === "relaxed"
+                          ? "space-y-4 text-[14px] leading-relaxed"
+                          : "space-y-3 text-[13px] leading-normal"
+                      }`
+                }`}
+              >
             {/* If structured into GDPT 2018 Parts */}
             {part1Questions.length > 0 && (
               <div className="break-inside-avoid mb-4">
@@ -756,6 +791,32 @@ export default function A4PaperPreview({
                 ))}
               </div>
             )}
+              </div>
+              {/* Cornell Notes Guided Study Column */}
+              {isGuidedNotesMode && (
+                <div className="col-span-1 border-l-2 border-dashed border-purple-300 pl-3 flex flex-col justify-between py-2 text-[10px] text-purple-900 bg-purple-50/20 print:bg-white print:border-slate-300">
+                  <div className="space-y-4">
+                    <div className="font-bold text-center border-b border-purple-200 pb-1 text-purple-950">
+                      CỘT GHI CHÚ CORNELL
+                    </div>
+                    <div className="p-2 border border-purple-200 rounded bg-white/80">
+                      <div className="font-semibold text-purple-800">1. Từ khóa & Công thức:</div>
+                      <div className="h-14 border-b border-dotted border-purple-300"></div>
+                    </div>
+                    <div className="p-2 border border-purple-200 rounded bg-white/80">
+                      <div className="font-semibold text-purple-800">2. Lỗi sai thường gặp:</div>
+                      <div className="h-14 border-b border-dotted border-purple-300"></div>
+                    </div>
+                    <div className="p-2 border border-purple-200 rounded bg-white/80">
+                      <div className="font-semibold text-purple-800">3. Ý tưởng bước giải:</div>
+                      <div className="h-20 border-b border-dotted border-purple-300"></div>
+                    </div>
+                  </div>
+                  <div className="text-[9px] text-purple-600/80 italic text-center border-t border-purple-200 pt-1">
+                    VINH PHÁT Guided Study System
+                  </div>
+                </div>
+              )}
           </div>
           )}
 

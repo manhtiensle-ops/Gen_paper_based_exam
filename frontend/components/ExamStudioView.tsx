@@ -2384,6 +2384,42 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 17: Standardized Pacing & Modular Time Allocation Inspector */}
+                  {(() => {
+                    const totalEstimatedMins = items.reduce((acc, it) => {
+                      const diff = ((it.problem_snapshot || {}).difficulty || "MEDIUM").toUpperCase();
+                      return acc + (diff === "EASY" ? 2 : diff === "MEDIUM" ? 4 : diff === "HARD" ? 8 : 15);
+                    }, 0);
+                    const examDuration = headerConfig.duration_minutes || 90;
+                    const pacingRatio = examDuration > 0 ? (totalEstimatedMins / examDuration) * 100 : 100;
+                    const isPacingValid = pacingRatio >= 75 && pacingRatio <= 115;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {isPacingValid ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Định mức thời gian & Nhịp độ (Pacing):{" "}
+                            {isPacingValid ? (
+                              <span className="font-mono text-emerald-700">CHUẨN ĐỊNH MỨC (~{totalEstimatedMins}p/{examDuration}p)</span>
+                            ) : (
+                              <span className="font-mono text-amber-700">LỆCH ĐỊNH MỨC (~{totalEstimatedMins}p/{examDuration}p ~ {pacingRatio.toFixed(0)}%)</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {isPacingValid
+                              ? `✓ Thời gian giải ước tính (~${totalEstimatedMins} phút) tương thích tối ưu với thời lượng kỳ thi (${examDuration} phút), không gây áp lực thời gian quá tải.`
+                              : `⚠️ Cảnh báo: Thời gian làm bài ước tính (${totalEstimatedMins} phút) chiếm ${pacingRatio.toFixed(0)}% so với quy định (${examDuration} phút). Nên điều chỉnh lại cơ cấu độ khó câu hỏi.`}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2420,7 +2456,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `13. Đa dạng hóa đề dẫn & Chống trùng lặp mô-típ: ĐẠT TIÊU CHUẨN`,
                         `14. Bối cảnh thực tế & Mô hình hóa (GDPT 2018): ĐẠT CHUẨN NĂNG LỰC`,
                         `15. Phân hóa đỉnh cao & Điểm 10 chuyên sâu: ĐẠT CHUẨN PHÂN LOẠI`,
-                        `16. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `16. Định mức thời gian & Nhịp độ (Pacing): CHUẨN ĐỊNH MỨC`,
+                        `17. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
