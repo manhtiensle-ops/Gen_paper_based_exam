@@ -47,7 +47,8 @@ import {
   Copy,
   Check,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  Clock
 } from "lucide-react";
 
 interface Props {
@@ -1878,6 +1879,42 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     </div>
                   </div>
+
+                  {/* Check 5: Estimated Duration Check */}
+                  {(() => {
+                    let totalEstMinutes = 0;
+                    items.forEach((it) => {
+                      const snap = it.problem_snapshot || {};
+                      const diff = (snap.difficulty || "MEDIUM").toUpperCase();
+                      if (diff === "EASY") totalEstMinutes += 2;
+                      else if (diff === "MEDIUM") totalEstMinutes += 4;
+                      else if (diff === "HARD") totalEstMinutes += 8;
+                      else if (diff === "OLYMPIAD") totalEstMinutes += 15;
+                      else totalEstMinutes += 4;
+                    });
+                    const durationSet = headerConfig.duration_minutes || 150;
+                    const isDurationFeasible = totalEstMinutes <= durationSet * 1.1;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {isDurationFeasible ? (
+                          <Clock className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Dự toán thời gian làm bài: <span className="font-mono text-indigo-700">~{totalEstMinutes} phút</span> / {durationSet} phút
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {isDurationFeasible
+                              ? `✓ Khối lượng câu hỏi phù hợp với thời lượng ${durationSet} phút.`
+                              : `⚠️ Cảnh báo quá tải: Ước lượng ~${totalEstMinutes} phút vượt thời lượng thi ${durationSet} phút.`}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -1898,8 +1935,12 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `----------------------------------------------------`,
                         `1. Thang điểm: ${currentTotalScore} điểm (${isScoreOk ? "ĐẠT CHUẨN" : "CẦN LƯU Ý"})`,
                         `2. Số lượng câu hỏi: ${items.length} câu (${items.length > 0 ? "ĐẠT CHUẨN" : "CHƯA ĐẠT"})`,
-                        `3. Kiểm định cú pháp XeLaTeX: ${dollarCount} ký tự $ (${isMathOk ? "ĐỐI XỨNG HỢP LỆ" : "CẢNH BÁO LỖI BIÊN DỊCH"})`,
-                        `4. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `3. Dự toán thời gian làm bài: ~${items.reduce((acc, it) => {
+                          const diff = ((it.problem_snapshot || {}).difficulty || "MEDIUM").toUpperCase();
+                          return acc + (diff === "EASY" ? 2 : diff === "MEDIUM" ? 4 : diff === "HARD" ? 8 : 15);
+                        }, 0)} phút / ${headerConfig.duration_minutes || 150} phút quy định`,
+                        `4. Kiểm định cú pháp XeLaTeX: ${dollarCount} ký tự $ (${isMathOk ? "ĐỐI XỨNG HỢP LỆ" : "CẢNH BÁO LỖI BIÊN DỊCH"})`,
+                        `5. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

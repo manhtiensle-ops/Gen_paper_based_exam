@@ -12,7 +12,8 @@ import {
   RotateCcw,
   QrCode,
   Eye,
-  Stamp
+  Stamp,
+  BookOpen
 } from "lucide-react";
 
 interface QuestionItem {
@@ -56,6 +57,7 @@ export default function A4PaperPreview({
   const [spacingDensity, setSpacingDensity] = useState<"compact" | "normal" | "relaxed">("normal");
   const [watermarkText, setWatermarkText] = useState<string>("");
   const [showWatermarkInput, setShowWatermarkInput] = useState<boolean>(false);
+  const [isBookletMode, setIsBookletMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -101,6 +103,21 @@ export default function A4PaperPreview({
           >
             <Columns className="w-3.5 h-3.5" />
             <span>{isTwoColumns ? "2 Cột chuẩn" : "1 Cột dọc"}</span>
+          </button>
+
+          {/* 2-Up Booklet Mode Switch */}
+          <button
+            type="button"
+            onClick={() => setIsBookletMode(!isBookletMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isBookletMode
+                ? "bg-indigo-600 border-indigo-700 text-white font-bold shadow-xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Chế độ Booklet: In thu nhỏ 2 trang A4 trên 1 mặt A4 tiết kiệm 50% giấy"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>{isBookletMode ? "Booklet (2-Up): Bật" : "Bản in Booklet"}</span>
           </button>
 
           {/* Toggle Answer Key */}
@@ -237,12 +254,14 @@ export default function A4PaperPreview({
           style={{
             transform: `scale(${zoomLevel / 100})`,
             transformOrigin: "top center",
-            width: "210mm",
-            minHeight: "297mm",
+            width: isBookletMode ? "297mm" : "210mm",
+            minHeight: isBookletMode ? "210mm" : "297mm",
           }}
           className={`${
             isEyeCarePaper ? "bg-[#fbf7ee] text-stone-900 border-[#ebdcc4]" : "bg-white text-slate-900"
-          } paper-sheet-elevation rounded-sm p-[20mm] font-serif leading-relaxed transition-all duration-200 print:bg-white print:text-black print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative overflow-hidden`}
+          } paper-sheet-elevation rounded-sm ${
+            isBookletMode ? "p-[12mm]" : "p-[20mm]"
+          } font-serif leading-relaxed transition-all duration-200 print:bg-white print:text-black print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative overflow-hidden`}
         >
           {/* Watermark Overlay (if configured) */}
           {watermarkText.trim() && (
@@ -303,7 +322,15 @@ export default function A4PaperPreview({
           {/* Exam Body Container with Column Switch */}
           <div
             className={
-              isTwoColumns
+              isBookletMode
+                ? `columns-2 gap-[12mm] border-l-0 ${
+                    spacingDensity === "compact"
+                      ? "text-[10px] leading-tight"
+                      : spacingDensity === "relaxed"
+                      ? "text-[12px] leading-loose"
+                      : "text-[11px] leading-normal"
+                  }`
+                : isTwoColumns
                 ? `columns-1 md:columns-2 gap-[8mm] ${
                     spacingDensity === "compact"
                       ? "text-[11px] leading-tight"
