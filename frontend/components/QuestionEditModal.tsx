@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import MathRenderer from "@/components/MathRenderer";
+import MathSymbolToolbar from "@/components/MathSymbolToolbar";
 import {
   X,
   Save,
@@ -111,6 +112,10 @@ export default function QuestionEditModal({
 
   const handleRemoveSubQuestion = (idx: number) => {
     setSubQuestions(subQuestions.filter((_, i) => i !== idx));
+  };
+
+  const handleInsertSymbol = (snippet: string) => {
+    setContentLatex((prev: string) => (prev ? `${prev} ${snippet}` : snippet));
   };
 
   // Save changes
@@ -342,6 +347,7 @@ export default function QuestionEditModal({
                       </span>
                     )}
                   </div>
+                  <MathSymbolToolbar onInsert={handleInsertSymbol} className="mb-2" />
                   <textarea
                     rows={4}
                     value={contentLatex}
