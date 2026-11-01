@@ -18,7 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Scissors
+  Scissors,
+  CheckSquare
 } from "lucide-react";
 
 interface QuestionItem {
@@ -67,6 +68,7 @@ export default function A4PaperPreview({
   const [isPresentationMode, setIsPresentationMode] = useState<boolean>(false);
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
   const [isFlashcardCutoutMode, setIsFlashcardCutoutMode] = useState<boolean>(false);
+  const [showOmrSheet, setShowOmrSheet] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -126,6 +128,21 @@ export default function A4PaperPreview({
           >
             <Scissors className="w-3.5 h-3.5" />
             <span>{isFlashcardCutoutMode ? "Thẻ Bài Cắt Rời (Bật)" : "Thẻ Cắt Rời"}</span>
+          </button>
+
+          {/* OMR Bubble Sheet Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setShowOmrSheet(!showOmrSheet)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              showOmrSheet
+                ? "bg-emerald-100 border-emerald-300 text-emerald-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Bật/Tắt phiếu trả lời trắc nghiệm chuẩn tô chì (OMR Sheet)"
+          >
+            <CheckSquare className="w-3.5 h-3.5" />
+            <span>{showOmrSheet ? "Phiếu Tô Chì (Bật)" : "Phiếu Tô Chì"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -541,6 +558,56 @@ export default function A4PaperPreview({
               Thí sinh không được sử dụng tài liệu. Cán bộ coi thi không giải thích gì thêm.
             </p>
           </div>
+
+          {/* Auto-Generated OMR Bubble Sheet Simulation */}
+          {showOmrSheet && questions.length > 0 && (
+            <div className="mt-10 pt-6 border-t-2 border-dashed border-slate-400 print:break-before-page">
+              <div className="border-2 border-slate-800 p-4 rounded-md bg-white">
+                <div className="flex items-center justify-between border-b-2 border-slate-800 pb-2 mb-3">
+                  <div className="text-left">
+                    <div className="font-bold text-xs uppercase text-slate-900">
+                      PHIẾU TRẢ LỜI TRẮC NGHIỆM CHUẨN TÔ CHÌ
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      Mã đề: {examCode || "101"} • Tổng số: {questions.length} câu
+                    </div>
+                  </div>
+                  <div className="text-right text-[9px] text-slate-500 border border-slate-400 p-1 rounded">
+                    Thí sinh dùng bút chì 2B để tô kín ô tròn: ●
+                  </div>
+                </div>
+
+                {/* Grid of OMR Bubbles */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 text-xs">
+                  {questions.map((_, qIdx) => (
+                    <div
+                      key={qIdx}
+                      className="flex items-center justify-between p-1.5 rounded border border-slate-200 bg-slate-50/50"
+                    >
+                      <span className="font-bold text-slate-700 w-6 text-right mr-1.5 text-[11px]">
+                        {qIdx + 1}
+                      </span>
+                      <div className="flex space-x-1.5">
+                        {["A", "B", "C", "D"].map((opt) => (
+                          <div
+                            key={opt}
+                            className="w-4 h-4 rounded-full border border-slate-600 flex items-center justify-center text-[9px] font-bold text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer select-none"
+                            title={`Câu ${qIdx + 1}: ${opt}`}
+                          >
+                            {opt}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 text-[9px] text-slate-400 italic text-center border-t border-slate-200 pt-1.5">
+                  Hệ thống Khảo thí VINH PHÁT • Phiếu trả lời tương thích thiết bị chấm tự động OMR
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

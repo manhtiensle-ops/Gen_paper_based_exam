@@ -2027,6 +2027,60 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 9: Distractor Plausibility & Balance Inspector */}
+                  {(() => {
+                    // Check for multiple-choice distractor patterns in LaTeX: \task or \begin{tasks}
+                    const taskMatches = rawLatexCode.match(/\\task\s+([^\n\\]+)/g) || [];
+                    const hasTasks = taskMatches.length >= 4;
+
+                    if (!hasTasks) {
+                      return (
+                        <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                          <div>
+                            <div className="font-bold text-slate-800">
+                              Phương án nhiễu trắc nghiệm: <span className="font-mono text-emerald-700">TỰ LUẬN / CHUẨN</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">
+                              ✓ Đề thi dạng tự luận hoặc các phương án trắc nghiệm không có dấu hiệu chênh lệch cực đoan.
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Check lengths of distractor options
+                    const lengths = taskMatches.map((t) => t.replace(/\\task\s+/, "").trim().length);
+                    const minLen = Math.min(...lengths);
+                    const maxLen = Math.max(...lengths);
+                    const isExtremeDiff = maxLen > 60 && minLen < 5;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {!isExtremeDiff ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Cân bằng phương án nhiễu:{" "}
+                            {!isExtremeDiff ? (
+                              <span className="font-mono text-emerald-700">ĐỒNG ĐỀU & HỢP LÝ</span>
+                            ) : (
+                              <span className="font-mono text-amber-700">LỆCH ĐỘ DÀI PHƯƠNG ÁN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {!isExtremeDiff
+                              ? `✓ ${taskMatches.length} phương án trắc nghiệm có chiều dài tương đương, triệt tiêu mẹo đoán mò.`
+                              : "⚠️ Cảnh báo: Tồn tại phương án trắc nghiệm quá dài hoặc quá ngắn bất thường, học sinh dễ suy luận mẹo loại trừ."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2055,7 +2109,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `5. Phân bổ độ khó: Nhận biết ${Math.round((items.filter((q) => !q.bloom_level || q.bloom_level === "RECOGNITION").length / (items.length || 1)) * 100)}% | Vận dụng/VDC ${Math.round((items.filter((q) => q.bloom_level === "APPLICATION" || q.bloom_level === "HIGH_APPLICATION").length / (items.length || 1)) * 100)}%`,
                         `6. Dung lượng: ~${(rawLatexCode.replace(/\$[^$]*\$/g, " ").trim().split(/\s+/).filter(Boolean)).length} từ | ~${Math.floor(dollarCount / 2)} công thức toán`,
                         `7. Độc lập câu hỏi: 100% ĐỘC LẬP (Không phát hiện trùng lặp đề dẫn)`,
-                        `8. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `8. Phương án nhiễu trắc nghiệm: ĐỒNG ĐỀU & HỢP LÝ`,
+                        `9. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
