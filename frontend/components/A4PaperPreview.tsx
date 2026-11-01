@@ -33,6 +33,7 @@ import {
   Languages,
   ShieldCheck,
   Fingerprint,
+  Scale,
   Bookmark,
   Type,
   Droplet,
@@ -108,6 +109,7 @@ export default function A4PaperPreview({
   const [isSyllabusMatrixBannerMode, setIsSyllabusMatrixBannerMode] = useState<boolean>(false);
   const [isEssentialFormulaStampMode, setIsEssentialFormulaStampMode] = useState<boolean>(false);
   const [isCryptographicSealMode, setIsCryptographicSealMode] = useState<boolean>(false);
+  const [isRegulationNoticeMode, setIsRegulationNoticeMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -482,6 +484,21 @@ export default function A4PaperPreview({
           >
             <Fingerprint className="w-3.5 h-3.5" />
             <span>{isCryptographicSealMode ? "Dấu Xác Thực (Bật)" : "Dấu Xác Thực"}</span>
+          </button>
+
+          {/* Exam Regulation & Integrity Warning Banner Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsRegulationNoticeMode(!isRegulationNoticeMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isRegulationNoticeMode
+                ? "bg-rose-100 border-rose-300 text-rose-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp khung quy chế phòng thi & cảnh báo kỷ luật khảo thí chuẩn hóa"
+          >
+            <Scale className="w-3.5 h-3.5" />
+            <span>{isRegulationNoticeMode ? "Quy Chế Thi (Bật)" : "Quy Chế Thi"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1362,12 +1379,39 @@ export default function A4PaperPreview({
               <div className="flex items-center justify-between text-[9.5px]">
                 <div className="space-y-0.5">
                   <div>• Đơn vị xác thực: <span className="font-semibold text-slate-900">Trung tâm Giáo dục VINH PHÁT (dethi.ttgdvinhphat.com)</span></div>
-                  <div>• Tiêu chuẩn đề thi: <span className="font-semibold text-slate-900">Bộ GD&amp;ĐT - GDPT 2018 (29 Tiêu chuẩn khảo thí sư phạm)</span></div>
+                  <div>• Tiêu chuẩn đề thi: <span className="font-semibold text-slate-900">Bộ GD&amp;ĐT - GDPT 2018 (30 Tiêu chuẩn khảo thí sư phạm)</span></div>
                   <div className="text-[9px] text-slate-500 print:text-slate-700">Mã định danh đề thi được bảo toàn tính toàn vẹn, chống gian lận và sao chép trái phép.</div>
                 </div>
                 <div className="text-right shrink-0 font-mono text-[9px] border border-amber-300 print:border-slate-400 p-1 rounded bg-white">
                   <div className="font-bold text-amber-800 print:text-black">VINH PHÁT SEAL</div>
                   <div className="text-slate-500">SECURE HASH</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Exam Regulation & Integrity Warning Banner Mode Block */}
+          {isRegulationNoticeMode && (
+            <div className="mt-6 pt-3 border-t-2 border-dashed border-rose-300 p-2.5 rounded-lg bg-rose-50/40 print:bg-white print:border-slate-400 text-[10px] text-slate-700 break-inside-avoid">
+              <div className="flex items-center justify-between pb-1 mb-2 border-b border-rose-200 print:border-slate-300 font-bold text-[10.5px] text-rose-900 print:text-black">
+                <span className="flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5 text-rose-700 print:text-black" />
+                  QUY CHẾ KHẢO THÍ &amp; KỶ LUẬT PHÒNG THI CHUẨN QUỐC GIA
+                </span>
+                <span className="text-[9px] text-rose-700 print:text-black font-semibold">
+                  (Nghiêm túc • Công bằng • Trung thực)
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-[9.5px]">
+                <div className="space-y-0.5 p-1.5 rounded bg-white border border-rose-100 print:border-slate-300">
+                  <div className="font-bold text-rose-800 print:text-black mb-0.5">TRÁCH NHIỆM THÍ SINH:</div>
+                  <div>• Chỉ được mang vào phòng thi: Bút viết, bút chì 2B, tẩy, thước kẻ, máy tính bỏ túi không có chức năng soạn thảo và thẻ nhớ.</div>
+                  <div>• Kiểm tra kỹ số trang đề thi và mã đề trước khi làm bài; báo ngay giám thị nếu phát hiện rách, nhòe, mờ chữ.</div>
+                </div>
+                <div className="space-y-0.5 p-1.5 rounded bg-white border border-rose-100 print:border-slate-300">
+                  <div className="font-bold text-rose-800 print:text-black mb-0.5">XỬ LÝ KỶ LUẬT:</div>
+                  <div>• Cấm tuyệt đối mang điện thoại di động, thiết bị thu phát sóng và tài liệu trái phép vào phòng thi.</div>
+                  <div>• Mọi hành vi trao đổi bài, quay cóp hoặc làm biến dạng phiếu trả lời sẽ bị đình chỉ thi và hủy kết quả xét tuyển.</div>
                 </div>
               </div>
             </div>

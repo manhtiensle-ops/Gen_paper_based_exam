@@ -2768,6 +2768,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 30: Arithmetic & Geometric Progressions Convergence Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasSequence = /cấp số cộng|cấp số nhân|dãy số|công sai|công bội|u_n|u_1|chuỗi số|lùi vô hạn/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Cấp số cộng, cấp số nhân & Dãy số (Progressions & Sequences):{" "}
+                            {hasSequence ? (
+                              <span className="font-mono text-emerald-700">CHUẨN CẤP SỐ & HỘI TỤ</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐẠI SỐ RỜI RẠC KHÁC</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasSequence
+                              ? "✓ Cấp số cộng và cấp số nhân có công bội (q), công sai (d) chuẩn tắc (d khác 0, |q| < 1 khi lùi vô hạn), số hạng tổng quát không suy biến."
+                              : "✓ Đề thi tập trung rèn luyện các nội dung đại số, giải tích và hình học trọng tâm khác."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2817,7 +2844,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `26. Trực giao & Hệ tọa độ Oxyz: CHUẨN TỌA ĐỘ OXYZ KHÔNG GIAN`,
                         `27. Chu kỳ lượng giác & Miền giá trị góc: CHUẨN CHU KỲ LƯỢNG GIÁC`,
                         `28. Giới hạn & Tính liên tục giải tích: CHUẨN LIÊN TỤC & GIỚI HẠN`,
-                        `29. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `29. Cấp số cộng, cấp số nhân & Dãy số: CHUẨN CẤP SỐ & HỘI TỤ`,
+                        `30. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
