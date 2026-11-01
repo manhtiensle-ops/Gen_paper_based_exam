@@ -5,9 +5,15 @@
 # ==============================================================================
 set -e
 
-# Cấu hình Bot Telegram
-TELEGRAM_BOT_TOKEN="8832474900:AAGUPsAI0KwApC1cLqCGvG3i9GbdYy0vJS4"
-TELEGRAM_CHAT_ID="6560430166"
+# Cấu hình Bot Telegram (Sử dụng biến môi trường, tuyệt đối không hardcode)
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-6560430166}"
+
+if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+  echo "❌ [Security Alert] TELEGRAM_BOT_TOKEN chưa được thiết lập trong biến môi trường!" >&2
+  echo "Vui lòng cấu hình qua file môi trường hoặc GitHub Secrets, không lưu khóa trong mã nguồn." >&2
+  exit 1
+fi
 
 # Cấu hình đường dẫn
 BACKUP_DIR="/second_disk/hsg_backups"

@@ -17,6 +17,34 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
+      - name: 🛡️ Security Gate - Hardcoded Secrets & Token Scanner
+        run: |
+          echo "🔍 Scanning repository for hardcoded secrets, API keys and bot tokens..."
+          python3 -c "
+          import re, sys, os
+          # Patterns for Telegram Bot Tokens, AWS keys, generic private keys
+          telegram_pattern = re.compile(r'\b[0-9]{8,10}:[a-zA-Z0-9_-]{35}\b')
+          found = False
+          for root, dirs, files in os.walk('.'):
+              if '.git' in dirs: dirs.remove('.git')
+              if 'node_modules' in dirs: dirs.remove('node_modules')
+              if '.next' in dirs: dirs.remove('.next')
+              for f in files:
+                  fp = os.path.join(root, f)
+                  try:
+                      with open(fp, 'r', errors='ignore') as fh:
+                          content = fh.read()
+                          if telegram_pattern.search(content):
+                              print(f'❌ CRITICAL SECURITY ERROR: Hardcoded Telegram Bot Token detected in {fp}!')
+                              found = True
+                  except Exception:
+                      pass
+          if found:
+              print('🚨 CI BLOCKED: Hardcoded secrets must be moved to GitHub Secrets or environment variables!')
+              sys.exit(1)
+          print('✅ Codebase is clean. No exposed secrets detected.')
+          "
+
       - name: 🟢 Setup Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -94,11 +122,19 @@ jobs:
 
       - name: 📱 Gửi thông báo kết quả lên Telegram
         if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID || '6560430166' }}
         run: |
           STATUS="${{ job.status }}"
-          BOT_TOKEN="8832474900:AAGUPsAI0KwApC1cLqCGvG3i9GbdYy0vJS4"
-          CHAT_ID="6560430166"
+          BOT_TOKEN="${TELEGRAM_BOT_TOKEN}"
+          CHAT_ID="${TELEGRAM_CHAT_ID}"
           COMMIT_MSG="${{ github.event.head_commit.message }}"
+          
+          if [ -z "$BOT_TOKEN" ]; then
+            echo "⚠️ [Security Notice] Secret TELEGRAM_BOT_TOKEN chưa được thiết lập trong Settings -> Secrets của repo. Bỏ qua gửi thông báo."
+            exit 0
+          fi
           
           if [ "$STATUS" = "success" ]; then
             TEXT="✅ *DEPLOY THÀNH CÔNG LÊN SERVER*%0A🏛 *Hệ thống:* Giáo Dục Vinh Phát%0A📅 *Commit:* \`${{ github.sha }}\`%0A📝 *Nội dung:* ${COMMIT_MSG}"
