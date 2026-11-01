@@ -81,11 +81,16 @@ def generate_latex_source(
     tex.append("\\usepackage{graphicx}")
     tex.append("\\usepackage{array,longtable,tabularx}")
     tex.append("\\usepackage{fancyhdr}")
+    tex.append("\\usepackage{lastpage}")
     tex.append("\\usepackage{calc}")
 
     # Geometry & Layout knobs
     tex.append(f"\\geometry{{a4paper, top={m_top}cm, bottom={m_bottom}cm, left={m_left}cm, right={m_right}cm}}")
     tex.append(f"\\linespread{{{line_spread}}}\\selectfont")
+    tex.append("\\pagestyle{fancy}")
+    tex.append("\\fancyhf{}")
+    tex.append(f"\\cfoot{{\\fontsize{{9pt}}{{11pt}}\\selectfont Trang \\thepage\\ / \\pageref{{LastPage}}}}")
+    tex.append("\\renewcommand{\\headrulewidth}{0pt}")
     tex.append("\\setlength{\\parindent}{0pt}")
     tex.append("\\setlength{\\parskip}{3pt plus 1pt minus 1pt}")
     tex.append(f"\\setlength{{\\abovedisplayskip}}{{{math_skip}pt plus 2pt minus 2pt}}")

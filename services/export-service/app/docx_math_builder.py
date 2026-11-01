@@ -144,7 +144,7 @@ class DocxMathExamBuilder:
         self._setup_global_styles()
 
     def _setup_page_geometry(self):
-        """Top/Bottom 1.8cm, Left 2.0cm, Right 1.8cm."""
+        """Top/Bottom 1.8cm, Left 2.0cm, Right 1.8cm. Cấu hình footer đánh số trang chuẩn Nghị định 30/2020/NĐ-CP."""
         for section in self.doc.sections:
             section.top_margin = Inches(0.71)     # 1.8 cm
             section.bottom_margin = Inches(0.71)  # 1.8 cm
@@ -152,6 +152,25 @@ class DocxMathExamBuilder:
             section.right_margin = Inches(0.71)   # 1.8 cm
             section.page_width = Inches(8.27)     # A4
             section.page_height = Inches(11.69)   # A4
+            
+            # Cấu hình footer chân trang
+            try:
+                footer = section.footer
+                f_p = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+                f_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                # XML chèn số trang Word: Trang <w:fldSimple w:instr="PAGE"/> / <w:fldSimple w:instr="NUMPAGES"/>
+                fld_xml = parse_xml(
+                    r'<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                    r'<w:pPr><w:jc w:val="center"/></w:pPr>'
+                    r'<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t xml:space="preserve">Trang </w:t></w:r>'
+                    r'<w:fldSimple w:instr="PAGE"><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>'
+                    r'<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t xml:space="preserve"> / </w:t></w:r>'
+                    r'<w:fldSimple w:instr="NUMPAGES"><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>'
+                    r'</w:p>'
+                )
+                f_p._p.getparent().replace(f_p._p, fld_xml)
+            except Exception as e:
+                print(f"[Footer Setup Warning] {e}")
 
     def _setup_global_styles(self):
         normal_style = self.doc.styles['Normal']
