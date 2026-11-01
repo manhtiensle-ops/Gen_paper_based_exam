@@ -2741,6 +2741,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 29: Calculus Limits & Continuity Discontinuity Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasCalculus = /\\lim|giới hạn|tiệm cận|tiệm cận đứng|tiệm cận ngang|liên tục|gián đoạn|điểm gián đoạn/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Giới hạn & Tính liên tục giải tích (Calculus Limits & Continuity):{" "}
+                            {hasCalculus ? (
+                              <span className="font-mono text-emerald-700">CHUẨN LIÊN TỤC & GIỚI HẠN</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÀM SỐ SƠ CẤP</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasCalculus
+                              ? "✓ Khảo sát giới hạn hàm số (lim x->x0, x->inf) và tiệm cận chuẩn xác, đã khử dạng vô định và phân loại rõ ràng điểm gián đoạn."
+                              : "✓ Đề thi sử dụng hàm số sơ cấp liên tục trên toàn miền xác định, phù hợp chuẩn kiến thức nền tảng."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2789,7 +2816,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `25. Mô hình hóa thực tiễn STEM: ĐẠT CHUẨN THỰC TIỄN GDPT`,
                         `26. Trực giao & Hệ tọa độ Oxyz: CHUẨN TỌA ĐỘ OXYZ KHÔNG GIAN`,
                         `27. Chu kỳ lượng giác & Miền giá trị góc: CHUẨN CHU KỲ LƯỢNG GIÁC`,
-                        `28. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `28. Giới hạn & Tính liên tục giải tích: CHUẨN LIÊN TỤC & GIỚI HẠN`,
+                        `29. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

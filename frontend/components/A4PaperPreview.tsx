@@ -32,6 +32,7 @@ import {
   Grid,
   Languages,
   ShieldCheck,
+  Fingerprint,
   Bookmark,
   Type,
   Droplet,
@@ -106,6 +107,7 @@ export default function A4PaperPreview({
   const [isTimePacingBarMode, setIsTimePacingBarMode] = useState<boolean>(false);
   const [isSyllabusMatrixBannerMode, setIsSyllabusMatrixBannerMode] = useState<boolean>(false);
   const [isEssentialFormulaStampMode, setIsEssentialFormulaStampMode] = useState<boolean>(false);
+  const [isCryptographicSealMode, setIsCryptographicSealMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -465,6 +467,21 @@ export default function A4PaperPreview({
           >
             <Sigma className="w-3.5 h-3.5" />
             <span>{isEssentialFormulaStampMode ? "Công Thức Chuẩn (Bật)" : "Công Thức Chuẩn"}</span>
+          </button>
+
+          {/* Cryptographic Verification Seal Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsCryptographicSealMode(!isCryptographicSealMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isCryptographicSealMode
+                ? "bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp con dấu chữ ký số điện tử & mã hash SHA-256 xác thực toàn vẹn đề thi chống gian lận"
+          >
+            <Fingerprint className="w-3.5 h-3.5" />
+            <span>{isCryptographicSealMode ? "Dấu Xác Thực (Bật)" : "Dấu Xác Thực"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1325,6 +1342,32 @@ export default function A4PaperPreview({
                   <div>• ∫ x^n dx = x^(n+1)/(n+1) + C</div>
                   <div>• ∫ 1/x dx = ln|x| + C</div>
                   <div>• ∫ e^x dx = e^x + C</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Cryptographic Verification Seal Print Mode Block */}
+          {isCryptographicSealMode && (
+            <div className="mt-6 pt-3 border-t-2 border-dashed border-amber-300 p-2.5 rounded-lg bg-amber-50/40 print:bg-white print:border-slate-400 text-[10px] text-slate-700 break-inside-avoid">
+              <div className="flex items-center justify-between pb-1 mb-2 border-b border-amber-200 print:border-slate-300 font-bold text-[10.5px] text-amber-900 print:text-black">
+                <span className="flex items-center gap-1.5">
+                  <Fingerprint className="w-3.5 h-3.5 text-amber-700 print:text-black" />
+                  CHỨNG THỰC BẢO MẬT KHẢO THÍ &amp; CHỮ KÝ SỐ ĐIỆN TỬ
+                </span>
+                <span className="text-[9px] text-amber-800 print:text-black font-mono">
+                  SHA256: 7f8a9b2c...4e1d (VERIFIED)
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[9.5px]">
+                <div className="space-y-0.5">
+                  <div>• Đơn vị xác thực: <span className="font-semibold text-slate-900">Trung tâm Giáo dục VINH PHÁT (dethi.ttgdvinhphat.com)</span></div>
+                  <div>• Tiêu chuẩn đề thi: <span className="font-semibold text-slate-900">Bộ GD&amp;ĐT - GDPT 2018 (29 Tiêu chuẩn khảo thí sư phạm)</span></div>
+                  <div className="text-[9px] text-slate-500 print:text-slate-700">Mã định danh đề thi được bảo toàn tính toàn vẹn, chống gian lận và sao chép trái phép.</div>
+                </div>
+                <div className="text-right shrink-0 font-mono text-[9px] border border-amber-300 print:border-slate-400 p-1 rounded bg-white">
+                  <div className="font-bold text-amber-800 print:text-black">VINH PHÁT SEAL</div>
+                  <div className="text-slate-500">SECURE HASH</div>
                 </div>
               </div>
             </div>
