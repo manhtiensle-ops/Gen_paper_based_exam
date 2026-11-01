@@ -74,70 +74,75 @@ def list_questions(
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Question)
+    try:
+        query = db.query(Question)
 
-    # Tìm kiếm theo từ khóa nội dung đề, lời giải hoặc chủ đề
-    if search and search.strip():
-        search_term = f"%{search.strip()}%"
-        query = query.filter(
-            or_(
-                Question.content_latex.ilike(search_term),
-                Question.solution_latex.ilike(search_term),
-                Question.main_topic.ilike(search_term)
-            )
-        )
-
-    # Lọc theo Scope (Cá nhân, Đơn vị, Mẫu chuẩn Vinh Phát)
-    if not current_user:
-        # Khách vãng lai chỉ xem được câu hỏi Mẫu chuẩn công khai
-        query = query.filter(Question.is_public == True)
-    else:
-        scope_upper = scope.upper()
-        if scope_upper == "MINE":
-            # Chỉ câu hỏi do chính tài khoản này tạo / số hóa
-            query = query.filter(Question.user_id == current_user.id)
-        elif scope_upper == "TENANT":
-            # Câu hỏi thuộc đơn vị / trường học của giáo viên
-            query = query.filter(
-                Question.tenant_id == current_user.tenant_id,
-                Question.scope.in_(["TENANT", "PUBLIC"])
-            )
-        elif scope_upper == "SYSTEM":
-            # Kho chuẩn Vinh Phát
-            query = query.filter(Question.is_public == True, Question.user_id.is_(None))
-        else: # "ALL"
-            # Kết hợp: Của tôi + Của đơn vị + Kho chuẩn hệ thống
+        # Tìm kiếm theo từ khóa nội dung đề, lời giải hoặc chủ đề
+        if search and search.strip():
+            search_term = f"%{search.strip()}%"
             query = query.filter(
                 or_(
-                    Question.user_id == current_user.id,
-                    and_(Question.tenant_id == current_user.tenant_id, Question.scope == "TENANT"),
-                    Question.is_public == True
+                    Question.content_latex.ilike(search_term),
+                    Question.solution_latex.ilike(search_term),
+                    Question.main_topic.ilike(search_term)
                 )
             )
 
-    if grade is not None:
-        query = query.filter(Question.grade == grade)
-    if section_type:
-        query = query.filter(Question.section_type == section_type)
-    if main_topic:
-        query = query.filter(Question.main_topic == main_topic)
-    if difficulty:
-        query = query.filter(Question.difficulty == difficulty)
-    if is_verified is not None:
-        query = query.filter(Question.is_verified == is_verified)
+        # Lọc theo Scope (Cá nhân, Đơn vị, Mẫu chuẩn Vinh Phát)
+        if not current_user:
+            # Khách vãng lai chỉ xem được câu hỏi Mẫu chuẩn công khai
+            query = query.filter(Question.is_public == True)
+        else:
+            scope_upper = scope.upper()
+            if scope_upper == "MINE":
+                # Chỉ câu hỏi do chính tài khoản này tạo / số hóa
+                query = query.filter(Question.user_id == current_user.id)
+            elif scope_upper == "TENANT":
+                # Câu hỏi thuộc đơn vị / trường học của giáo viên
+                query = query.filter(
+                    Question.tenant_id == current_user.tenant_id,
+                    Question.scope.in_(["TENANT", "PUBLIC"])
+                )
+            elif scope_upper == "SYSTEM":
+                # Kho chuẩn Vinh Phát
+                query = query.filter(Question.is_public == True, Question.user_id.is_(None))
+            else: # "ALL"
+                # Kết hợp: Của tôi + Của đơn vị + Kho chuẩn hệ thống
+                query = query.filter(
+                    or_(
+                        Question.user_id == current_user.id,
+                        and_(Question.tenant_id == current_user.tenant_id, Question.scope == "TENANT"),
+                        Question.is_public == True
+                    )
+                )
 
-    total = query.count()
-    offset = (page - 1) * page_size
-    items = query.order_by(Question.created_at.desc()).offset(offset).limit(page_size).all()
-    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+        if grade is not None:
+            query = query.filter(Question.grade == grade)
+        if section_type:
+            query = query.filter(Question.section_type == section_type)
+        if main_topic:
+            query = query.filter(Question.main_topic == main_topic)
+        if difficulty:
+            query = query.filter(Question.difficulty == difficulty)
+        if is_verified is not None:
+            query = query.filter(Question.is_verified == is_verified)
 
-    return {
-        "items": items,
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": total_pages
-    }
+        total = query.count()
+        offset = (page - 1) * page_size
+        items = query.order_by(Question.created_at.desc()).offset(offset).limit(page_size).all()
+        total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages
+        }
+    except Exception as e:
+        import logging, traceback
+        logging.error(f"Error in list_questions: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"ERR: {type(e).__name__}: {str(e)}")
 
 @router.get("/{question_id}", response_model=QuestionResponse)
 def get_question(question_id: UUID, db: Session = Depends(get_db)):
