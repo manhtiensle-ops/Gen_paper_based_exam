@@ -585,6 +585,47 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
     }
   };
 
+  // Điều chỉnh tổng điểm của câu hỏi (+/- 0.25đ)
+  const adjustItemTotalPoint = async (itemId: string, delta: number) => {
+    const item = items.find((it) => it.id === itemId);
+    if (!item) return;
+
+    const currentPts = item.max_points || 1.0;
+    const newPts = Math.round(Math.max(0.25, currentPts + delta) * 100) / 100;
+    if (newPts === currentPts) return;
+
+    const rubric = { ...(item.rubric_data || {}) };
+    const steps = [...(rubric.steps || [])];
+
+    if (steps.length > 0) {
+      const lastStepIdx = steps.length - 1;
+      const lastStepPts = Math.max(0.25, (steps[lastStepIdx].points || 0.25) + delta);
+      steps[lastStepIdx].points = Math.round(lastStepPts * 100) / 100;
+      steps[lastStepIdx].allocated_quanta = Math.round(lastStepPts * 4);
+      rubric.steps = steps;
+    } else {
+      rubric.total_points = newPts;
+    }
+
+    const updatedItems = items.map((it) =>
+      it.id === itemId ? { ...it, rubric_data: rubric, max_points: newPts } : it
+    );
+    setItems(updatedItems);
+
+    try {
+      await fetch(`/api/studio/items/${itemId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rubric_data: rubric, max_points: newPts }),
+      });
+      if (activeMode === "RUBRIC") {
+        compileLivePreview(updatedItems, layoutKnobs, activeMode);
+      }
+    } catch (e) {
+      console.error("Failed to update item points:", e);
+    }
+  };
+
   // Switch Mode (Exam vs Rubric)
   const handleModeSwitch = async (mode: "EXAM" | "RUBRIC") => {
     setActiveMode(mode);
@@ -1049,9 +1090,27 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         <span className="font-extrabold text-sm text-indigo-900">
                           {it.display_label}
                         </span>
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
-                          {it.max_points} điểm
-                        </span>
+                        <div className="flex items-center space-x-1 bg-indigo-50 border border-indigo-200 rounded-md px-1.5 py-0.5">
+                          <span className="text-[11px] font-bold text-indigo-700">
+                            {it.max_points} điểm
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => adjustItemTotalPoint(it.id, -0.25)}
+                            className="w-4 h-4 rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold flex items-center justify-center transition-all cursor-pointer leading-none"
+                            title="Giảm 0.25 điểm"
+                          >
+                            -
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => adjustItemTotalPoint(it.id, 0.25)}
+                            className="w-4 h-4 rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold flex items-center justify-center transition-all cursor-pointer leading-none"
+                            title="Tăng 0.25 điểm"
+                          >
+                            +
+                          </button>
+                        </div>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
                           {TOPIC_VI_MAP[snap.main_topic] || snap.main_topic || "Đại số"}
                         </span>
@@ -1091,8 +1150,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       <MathRenderer content={snap.content_latex || "..."} />
                     </div>
 
-                    {/* Step Barem Steppers if in Rubric mode */}
-                    {activeMode === "RUBRIC" && steps.length > 0 && (
+                    {/* Step Barem Steppers */}
+                    {steps.length > 0 && (
                       <div className="pt-2 border-t border-slate-100 space-y-1.5">
                         <span className="text-[11px] font-bold text-slate-600 block">
                           Các mốc điểm Barem (0.25đ):
