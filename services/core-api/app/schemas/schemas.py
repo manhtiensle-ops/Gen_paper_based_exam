@@ -129,15 +129,21 @@ class ExamBlueprintResponse(ExamBlueprintCreate):
 
 class GenerateExamRequest(BaseModel):
     title: str
-    blueprint_id: UUID
+    blueprint_id: Optional[UUID] = None
+    custom_blueprint_config: Optional[Dict[str, Any]] = None
     folder_id: Optional[UUID] = None
     similarity_threshold: float = 0.65
     exclude_question_ids: List[UUID] = Field(default_factory=list)
 
 class SwapQuestionRequest(BaseModel):
-    current_question_id: UUID
+    current_question_id: Optional[UUID] = None
+    slot_index: Optional[int] = None
     main_topic: Optional[str] = None
     difficulty: Optional[str] = None
+    section_type: Optional[str] = None
+    keyword: Optional[str] = None
+    page: int = 1
+    page_size: int = 10
     exclude_question_ids: List[UUID] = Field(default_factory=list)
 
 class GeneratedExamResponse(BaseModel):

@@ -27,6 +27,39 @@ from ..schemas import (
 
 router = APIRouter(prefix="/api/questions", tags=["Questions Bank"])
 
+@router.get("/availability-stats")
+def get_questions_availability_stats(
+    grade: int = Query(9),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """
+    Trả về thống kê số lượng câu hỏi sẵn sàng theo từng (main_topic, difficulty) 
+    để hỗ trợ Auditor thời gian thực trong Matrix Blueprint Builder.
+    """
+    from sqlalchemy import func
+    query = db.query(
+        Question.main_topic,
+        Question.difficulty,
+        func.count(Question.id).label("count")
+    ).filter(
+        Question.is_verified == True,
+        Question.grade == grade
+    )
+
+    if not current_user:
+        query = query.filter(Question.is_public == True)
+
+    results = query.group_by(Question.main_topic, Question.difficulty).all()
+
+    stats = {}
+    for topic, diff, cnt in results:
+        key = f"{topic}:{diff}"
+        stats[key] = cnt
+
+    return {"grade": grade, "stats": stats}
+
+
 @router.get("", response_model=PaginatedQuestionsResponse)
 def list_questions(
     grade: Optional[int] = Query(None),

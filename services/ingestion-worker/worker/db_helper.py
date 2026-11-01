@@ -63,9 +63,11 @@ def insert_extracted_question(
     difficulty: str,
     semantic_summary: str,
     embedding: list,
+    is_verified: bool = False,
     tenant_id: str = "default_school",
     user_id: str = "",
-    scope: str = "PUBLIC"
+    scope: str = "PRIVATE",
+    is_public: bool = False
 ):
     import json
     with engine.begin() as conn:
@@ -84,13 +86,13 @@ def insert_extracted_question(
                     default_points, content_latex, normalized_hash, sub_questions,
                     solution_latex, final_answer, has_figure, figures_meta, grade,
                     main_topic, sub_topics, solution_methods, difficulty,
-                    semantic_summary, embedding, is_verified, tenant_id, user_id, scope
+                    semantic_summary, embedding, is_verified, tenant_id, user_id, scope, is_public
                 ) VALUES (
                     :source_exam_id, :original_question_number, :section_type, :structure_type,
                     :default_points, :content_latex, :normalized_hash, CAST(:sub_questions AS jsonb),
                     :solution_latex, :final_answer, :has_figure, CAST(:figures_meta AS jsonb), :grade,
                     :main_topic, CAST(:sub_topics AS jsonb), CAST(:solution_methods AS jsonb), :difficulty,
-                    :semantic_summary, CAST(:embedding AS vector), TRUE, :tenant_id, :user_id, :scope
+                    :semantic_summary, CAST(:embedding AS vector), :is_verified, :tenant_id, :user_id, :scope, :is_public
                 )
             """),
             {
@@ -113,8 +115,10 @@ def insert_extracted_question(
                 "difficulty": difficulty,
                 "semantic_summary": semantic_summary,
                 "embedding": str(embedding),
+                "is_verified": is_verified,
                 "tenant_id": tenant_id,
-                "user_id": user_id,
-                "scope": scope
+                "user_id": user_id if user_id else None,
+                "scope": scope,
+                "is_public": is_public
             }
         )

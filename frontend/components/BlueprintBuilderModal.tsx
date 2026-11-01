@@ -13,6 +13,8 @@ import {
   ArrowDown,
   Sparkles,
   Save,
+  Scale,
+  Zap,
   Sliders,
   BookOpen,
 } from "lucide-react";
@@ -49,6 +51,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSelectBlueprint: (blueprintId: string) => void;
+  onGenerateFromCustomConfig?: (customConfig: any) => void;
 }
 
 const TOPICS = [
@@ -72,6 +75,7 @@ export default function BlueprintBuilderModal({
   isOpen,
   onClose,
   onSelectBlueprint,
+  onGenerateFromCustomConfig,
 }: Props) {
   const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,11 +87,17 @@ export default function BlueprintBuilderModal({
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  // Load blueprints
+  // Thống kê độ phủ ngân hàng câu hỏi (topic:diff -> count)
+  const [statsMap, setStatsMap] = useState<Record<string, number>>({});
+
+  // Load blueprints and availability stats
   const fetchBlueprints = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/generator/blueprints");
+      const [res, statsRes] = await Promise.all([
+        fetch("/api/generator/blueprints"),
+        fetch("/api/questions/availability-stats?grade=9"),
+      ]);
       if (res.ok) {
         const data = await res.json();
         setBlueprints(data);
@@ -96,6 +106,10 @@ export default function BlueprintBuilderModal({
           setSelectedBpId(first.id);
           setEditingBp(JSON.parse(JSON.stringify(first)));
         }
+      }
+      if (statsRes.ok) {
+        const sData = await statsRes.json();
+        setStatsMap(sData.stats || {});
       }
     } catch (e) {
       console.error(e);
@@ -125,6 +139,34 @@ export default function BlueprintBuilderModal({
       });
     });
     return Math.round(total * 100) / 100;
+  };
+
+  // Tự động phân bổ đều điểm cho tất cả câu hỏi
+  const handleAutoRebalancePoints = () => {
+    if (!editingBp) return;
+    const clone = { ...editingBp };
+    const allSlots: Slot[] = [];
+    clone.sections_config.forEach((sec) => {
+      sec.slots.forEach((s) => allSlots.push(s));
+    });
+
+    if (allSlots.length === 0) return;
+    const target = clone.target_total_score || 20.0;
+    const basePt = Math.floor((target / allSlots.length) * 4) / 4;
+    let remaining = target;
+
+    allSlots.forEach((s, idx) => {
+      if (idx === allSlots.length - 1) {
+        s.points = Math.round(remaining * 100) / 100;
+      } else {
+        s.points = basePt;
+        remaining -= basePt;
+      }
+    });
+
+    setEditingBp(clone);
+    setSaveMessage("Đã tự động phân bổ đều điểm cho tất cả câu hỏi!");
+    setTimeout(() => setSaveMessage(null), 2500);
   };
 
   // Thêm slot câu hỏi mới
@@ -298,11 +340,35 @@ export default function BlueprintBuilderModal({
     setActiveTab("custom");
   };
 
+  // Áp dụng và Tổ hợp đề ngay (không bắt buộc lưu DB trước)
+  const handleApplyAndGenerateNow = () => {
+    if (!editingBp) return;
+    if (onGenerateFromCustomConfig) {
+      onGenerateFromCustomConfig(editingBp);
+    } else if (editingBp.id) {
+      onSelectBlueprint(editingBp.id);
+      onClose();
+    }
+  };
+
   if (!isOpen) return null;
 
   const currentTotal = calculateCurrentTotalPoints();
   const targetTotal = editingBp?.target_total_score || 20.0;
   const isMatch = Math.abs(currentTotal - targetTotal) <= 0.01;
+
+  // Tính số câu sẵn có trong kho cho toàn bộ ma trận hiện tại
+  let totalSlots = 0;
+  let readySlots = 0;
+  if (editingBp) {
+    editingBp.sections_config.forEach((sec) => {
+      sec.slots.forEach((s) => {
+        totalSlots++;
+        const cnt = statsMap[`${s.main_topic}:${s.difficulty}`] || 0;
+        if (cnt > 0) readySlots++;
+      });
+    });
+  }
 
   const presets = blueprints.filter((b) => b.is_preset);
   const customs = blueprints.filter((b) => !b.is_preset);
@@ -458,23 +524,7 @@ export default function BlueprintBuilderModal({
               )}
             </div>
 
-            {/* Footer Cột Trái: Chọn khung này cho đề thi */}
-            {editingBp && editingBp.id && (
-              <div className="p-3 border-t border-slate-200 bg-white">
-                <button
-                  onClick={() => {
-                    if (editingBp.id) {
-                      onSelectBlueprint(editingBp.id);
-                      onClose();
-                    }
-                  }}
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center space-x-1"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Áp Dụng Khung Này ➔</span>
-                </button>
-              </div>
-            )}
+            {/* Footer Cột Trái: Đã dời xuống Smart Footer chung */}
           </div>
 
           {/* CỘT PHẢI: KHÔNG GIAN TÙY BIẾN CHI TIẾT TỪNG SLOT */}
@@ -526,64 +576,74 @@ export default function BlueprintBuilderModal({
                         <span className="text-xs text-slate-500 font-semibold">phút</span>
                       </div>
                     </div>
+
+                    <div className="shrink-0">
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                        Thang Điểm:
+                      </label>
+                      <div className="flex items-center space-x-1">
+                        {[10, 20].map((pts) => (
+                          <button
+                            key={pts}
+                            type="button"
+                            onClick={() => {
+                              setEditingBp({ ...editingBp, target_total_score: pts });
+                            }}
+                            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              editingBp.target_total_score === pts
+                                ? "bg-indigo-600 text-white shadow-2xs"
+                                : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                            }`}
+                          >
+                            {pts}đ
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   {/* THƯỚC ĐO TỔNG ĐIỂM THỜI GIAN THỰC (REAL-TIME POINT AUDITOR) */}
-                  <div className="p-3 bg-white rounded-2xl border border-slate-200 flex items-center justify-between shadow-xs">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-xs text-slate-600 font-semibold">Tổng điểm hiện tại:</span>
-                      <span className="text-sm font-black font-mono text-indigo-700">
-                        {currentTotal.toFixed(2)}đ
-                      </span>
-                      <span className="text-slate-400">/</span>
-                      <span className="text-xs text-slate-500 font-semibold">Mục tiêu:</span>
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={editingBp.target_total_score}
-                        onChange={(e) =>
-                          setEditingBp({
-                            ...editingBp,
-                            target_total_score: parseFloat(e.target.value) || 20.0,
-                          })
-                        }
-                        className="w-16 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0.5 text-xs font-bold text-slate-900 text-center font-mono"
-                      />
-                      <span className="text-xs text-slate-500 font-bold">điểm</span>
-                    </div>
+                  <div className="p-3 bg-white rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-slate-600 font-semibold">Tổng điểm:</span>
+                        <span className="text-sm font-black font-mono text-indigo-700">
+                          {currentTotal.toFixed(2)}đ
+                        </span>
+                        <span className="text-slate-400">/</span>
+                        <span className="text-xs text-slate-500 font-semibold">Mục tiêu:</span>
+                        <span className="text-xs font-bold text-slate-900">{targetTotal.toFixed(1)}đ</span>
+                      </div>
 
-                    <div className="flex items-center space-x-2">
                       {isMatch ? (
-                        <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200 flex items-center space-x-1">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[11px] border border-emerald-200 flex items-center space-x-1">
                           <CheckCircle className="w-3.5 h-3.5" />
                           <span>Chuẩn điểm 100%</span>
                         </span>
                       ) : (
-                        <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 font-bold text-xs border border-amber-200 flex items-center space-x-1">
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-bold text-[11px] border border-amber-200 flex items-center space-x-1">
                           <AlertTriangle className="w-3.5 h-3.5" />
                           <span>Lệch {(currentTotal - targetTotal).toFixed(2)}đ</span>
                         </span>
                       )}
 
-                      {/* Nút Clone hoặc Lưu */}
-                      <button
-                        onClick={() => handleCloneBlueprint()}
-                        className="px-3 py-1 text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
-                        title="Tạo bản sao độc lập của khung này"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Nhân bản để sửa</span>
-                      </button>
-
-                      <button
-                        onClick={handleSaveBlueprint}
-                        disabled={saving}
-                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50"
-                      >
-                        <Save className="w-3.5 h-3.5" />
-                        <span>{saving ? "Đang lưu..." : "Lưu Khung Này"}</span>
-                      </button>
+                      {/* Độ phủ ngân hàng */}
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[11px] border border-slate-200 flex items-center space-x-1">
+                        <span className={`w-2 h-2 rounded-full ${readySlots === totalSlots ? "bg-emerald-500" : "bg-amber-500"}`} />
+                        <span>Kho sẵn sàng: {readySlots}/{totalSlots} vị trí</span>
+                      </span>
                     </div>
+
+                    {/* Nút chia đều điểm */}
+                    <button
+                      type="button"
+                      onClick={handleAutoRebalancePoints}
+                      className="px-3 py-1 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 border border-slate-200 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+                      title="Tự động tính lại điểm cho từng câu sao cho vừa khít tổng điểm mục tiêu"
+                    >
+                      <Scale className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>⚖ Tự chia đều điểm</span>
+                    </button>
                   </div>
                 </div>
 
@@ -679,6 +739,23 @@ export default function BlueprintBuilderModal({
                                     </option>
                                   ))}
                                 </select>
+
+                                {/* Tag số lượng câu hỏi sẵn có trong kho */}
+                                {(() => {
+                                  const stock = statsMap[`${slot.main_topic}:${slot.difficulty}`] || 0;
+                                  return (
+                                    <span
+                                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
+                                        stock > 0
+                                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                          : "bg-amber-50 text-amber-700 border-amber-200 animate-pulse"
+                                      }`}
+                                      title={stock > 0 ? `Có ${stock} câu phù hợp trong kho` : "Chưa có câu nào trong kho!"}
+                                    >
+                                      {stock > 0 ? `🟢 Có ${stock} câu` : "⚠️ Trống kho"}
+                                    </span>
+                                  );
+                                })()}
                               </div>
 
                               <div className="flex items-center space-x-3">
@@ -739,6 +816,54 @@ export default function BlueprintBuilderModal({
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400 space-y-3">
                 <Layers className="w-12 h-12 text-slate-300" />
                 <p className="text-xs">Chọn một khung ma trận ở cột bên trái để bắt đầu tùy biến</p>
+              </div>
+            )}
+
+            {/* FOOTER HÀNH ĐỘNG TOÀN DIỆN */}
+            {editingBp && (
+              <div className="p-4 sm:px-6 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3 shadow-lg shrink-0">
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => handleCloneBlueprint()}
+                    disabled={saving}
+                    className="px-3 py-2 text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
+                    title="Tạo bản sao độc lập của khung này vào mục Cá nhân"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Nhân bản để sửa</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveBlueprint}
+                    disabled={saving}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                    title="Lưu lại cấu trúc này vào kho cá nhân để tái sử dụng"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{saving ? "Đang lưu..." : "Lưu Làm Mẫu Riêng"}</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Hủy Bỏ
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleApplyAndGenerateNow}
+                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold shadow-md hover:shadow-indigo-500/20 transition-all flex items-center space-x-2 cursor-pointer"
+                  >
+                    <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+                    <span>Áp Dụng & Tổ Hợp Đề Ngay ➔</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
