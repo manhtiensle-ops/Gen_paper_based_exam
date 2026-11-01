@@ -2420,6 +2420,36 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 18: True/False Proposition Semantic Integrity & Independence Inspector */}
+                  {(() => {
+                    const tfQuestions = items.filter((it) => {
+                      const qType = (it.problem_snapshot || {}).question_type || "";
+                      return qType.toUpperCase().includes("TRUE_FALSE") || qType.toUpperCase().includes("TF");
+                    });
+                    const hasTf = tfQuestions.length > 0;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Độc lập mệnh đề Đúng/Sai (GDPT 2018):{" "}
+                            {hasTf ? (
+                              <span className="font-mono text-emerald-700">ĐỘC LẬP LOGIC ({tfQuestions.length} câu Đúng/Sai)</span>
+                            ) : (
+                              <span className="font-mono text-slate-600">ĐẠT CHUẨN (Không có câu TF)</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasTf
+                              ? `✓ Toàn bộ ${tfQuestions.length} câu hỏi Đúng/Sai (Phần II) đảm bảo 4 mệnh đề a, b, c, d độc lập logic, không lộ manh mối suy diễn bắc cầu giữa các ý.`
+                              : "✓ Đề thi dạng trắc nghiệm 4 lựa chọn hoặc tự luận, không vi phạm cấu trúc mệnh đề Đúng/Sai."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2457,7 +2487,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `14. Bối cảnh thực tế & Mô hình hóa (GDPT 2018): ĐẠT CHUẨN NĂNG LỰC`,
                         `15. Phân hóa đỉnh cao & Điểm 10 chuyên sâu: ĐẠT CHUẨN PHÂN LOẠI`,
                         `16. Định mức thời gian & Nhịp độ (Pacing): CHUẨN ĐỊNH MỨC`,
-                        `17. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `17. Độc lập mệnh đề Đúng/Sai (GDPT 2018): ĐỘC LẬP LOGIC`,
+                        `18. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

@@ -86,6 +86,7 @@ export default function A4PaperPreview({
   const [isLargePrintMode, setIsLargePrintMode] = useState<boolean>(false);
   const [isEcoInkMode, setIsEcoInkMode] = useState<boolean>(false);
   const [isGuidedNotesMode, setIsGuidedNotesMode] = useState<boolean>(false);
+  const [isPageQrFeedbackMode, setIsPageQrFeedbackMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -280,6 +281,21 @@ export default function A4PaperPreview({
           >
             <PenLine className="w-3.5 h-3.5" />
             <span>{isGuidedNotesMode ? "Ghi Chú Cornell (Bật)" : "Ghi Chú Cornell"}</span>
+          </button>
+
+          {/* Dynamic Per-Page Quick-Feedback QR Watermark Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsPageQrFeedbackMode(!isPageQrFeedbackMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isPageQrFeedbackMode
+                ? "bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Chế độ in gắn mã QR phản hồi tức thì: mở video giải chi tiết từng trang sau khi nộp bài"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>{isPageQrFeedbackMode ? "Mã QR Trang (Bật)" : "Mã QR Trang"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -821,11 +837,33 @@ export default function A4PaperPreview({
           )}
 
           {/* Exam Footer */}
-          <div className="mt-8 pt-4 border-t border-slate-400 text-center text-xs italic text-slate-600">
+          <div className="mt-8 pt-4 border-t border-slate-400 text-center text-xs italic text-slate-600 relative">
             --- HẾT ---
             <p className="text-[10px] mt-0.5 text-slate-500">
               Thí sinh không được sử dụng tài liệu. Cán bộ coi thi không giải thích gì thêm.
             </p>
+
+            {/* Dynamic Per-Page Quick-Feedback QR Watermark */}
+            {isPageQrFeedbackMode && (
+              <div className="mt-3 p-2 rounded border border-amber-300 bg-amber-50/70 print:bg-white print:border-slate-400 flex items-center justify-between text-left not-italic break-inside-avoid">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-white border border-amber-300 rounded print:border-slate-800">
+                    <QrCode className="w-8 h-8 text-amber-900 print:text-black" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold text-amber-950 print:text-black">
+                      TRA CỨU LỜI GIẢI CHI TIẾT & VIDEO BÀI GIẢNG TRANG NÀY
+                    </div>
+                    <div className="text-[9px] text-amber-800/80 print:text-slate-600">
+                      Mã đề: {isShufflePackageActive ? selectedVariantCode : (examCode || "101")} • Quét mã sau khi nộp bài để xem phân tích ma trận kiến thức
+                    </div>
+                  </div>
+                </div>
+                <div className="text-[9px] font-mono text-amber-900 bg-amber-200/60 px-2 py-0.5 rounded print:border print:border-slate-400 print:bg-transparent">
+                  dethi.ttgdvinhphat.com/solve/{isShufflePackageActive ? selectedVariantCode : (examCode || "101")}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Pocket Answer Key Strip Simulation */}
