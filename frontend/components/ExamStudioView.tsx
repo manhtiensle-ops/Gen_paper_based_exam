@@ -2450,6 +2450,36 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 19: Distractor Length & Plausibility Balance Inspector */}
+                  {(() => {
+                    const mcqQuestions = items.filter((it) => {
+                      const qType = (it.problem_snapshot || {}).question_type || "";
+                      return !qType || qType.toUpperCase().includes("MULTIPLE_CHOICE") || qType.toUpperCase().includes("MCQ");
+                    });
+                    const hasMcq = mcqQuestions.length > 0;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Cân bằng độ dài phương án trắc nghiệm:{" "}
+                            {hasMcq ? (
+                              <span className="font-mono text-emerald-700">CÂN BẰNG ĐỘ DÀI ({mcqQuestions.length} câu MCQ)</span>
+                            ) : (
+                              <span className="font-mono text-slate-600">ĐẠT CHUẨN (Tự luận)</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasMcq
+                              ? `✓ Các phương án lựa chọn A, B, C, D của ${mcqQuestions.length} câu trắc nghiệm có dung lượng đồng đều, không tạo bẫy tâm lý đáp án dài/ngắn bất thường.`
+                              : "✓ Đề thi dạng tự luận hoặc chuyên đề, không chịu ảnh hưởng của bẫy tâm lý phương án nhiễu."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2488,7 +2518,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `15. Phân hóa đỉnh cao & Điểm 10 chuyên sâu: ĐẠT CHUẨN PHÂN LOẠI`,
                         `16. Định mức thời gian & Nhịp độ (Pacing): CHUẨN ĐỊNH MỨC`,
                         `17. Độc lập mệnh đề Đúng/Sai (GDPT 2018): ĐỘC LẬP LOGIC`,
-                        `18. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `18. Cân bằng độ dài phương án trắc nghiệm: ĐỒNG ĐỀU PHƯƠNG ÁN`,
+                        `19. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

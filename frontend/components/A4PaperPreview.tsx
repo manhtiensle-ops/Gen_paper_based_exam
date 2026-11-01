@@ -27,7 +27,8 @@ import {
   Bookmark,
   Type,
   Droplet,
-  PenLine
+  PenLine,
+  UserCheck
 } from "lucide-react";
 
 interface QuestionItem {
@@ -87,6 +88,7 @@ export default function A4PaperPreview({
   const [isEcoInkMode, setIsEcoInkMode] = useState<boolean>(false);
   const [isGuidedNotesMode, setIsGuidedNotesMode] = useState<boolean>(false);
   const [isPageQrFeedbackMode, setIsPageQrFeedbackMode] = useState<boolean>(false);
+  const [isInvigilatorChecklistMode, setIsInvigilatorChecklistMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -296,6 +298,21 @@ export default function A4PaperPreview({
           >
             <QrCode className="w-3.5 h-3.5" />
             <span>{isPageQrFeedbackMode ? "Mã QR Trang (Bật)" : "Mã QR Trang"}</span>
+          </button>
+
+          {/* Invigilator Attendance & Submission Checklist Margin Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsInvigilatorChecklistMode(!isInvigilatorChecklistMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isInvigilatorChecklistMode
+                ? "bg-teal-100 border-teal-300 text-teal-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Chế độ in bảng kiểm diện giám thị & số tờ bài thi trực tiếp trên mép trang A4"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>{isInvigilatorChecklistMode ? "Kiểm Diện Giám Thị (Bật)" : "Kiểm Diện Giám Thị"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -594,6 +611,39 @@ export default function A4PaperPreview({
             <div className="flex justify-between items-center text-xs italic mb-4 pb-2 border-b border-dashed border-slate-300">
               <span>Họ và tên thí sinh: ............................................................................</span>
               <span>Số báo danh: .............................</span>
+            </div>
+          )}
+
+          {/* Invigilator Attendance & Submission Checklist Margin Box */}
+          {isInvigilatorChecklistMode && (
+            <div className="mb-4 p-2 rounded border border-teal-300 bg-teal-50/50 print:bg-white print:border-slate-400 text-xs text-slate-800 break-inside-avoid">
+              <div className="flex justify-between items-center pb-1 mb-1.5 border-b border-teal-200 print:border-slate-300 font-bold text-[11px] text-teal-900 print:text-black">
+                <span className="flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-teal-700 print:text-black" />
+                  BẢNG KIỂM DIỆN PHÒNG THI & BIÊN BẢN BÀN GIAO BÀI THI (DÀNH CHO CÁN BỘ COI THI)
+                </span>
+                <span className="font-mono text-[10px] bg-white px-1.5 py-0.5 rounded border border-teal-300 print:border-slate-400">
+                  Mã Phòng: [ ....... ]
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-2 text-[10px] italic">
+                <div className="border-r border-teal-200 print:border-slate-300 pr-2">
+                  <div className="font-semibold not-italic text-teal-950 print:text-black">Số tờ bài thi đã nộp:</div>
+                  <div className="mt-1 font-mono">[ ... ] tờ giấy thi</div>
+                </div>
+                <div className="border-r border-teal-200 print:border-slate-300 pr-2">
+                  <div className="font-semibold not-italic text-teal-950 print:text-black">Giám thị 1 (Ký & ghi rõ họ tên):</div>
+                  <div className="mt-2 text-slate-400 print:text-slate-500">................................................</div>
+                </div>
+                <div className="border-r border-teal-200 print:border-slate-300 pr-2">
+                  <div className="font-semibold not-italic text-teal-950 print:text-black">Giám thị 2 (Ký & ghi rõ họ tên):</div>
+                  <div className="mt-2 text-slate-400 print:text-slate-500">................................................</div>
+                </div>
+                <div>
+                  <div className="font-semibold not-italic text-teal-950 print:text-black">Xác nhận của thí sinh:</div>
+                  <div className="mt-2 text-slate-400 print:text-slate-500">................................................</div>
+                </div>
+              </div>
             </div>
           )}
 
