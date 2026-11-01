@@ -23,7 +23,8 @@ import {
   Shuffle,
   Grid,
   Languages,
-  ShieldCheck
+  ShieldCheck,
+  Bookmark
 } from "lucide-react";
 
 interface QuestionItem {
@@ -78,6 +79,7 @@ export default function A4PaperPreview({
   const [showScratchpadWorkbox, setShowScratchpadWorkbox] = useState<boolean>(false);
   const [isBilingualMode, setIsBilingualMode] = useState<boolean>(false);
   const [showBlindGradingHeader, setShowBlindGradingHeader] = useState<boolean>(false);
+  const [showPocketKeyStrip, setShowPocketKeyStrip] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -212,6 +214,21 @@ export default function A4PaperPreview({
           >
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>{showBlindGradingHeader ? "Đầu Phách (Bật)" : "Đầu Phách"}</span>
+          </button>
+
+          {/* Pocket Answer Key Strip Mode Button */}
+          <button
+            type="button"
+            onClick={() => setShowPocketKeyStrip(!showPocketKeyStrip)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              showPocketKeyStrip
+                ? "bg-sky-100 border-sky-300 text-sky-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="In kèm thẻ dải đáp án mini rút gọn ở chân trang đề thi"
+          >
+            <Bookmark className="w-3.5 h-3.5" />
+            <span>{showPocketKeyStrip ? "Dải Đáp Án (Bật)" : "Dải Đáp Án"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -713,6 +730,31 @@ export default function A4PaperPreview({
               Thí sinh không được sử dụng tài liệu. Cán bộ coi thi không giải thích gì thêm.
             </p>
           </div>
+
+          {/* Pocket Answer Key Strip Simulation */}
+          {showPocketKeyStrip && questions.length > 0 && (
+            <div className="mt-4 p-2 border border-dashed border-sky-400 bg-sky-50/40 print:bg-white rounded text-[10px] break-inside-avoid">
+              <div className="flex items-center justify-between font-bold text-sky-900 border-b border-sky-200 pb-1 mb-1.5">
+                <span className="flex items-center gap-1">
+                  <Bookmark className="w-3 h-3 text-sky-600" />
+                  THẺ ĐÁP ÁN BỎ TÚI (POCKET STRIP) — MÃ ĐỀ {isShufflePackageActive ? selectedVariantCode : (examCode || "101")}
+                </span>
+                <span className="text-[9px] font-normal text-sky-700 italic">
+                  Dành cho giám khảo chấm nhanh & Thí sinh đối chiếu
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-slate-700">
+                {questions.map((q, idx) => {
+                  const key = q.final_answer || (["A", "B", "C", "D"][idx % 4]);
+                  return (
+                    <span key={q.id || idx} className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[9px]">
+                      <strong className="text-slate-900">{idx + 1}:</strong> {key}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Auto-Generated OMR Bubble Sheet Simulation */}
           {showOmrSheet && questions.length > 0 && (

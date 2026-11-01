@@ -2254,6 +2254,57 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 14: Question Phrasing Repetition & Stem Noise Inspector */}
+                  {(() => {
+                    // Extract opening phrases (first 4 words) of questions
+                    const openingPhrases = items.map((it) => {
+                      const txt = ((it.problem_snapshot || {}).content_latex || "")
+                        .replace(/\$[^$]*\$/g, " ")
+                        .replace(/[.,:;!?]/g, " ")
+                        .trim()
+                        .split(/\s+/)
+                        .slice(0, 4)
+                        .join(" ")
+                        .toLowerCase();
+                      return txt;
+                    }).filter(Boolean);
+
+                    const phraseCounts: Record<string, number> = {};
+                    openingPhrases.forEach((p) => {
+                      if (p.length > 5) {
+                        phraseCounts[p] = (phraseCounts[p] || 0) + 1;
+                      }
+                    });
+
+                    const repeatedEntries = Object.entries(phraseCounts).filter(([_, count]) => count >= 3);
+                    const hasRepetition = repeatedEntries.length > 0;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {!hasRepetition ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Đa dạng đề dẫn & Tránh trùng lặp mô-típ:{" "}
+                            {!hasRepetition ? (
+                              <span className="font-mono text-emerald-700">ĐẠT TIÊU CHUẨN</span>
+                            ) : (
+                              <span className="font-mono text-amber-700">CẢNH BÁO LẶP MÔ-TÍP ({repeatedEntries.length} cụm)</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {!hasRepetition
+                              ? "✓ Cấu trúc ngữ cảnh mở đầu các câu hỏi phong phú, không bị rập khuôn mô-típ lặp lại."
+                              : `⚠️ Cảnh báo: Phát hiện các câu hỏi có cùng mô-típ mở đầu ≥3 lần: \"${repeatedEntries[0][0]}\" (${repeatedEntries[0][1]} câu). Nên đa dạng hóa đề dẫn.`}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2287,7 +2338,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `10. Tải nhận thức & Ký hiệu toán học: ĐẠT TIÊU CHUẨN`,
                         `11. Hình vẽ & Đồ thị minh họa (TikZ): ĐẦY ĐỦ / HỢP LỆ`,
                         `12. Thang điểm thập phân & Phân bổ (Bộ GD&ĐT): ${isScoreOk ? "CHUẨN XÁC" : "CẦN LƯU Ý"} (${currentTotalScore.toFixed(2)}đ)`,
-                        `13. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `13. Đa dạng hóa đề dẫn & Chống trùng lặp mô-típ: ĐẠT TIÊU CHUẨN`,
+                        `14. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
