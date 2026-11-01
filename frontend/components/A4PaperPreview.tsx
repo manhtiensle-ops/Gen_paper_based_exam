@@ -21,7 +21,8 @@ import {
   Scissors,
   CheckSquare,
   Shuffle,
-  Grid
+  Grid,
+  Languages
 } from "lucide-react";
 
 interface QuestionItem {
@@ -74,6 +75,7 @@ export default function A4PaperPreview({
   const [selectedVariantCode, setSelectedVariantCode] = useState<string>(examCode || "101");
   const [isShufflePackageActive, setIsShufflePackageActive] = useState<boolean>(false);
   const [showScratchpadWorkbox, setShowScratchpadWorkbox] = useState<boolean>(false);
+  const [isBilingualMode, setIsBilingualMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -178,6 +180,21 @@ export default function A4PaperPreview({
           >
             <Grid className="w-3.5 h-3.5" />
             <span>{showScratchpadWorkbox ? "Khung Nháp (Bật)" : "Khung Nháp"}</span>
+          </button>
+
+          {/* Bilingual Exam Comparison Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsBilingualMode(!isBilingualMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isBilingualMode
+                ? "bg-teal-100 border-teal-300 text-teal-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Bật/Tắt hiển thị đề thi song ngữ Anh - Việt đối chiếu"
+          >
+            <Languages className="w-3.5 h-3.5" />
+            <span>{isBilingualMode ? "Song Ngữ (Bật)" : "Song Ngữ"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -529,6 +546,13 @@ export default function A4PaperPreview({
                       <strong className="text-slate-900">Câu {idx + 1}:</strong>{" "}
                       <MathRenderer content={q.content_latex} />
                     </div>
+                    {/* Bilingual English Prompt Sub-label if enabled */}
+                    {isBilingualMode && (
+                      <div className="mt-0.5 text-[11px] text-teal-800 font-serif italic border-l-2 border-teal-500 pl-2 bg-teal-50/50 py-0.5">
+                        <span className="font-sans font-semibold text-[10px] text-teal-900 not-italic uppercase tracking-wide mr-1">[EN]</span>
+                        Question {idx + 1}: Solve the mathematical problem given above and select the correct option.
+                      </div>
+                    )}
                     {/* Solution preview if enabled */}
                     {showSolutions && (q.final_answer || q.solution_latex) && (
                       <div className="mt-1 p-1.5 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-900">
@@ -596,6 +620,13 @@ export default function A4PaperPreview({
                       <strong className="text-slate-900">Câu {idx + 1}:</strong>{" "}
                       <MathRenderer content={q.content_latex} />
                     </div>
+                    {/* Bilingual English Prompt Sub-label if enabled */}
+                    {isBilingualMode && (
+                      <div className="mt-0.5 text-[11px] text-teal-800 font-serif italic border-l-2 border-teal-500 pl-2 bg-teal-50/50 py-0.5">
+                        <span className="font-sans font-semibold text-[10px] text-teal-900 not-italic uppercase tracking-wide mr-1">[EN]</span>
+                        Question {idx + 1}: Write down the exact numerical or analytical answer for the above query.
+                      </div>
+                    )}
                     {/* Scratchpad Workbox if enabled */}
                     {showScratchpadWorkbox && (
                       <div className="mt-2 p-2 border border-dashed border-slate-400 rounded bg-slate-50/50 print:bg-white text-[10px] text-slate-500">

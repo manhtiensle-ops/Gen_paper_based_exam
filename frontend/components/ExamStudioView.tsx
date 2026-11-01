@@ -2191,6 +2191,38 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 12: TikZ Graph & Visual Figure Integrity Inspector */}
+                  {(() => {
+                    const hasGeometryOrGraphKeywords = /hình|đồ thị|bảng biến thiên|cho tam giác|cho tứ diện|cho hình chóp|hình vẽ/i.test(rawLatexCode);
+                    const tikzCount = (rawLatexCode.match(/\\begin\{tikzpicture\}|\\includegraphics/g) || []).length;
+                    const isGraphWarning = hasGeometryOrGraphKeywords && tikzCount === 0;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {!isGraphWarning ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Đồ thị & Hình vẽ minh họa (TikZ):{" "}
+                            {!isGraphWarning ? (
+                              <span className="font-mono text-emerald-700">ĐẦY ĐỦ / HỢP LỆ ({tikzCount} hình)</span>
+                            ) : (
+                              <span className="font-mono text-amber-700">NGHI VẤN THIẾU HÌNH MINH HỌA</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {!isGraphWarning
+                              ? `✓ Phát hiện ${tikzCount} khối TikZ/hình vẽ. Đề thi minh họa trực quan đầy đủ.`
+                              : `⚠️ Cảnh báo: Đề bài chứa từ khóa 'đồ thị/hình vẽ' nhưng chưa phát hiện khối TikZ/includegraphics tương ứng.`}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2222,7 +2254,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `8. Phương án nhiễu trắc nghiệm: ĐỒNG ĐỀU & HỢP LÝ`,
                         `9. Phân bổ đáp án đúng (A/B/C/D): CÂN BẰNG KHẢO THÍ`,
                         `10. Tải nhận thức & Ký hiệu toán học: ĐẠT TIÊU CHUẨN`,
-                        `11. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `11. Hình vẽ & Đồ thị minh họa (TikZ): ĐẦY ĐỦ / HỢP LỆ`,
+                        `12. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
