@@ -23,6 +23,7 @@ import {
   BookOpen,
   Shuffle,
   ShieldCheck,
+  Trash2,
   ChevronRight,
   Eye,
   AlertCircle,
@@ -648,6 +649,27 @@ export default function Dashboard() {
     } finally {
       setUploading(false);
       setUploadProgress(null);
+    }
+  };
+
+  // Xóa tài liệu đề thi nguồn
+  const handleDeleteSourceExam = async (examId: string, examTitle: string) => {
+    if (!window.confirm(`Thầy/Cô có chắc chắn muốn xóa tài liệu: "${examTitle}" không? Các câu hỏi đã trích xuất vào Ngân hàng sẽ vẫn được bảo lưu an toàn.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/exams/${examId}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        await fetchSourceExams();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.detail || "Không thể xóa tài liệu đề thi");
+      }
+    } catch (err) {
+      console.error("Lỗi khi xóa source exam:", err);
+      alert("Đã xảy ra lỗi kết nối khi xóa tài liệu");
     }
   };
 
@@ -1947,6 +1969,16 @@ export default function Dashboard() {
                             <span>Duyệt câu hỏi ➔</span>
                           </button>
                         )}
+
+                        {/* Nút xóa tài liệu đề thi nguồn */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSourceExam(exam.id, exam.title)}
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Xóa tài liệu này khỏi danh sách tiến trình"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
 

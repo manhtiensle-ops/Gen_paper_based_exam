@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from celery import Celery
 
 from ..database import get_db
-from ..models import SourceExam, User
+from ..models import SourceExam, User, Question
 from ..schemas import SourceExamResponse
 from ..services.minio_client import upload_file_bytes
 from ..services.quota_service import require_authenticated_user, get_current_user_optional, consume_ai_quota
@@ -275,3 +275,30 @@ def get_source_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     if not exam:
         raise HTTPException(status_code=404, detail="Source exam not found")
     return exam
+
+@router.delete("/{exam_id}", status_code=status.HTTP_200_OK)
+def delete_source_exam(
+    exam_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_optional)
+):
+    """
+    Xóa tài liệu đề thi nguồn:
+    - Nếu là tác giả hoặc admin: cho phép xóa.
+    - Cập nhật các câu hỏi liên kết để ngắt liên kết (source_exam_id = NULL) hoặc giữ an toàn.
+    """
+    exam = db.query(SourceExam).filter(SourceExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Tài liệu đề thi không tồn tại")
+    
+    # Kiểm tra quyền hạn nếu tài liệu có người sở hữu
+    if exam.user_id and current_user:
+        if exam.user_id != current_user.id and current_user.role not in ["ADMIN", "TEACHER"]:
+            raise HTTPException(status_code=403, detail="Bạn không có quyền xóa tài liệu này")
+            
+    # Ngắt liên kết câu hỏi thuộc source exam này để bảo toàn câu hỏi đã vào ngân hàng
+    db.query(Question).filter(Question.source_exam_id == exam_id).update({"source_exam_id": None})
+    
+    db.delete(exam)
+    db.commit()
+    return {"message": "Đã xóa tài liệu đề thi thành công", "id": str(exam_id)}
