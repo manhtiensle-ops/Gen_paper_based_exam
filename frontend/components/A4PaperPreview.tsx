@@ -24,7 +24,8 @@ import {
   Grid,
   Languages,
   ShieldCheck,
-  Bookmark
+  Bookmark,
+  Type
 } from "lucide-react";
 
 interface QuestionItem {
@@ -80,6 +81,7 @@ export default function A4PaperPreview({
   const [isBilingualMode, setIsBilingualMode] = useState<boolean>(false);
   const [showBlindGradingHeader, setShowBlindGradingHeader] = useState<boolean>(false);
   const [showPocketKeyStrip, setShowPocketKeyStrip] = useState<boolean>(false);
+  const [isLargePrintMode, setIsLargePrintMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -229,6 +231,21 @@ export default function A4PaperPreview({
           >
             <Bookmark className="w-3.5 h-3.5" />
             <span>{showPocketKeyStrip ? "Dải Đáp Án (Bật)" : "Dải Đáp Án"}</span>
+          </button>
+
+          {/* Large Print Low Vision Accessibility Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsLargePrintMode(!isLargePrintMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isLargePrintMode
+                ? "bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Chế độ in chữ lớn (Large Print) hỗ trợ học sinh khiếm thị và thị lực kém"
+          >
+            <Type className="w-3.5 h-3.5" />
+            <span>{isLargePrintMode ? "Chữ Lớn (16pt)" : "Chữ Lớn"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -451,7 +468,9 @@ export default function A4PaperPreview({
               : "bg-white text-slate-900"
           } paper-sheet-elevation rounded-sm ${
             isBookletMode ? "p-[12mm]" : "p-[20mm]"
-          } font-serif leading-relaxed transition-all duration-200 print:bg-white print:text-black print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative overflow-hidden`}
+          } font-serif ${
+            isLargePrintMode ? "text-[16px] leading-[1.9]" : "leading-relaxed"
+          } transition-all duration-200 print:bg-white print:text-black print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative overflow-hidden`}
         >
           {/* Watermark Overlay (if configured) */}
           {watermarkText.trim() && (

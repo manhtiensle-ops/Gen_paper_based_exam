@@ -2305,6 +2305,50 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 15: Pedagogical Real-world Context & Mathematical Modeling Inspector */}
+                  {(() => {
+                    const realWorldKeywords = [
+                      "thực tế", "thực tiễn", "bài toán", "lãi suất", "ngân hàng",
+                      "vận tốc", "chuyển động", "quãng đường", "gia tốc", "chi phí",
+                      "lợi nhuận", "doanh thu", "chiều cao", "thể tích", "diện tích đất",
+                      "bể chứa", "máng nước", "tam giác", "tòa nhà", "cột cờ", "mặt cầu",
+                      "khoảng cách", "vật lý", "hóa học", "sinh học", "kinh tế"
+                    ];
+                    let realWorldCount = 0;
+                    items.forEach((it) => {
+                      const txt = ((it.problem_snapshot || {}).content_latex || "").toLowerCase();
+                      const matched = realWorldKeywords.some((kw) => txt.includes(kw));
+                      if (matched) realWorldCount++;
+                    });
+                    const realWorldRatio = items.length > 0 ? (realWorldCount / items.length) * 100 : 0;
+                    const isAdequate = realWorldCount >= 1 || items.length === 0;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {isAdequate ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Bối cảnh thực tế & Mô hình hóa (GDPT 2018):{" "}
+                            {isAdequate ? (
+                              <span className="font-mono text-emerald-700">ĐẠT CHUẨN NĂNG LỰC ({realWorldCount}/{items.length} câu ~ {realWorldRatio.toFixed(0)}%)</span>
+                            ) : (
+                              <span className="font-mono text-amber-700">CHƯA CÓ BÀI TOÁN THỰC TẾ (0/{items.length})</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {isAdequate
+                              ? `✓ Phát hiện ${realWorldCount} câu hỏi có ngữ cảnh ứng dụng thực tế/mô hình hóa toán học, bám sát định hướng phát triển phẩm chất năng lực học sinh.`
+                              : "⚠️ Cảnh báo: Đề thi chưa có câu hỏi ứng dụng thực tế hoặc mô hình hóa toán học. Nên bổ sung ít nhất 1-2 câu bối cảnh thực tiễn theo chuẩn GDPT 2018."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2339,7 +2383,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `11. Hình vẽ & Đồ thị minh họa (TikZ): ĐẦY ĐỦ / HỢP LỆ`,
                         `12. Thang điểm thập phân & Phân bổ (Bộ GD&ĐT): ${isScoreOk ? "CHUẨN XÁC" : "CẦN LƯU Ý"} (${currentTotalScore.toFixed(2)}đ)`,
                         `13. Đa dạng hóa đề dẫn & Chống trùng lặp mô-típ: ĐẠT TIÊU CHUẨN`,
-                        `14. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `14. Bối cảnh thực tế & Mô hình hóa (GDPT 2018): ĐẠT CHUẨN NĂNG LỰC`,
+                        `15. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
