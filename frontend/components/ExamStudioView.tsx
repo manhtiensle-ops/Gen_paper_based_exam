@@ -309,9 +309,17 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   };
 
   // Fetch Items & Compile Initial Live Preview
-  const loadExamItems = async () => {
+  const loadExamItems = async (forceSync = false) => {
     try {
       setLoading(true);
+      if (forceSync) {
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem(`exam_draft_${examId}`);
+          }
+        } catch (e) {}
+        await fetch(`/api/studio/exams/${examId}/sync-items?force=true`, { method: "POST" });
+      }
       const res = await fetch(`/api/studio/exams/${examId}/items`);
       if (res.ok) {
         const data = await res.json();
@@ -624,6 +632,17 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             <Bot className="w-3.5 h-3.5 text-indigo-600" />
             <span>Trợ Lý AI</span>
             <kbd className="text-[9px] bg-slate-100 px-1 py-0.5 rounded text-slate-400 font-mono">⌘K</kbd>
+          </button>
+
+          {/* Sync from Matrix Button */}
+          <button
+            onClick={() => loadExamItems(true)}
+            disabled={loading}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm disabled:opacity-50"
+            title="Đồng bộ lại toàn bộ câu hỏi và thay đổi mới nhất từ Ma trận đề thi"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${loading ? "animate-spin" : ""}`} />
+            <span>Đồng bộ từ Ma trận</span>
           </button>
 
           {/* Quick Recompile Button */}

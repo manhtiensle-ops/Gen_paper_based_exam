@@ -717,12 +717,12 @@ export default function Dashboard() {
   };
 
   // Replace Question in Slot
-  const handleSelectReplacement = (replacement: any) => {
+  const handleSelectReplacement = async (replacement: any) => {
     if (activeSlotIdx === null || !generatedExam) return;
     const updatedSlots = [...generatedExam.slots_state];
     const targetSlot = updatedSlots.find(s => s.slot_index === activeSlotIdx);
     if (targetSlot) {
-      targetSlot.question = {
+      const repQ = {
         id: replacement.id,
         content_latex: replacement.content_latex,
         solution_latex: replacement.solution_latex,
@@ -731,11 +731,34 @@ export default function Dashboard() {
         has_figure: replacement.has_figure,
         figures_meta: replacement.figures_meta,
         main_topic: replacement.main_topic,
-        difficulty: replacement.difficulty
+        difficulty: replacement.difficulty,
+        points: targetSlot.points || 0.5
       };
+      targetSlot.question = repQ;
       const updatedExam = { ...generatedExam, slots_state: updatedSlots };
       setGeneratedExam(updatedExam);
       saveWorkspaceSession(activeTab, updatedExam.id, updatedExam);
+
+      // Xóa bản nháp cũ của Studio để Studio nhận câu hỏi mới
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(`exam_draft_${updatedExam.id}`);
+        }
+      } catch (e) {}
+
+      // Đồng bộ vĩnh viễn xuống Database và bảng items của Exam Studio
+      try {
+        await fetch(`/api/generator/exams/${updatedExam.id}/slots/${activeSlotIdx}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(repQ)
+        });
+        await fetch(`/api/studio/exams/${updatedExam.id}/sync-items?force=true`, {
+          method: "POST"
+        });
+      } catch (err) {
+        console.error("Lỗi đồng bộ slot lên server:", err);
+      }
     }
     setSwapModalOpen(false);
   };
@@ -2012,17 +2035,40 @@ export default function Dashboard() {
         question={editingQuestion}
         isOpen={Boolean(editingQuestion)}
         onClose={() => setEditingQuestion(null)}
-        onSaveSuccess={(updatedQ) => {
+        onSaveSuccess={async (updatedQ) => {
           setQuestions((prev) =>
             prev.map((item) => (item.id === updatedQ.id ? updatedQ : item))
           );
           if (generatedExam && Array.isArray(generatedExam.slots_state)) {
-            const updatedSlots = generatedExam.slots_state.map((s: any) =>
-              s.question && s.question.id === updatedQ.id
-                ? { ...s, question: updatedQ }
-                : s
-            );
-            setGeneratedExam({ ...generatedExam, slots_state: updatedSlots });
+            let changedSlotIdx: number | null = null;
+            const updatedSlots = generatedExam.slots_state.map((s: any) => {
+              if (s.question && s.question.id === updatedQ.id) {
+                changedSlotIdx = s.slot_index;
+                return { ...s, question: updatedQ };
+              }
+              return s;
+            });
+            const updatedExam = { ...generatedExam, slots_state: updatedSlots };
+            setGeneratedExam(updatedExam);
+            saveWorkspaceSession(activeTab, updatedExam.id, updatedExam);
+
+            if (changedSlotIdx !== null) {
+              try {
+                if (typeof window !== "undefined") {
+                  localStorage.removeItem(`exam_draft_${updatedExam.id}`);
+                }
+                await fetch(`/api/generator/exams/${updatedExam.id}/slots/${changedSlotIdx}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(updatedQ)
+                });
+                await fetch(`/api/studio/exams/${updatedExam.id}/sync-items?force=true`, {
+                  method: "POST"
+                });
+              } catch (err) {
+                console.error("Lỗi đồng bộ câu hỏi vừa sửa lên server:", err);
+              }
+            }
           }
         }}
       />

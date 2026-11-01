@@ -32,7 +32,7 @@ def get_omniroute_client():
 # ==================== SYNC EXAM TO STUDIO ITEMS ====================
 
 @router.post("/exams/{exam_id}/sync-items", response_model=List[ExamItemResponse])
-def sync_exam_slots_to_items(exam_id: UUID, db: Session = Depends(get_db)):
+def sync_exam_slots_to_items(exam_id: UUID, force: bool = False, db: Session = Depends(get_db)):
     """Chuyển đổi slots_state của generated_exams thành các ExamItem Snapshot độc lập"""
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
     if not exam:
@@ -40,8 +40,13 @@ def sync_exam_slots_to_items(exam_id: UUID, db: Session = Depends(get_db)):
 
     # Kiểm tra xem đã có items chưa
     existing_items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
-    if existing_items:
+    if existing_items and not force:
         return existing_items
+
+    if force and existing_items:
+        for it in existing_items:
+            db.delete(it)
+        db.commit()
 
     # Duyệt qua slots_state để tạo snapshots
     new_items = []

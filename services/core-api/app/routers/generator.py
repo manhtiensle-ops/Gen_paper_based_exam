@@ -8,6 +8,7 @@ import requests
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import or_, and_
 
 from ..database import get_db
@@ -610,3 +611,120 @@ def download_exam_file(
         media_type=media_types.get(fmt, "application/octet-stream"),
         headers=headers
     )
+
+
+@router.put("/exams/{exam_id}/slots/{slot_index}")
+def update_exam_slot(
+    exam_id: uuid.UUID,
+    slot_index: int,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Cập nhật vĩnh viễn câu hỏi thay thế cho một Slot trong đề thi.
+    Tự động đồng bộ sang bảng exam_items và làm mới dữ liệu cho Exam Studio.
+    """
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi")
+
+    slots = list(exam.slots_state or [])
+    found = False
+    for slot in slots:
+        if slot.get("slot_index") == slot_index:
+            slot["question"] = payload
+            found = True
+            break
+
+    if not found:
+        slots.append({
+            "slot_index": slot_index,
+            "section_type": payload.get("section_type", "CONVENTIONAL"),
+            "main_topic": payload.get("main_topic", "ALGEBRA"),
+            "difficulty": payload.get("difficulty", "MEDIUM"),
+            "points": float(payload.get("points") or payload.get("default_points") or 3.0),
+            "question": payload
+        })
+
+    exam.slots_state = slots
+    flag_modified(exam, "slots_state")
+
+    # Đồng bộ tức thì sang ExamItem của Exam Studio
+    item_order_index = slot_index - 1
+    existing_item = db.query(ExamItem).filter(
+        ExamItem.exam_id == exam_id,
+        ExamItem.order_index == item_order_index
+    ).first()
+
+    points = float(payload.get("points") or payload.get("default_points") or 3.0)
+    sol_text = payload.get("solution_latex") or ""
+    sub_questions = payload.get("sub_questions") or []
+
+    rubric_data = {
+        "target_total_quanta": int(points * 4),
+        "pedagogical_analysis": "Barem sơ bộ khởi tạo tự động từ câu hỏi thay thế",
+        "steps": [
+            {
+                "step_order": 1,
+                "milestone_tag": "Lời giải & Biến đổi",
+                "latex_content": sol_text or "*(Chưa có lời giải chi tiết)*",
+                "allocated_quanta": int(points * 4),
+                "points": points,
+                "is_locked": False
+            }
+        ],
+        "sub_parts": []
+    }
+
+    if sub_questions:
+        rubric_data["sub_parts"] = []
+        for sq in sub_questions:
+            sub_pts = float(sq.get("points") or 1.0)
+            rubric_data["sub_parts"].append({
+                "part_id": sq.get("part_id", "a"),
+                "part_label": sq.get("label", "a)"),
+                "part_title": (sq.get("content_latex") or "")[:80],
+                "sub_max_points": sub_pts,
+                "steps": [
+                    {
+                        "step_order": 1,
+                        "milestone_tag": "Chứng minh / Tính toán",
+                        "latex_content": sq.get("solution_latex") or sq.get("content_latex") or "",
+                        "allocated_quanta": int(sub_pts * 4),
+                        "points": sub_pts,
+                        "is_locked": False
+                    }
+                ]
+            })
+
+    q_id = payload.get("id")
+    source_q_uuid = None
+    if q_id and isinstance(q_id, str):
+        try:
+            source_q_uuid = uuid.UUID(q_id)
+        except Exception:
+            pass
+
+    if existing_item:
+        existing_item.problem_snapshot = payload
+        existing_item.source_question_id = source_q_uuid
+        existing_item.rubric_data = rubric_data
+        existing_item.max_points = points
+        flag_modified(existing_item, "problem_snapshot")
+        flag_modified(existing_item, "rubric_data")
+    else:
+        new_item = ExamItem(
+            exam_id=exam.id,
+            source_question_id=source_q_uuid,
+            order_index=item_order_index,
+            display_label=f"Câu {slot_index}",
+            max_points=points,
+            problem_snapshot=payload,
+            rubric_data=rubric_data,
+            is_ai_variant=False
+        )
+        db.add(new_item)
+
+    db.commit()
+    db.refresh(exam)
+    return {"status": "success", "exam_id": str(exam.id), "slot_index": slot_index}
