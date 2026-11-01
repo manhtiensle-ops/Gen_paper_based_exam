@@ -2714,6 +2714,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 28: Trigonometric Periodicity & Angular Domain Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasTrig = /\\sin|\\cos|\\tan|\\cot|lượng giác|chu kỳ|nghiệm lượng giác|cung lượng giác/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Chu kỳ lượng giác & Miền giá trị góc (Trigonometric Domain):{" "}
+                            {hasTrig ? (
+                              <span className="font-mono text-emerald-700">CHUẨN CHU KỲ LƯỢNG GIÁC</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐẠI SỐ PHỔ THÔNG</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasTrig
+                              ? "✓ Các hàm lượng giác (sin, cos, tan) có miền góc xác định rõ ràng, chu kỳ tuần hoàn chuẩn mực và nghiệm không bị trùng lặp đối/bù."
+                              : "✓ Đề thi tập trung rèn luyện các cấu trúc đại số và giải tích đa thức, mũ, logarit tiêu chuẩn."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2761,7 +2788,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `24. Cân bằng họ hàm số: CÂN BẰNG ĐA DẠNG HÀM SỐ`,
                         `25. Mô hình hóa thực tiễn STEM: ĐẠT CHUẨN THỰC TIỄN GDPT`,
                         `26. Trực giao & Hệ tọa độ Oxyz: CHUẨN TỌA ĐỘ OXYZ KHÔNG GIAN`,
-                        `27. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `27. Chu kỳ lượng giác & Miền giá trị góc: CHUẨN CHU KỲ LƯỢNG GIÁC`,
+                        `28. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

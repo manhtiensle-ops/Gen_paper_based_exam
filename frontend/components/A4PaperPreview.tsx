@@ -18,6 +18,7 @@ import {
   Grid3X3,
   Timer,
   Layers,
+  Sigma,
   Minimize2,
   Stamp,
   BookOpen,
@@ -104,6 +105,7 @@ export default function A4PaperPreview({
   const [isScratchpadGridMode, setIsScratchpadGridMode] = useState<boolean>(false);
   const [isTimePacingBarMode, setIsTimePacingBarMode] = useState<boolean>(false);
   const [isSyllabusMatrixBannerMode, setIsSyllabusMatrixBannerMode] = useState<boolean>(false);
+  const [isEssentialFormulaStampMode, setIsEssentialFormulaStampMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -448,6 +450,21 @@ export default function A4PaperPreview({
           >
             <Layers className="w-3.5 h-3.5" />
             <span>{isSyllabusMatrixBannerMode ? "Ma Trận Đề (Bật)" : "Ma Trận Đề"}</span>
+          </button>
+
+          {/* Essential Formula Reference Margin Stamp Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsEssentialFormulaStampMode(!isEssentialFormulaStampMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isEssentialFormulaStampMode
+                ? "bg-violet-100 border-violet-300 text-violet-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp khung ghi nhớ công thức đạo hàm và góc lượng giác đặc biệt ở chân trang đề thi A4"
+          >
+            <Sigma className="w-3.5 h-3.5" />
+            <span>{isEssentialFormulaStampMode ? "Công Thức Chuẩn (Bật)" : "Công Thức Chuẩn"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1273,6 +1290,41 @@ export default function A4PaperPreview({
               >
                 <div className="absolute top-1 left-2 text-[9px] text-slate-300 select-none">
                   (O, x, y) Phác thảo nháp đồ thị &amp; hình vẽ
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Essential Formula Reference Margin Stamp Mode Block */}
+          {isEssentialFormulaStampMode && (
+            <div className="mt-6 pt-3 border-t-2 border-dashed border-violet-300 p-2.5 rounded-lg bg-violet-50/40 print:bg-white print:border-slate-400 text-[10px] text-slate-700 break-inside-avoid">
+              <div className="flex items-center justify-between pb-1 mb-2 border-b border-violet-200 print:border-slate-300 font-bold text-[10.5px] text-violet-900 print:text-black">
+                <span className="flex items-center gap-1.5">
+                  <Sigma className="w-3.5 h-3.5 text-violet-700 print:text-black" />
+                  BẢNG CÔNG THỨC THAM KHẢO &amp; ĐẠO HÀM CƠ BẢN
+                </span>
+                <span className="text-[9px] text-slate-500 font-normal">
+                  (Dành cho học sinh đối chiếu nhanh quy tắc biến đổi)
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 font-mono text-[9.5px]">
+                <div className="p-1.5 rounded bg-white border border-violet-100 print:border-slate-300">
+                  <div className="font-bold text-violet-800 print:text-black mb-0.5">ĐẠO HÀM CƠ BẢN</div>
+                  <div>• (x^n)&apos; = n·x^(n-1)</div>
+                  <div>• (e^x)&apos; = e^x, (a^x)&apos; = a^x·ln(a)</div>
+                  <div>• (ln x)&apos; = 1/x, (log_a x)&apos; = 1/(x ln a)</div>
+                </div>
+                <div className="p-1.5 rounded bg-white border border-violet-100 print:border-slate-300">
+                  <div className="font-bold text-violet-800 print:text-black mb-0.5">LƯỢNG GIÁC CHUẨN</div>
+                  <div>• (sin x)&apos; = cos x, (cos x)&apos; = -sin x</div>
+                  <div>• (tan x)&apos; = 1/cos²x = 1 + tan²x</div>
+                  <div>• sin²x + cos²x = 1</div>
+                </div>
+                <div className="p-1.5 rounded bg-white border border-violet-100 print:border-slate-300">
+                  <div className="font-bold text-violet-800 print:text-black mb-0.5">NGUYÊN HÀM CƠ SỞ</div>
+                  <div>• ∫ x^n dx = x^(n+1)/(n+1) + C</div>
+                  <div>• ∫ 1/x dx = ln|x| + C</div>
+                  <div>• ∫ e^x dx = e^x + C</div>
                 </div>
               </div>
             </div>
