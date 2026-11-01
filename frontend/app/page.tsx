@@ -935,6 +935,29 @@ export default function Dashboard() {
     }
   };
 
+  // Xóa câu hỏi khỏi Ngân hàng / Hàng đợi kiểm duyệt
+  const handleDeleteQuestion = async (questionId: string) => {
+    if (!window.confirm("Thầy/Cô có chắc chắn muốn xóa câu hỏi này khỏi hệ thống không? Hành động này không thể hoàn tác.")) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/questions/${questionId}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        fetchReviewQuestions();
+        fetchPendingCount();
+        fetchQuestions();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(`Không thể xóa câu hỏi: ${err.detail || "Có lỗi xảy ra"}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Lỗi kết nối khi gửi yêu cầu xóa câu hỏi.");
+    }
+  };
+
   // Phê duyệt đồng loạt tất cả câu hỏi chờ duyệt
   const handleBatchApprove = async () => {
     const unapproved = reviewQuestions.filter((q) => !q.is_verified);
@@ -1580,6 +1603,16 @@ export default function Dashboard() {
                         <span>Sửa & Gắn nhãn</span>
                       </button>
                     )}
+                    {currentUser && (currentUser.role === "ADMIN" || currentUser.role === "TEACHER" || q.user_id === currentUser.id) && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteQuestion(q.id)}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                        title="Xóa câu hỏi khỏi Ngân hàng"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                       q.is_verified ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
                     }`}>
@@ -2153,6 +2186,14 @@ export default function Dashboard() {
                       >
                         <CheckCircle className="w-3.5 h-3.5" />
                         <span>{q.is_verified ? "Thu hồi duyệt" : "Phê duyệt đưa vào Ngân hàng"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteQuestion(q.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                        title="Xóa câu hỏi này khỏi hệ thống"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>

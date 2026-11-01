@@ -380,4 +380,24 @@ def clone_question_to_my_vault(
     db.commit()
     db.refresh(cloned)
     return cloned
-    return None
+
+@router.delete("/{question_id}")
+def delete_question(
+    question_id: UUID,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Xóa vĩnh viễn câu hỏi khỏi hệ thống.
+    Chỉ tác giả sở hữu hoặc Quản trị viên/Giáo viên mới có quyền thực hiện.
+    """
+    q = db.query(Question).filter(Question.id == question_id).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Question not found")
+        
+    if current_user.role not in ["ADMIN", "TEACHER"] and q.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this question")
+        
+    db.delete(q)
+    db.commit()
+    return {"status": "success", "message": f"Question {question_id} deleted successfully"}
