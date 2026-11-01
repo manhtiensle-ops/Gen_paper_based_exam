@@ -94,12 +94,19 @@ jobs:
             ingestion_worker:
               - 'services/ingestion-worker/**'
 
+      - name: 📥 Đồng bộ mã nguồn mới nhất vào thư mục triển khai
+        run: |
+          cd /home/manhtien/Gen_paper_based_exam
+          git fetch origin main
+          git reset --hard origin/main
+
       - name: 🔄 Rebuild & Restart Frontend (nếu có đổi code frontend)
         if: steps.changes.outputs.frontend == 'true'
         run: |
           cd /home/manhtien/Gen_paper_based_exam
-          docker compose build frontend
-          docker stop hsg_frontend && docker rm hsg_frontend
+          docker compose build --no-cache frontend
+          docker stop hsg_frontend || true
+          docker rm hsg_frontend || true
           docker compose up -d frontend
 
       - name: 🔄 Restart Backend Services (nếu có đổi code backend)
