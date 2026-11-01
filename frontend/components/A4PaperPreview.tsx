@@ -20,7 +20,8 @@ import {
   X,
   Scissors,
   CheckSquare,
-  Shuffle
+  Shuffle,
+  Grid
 } from "lucide-react";
 
 interface QuestionItem {
@@ -72,6 +73,7 @@ export default function A4PaperPreview({
   const [showOmrSheet, setShowOmrSheet] = useState<boolean>(false);
   const [selectedVariantCode, setSelectedVariantCode] = useState<string>(examCode || "101");
   const [isShufflePackageActive, setIsShufflePackageActive] = useState<boolean>(false);
+  const [showScratchpadWorkbox, setShowScratchpadWorkbox] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -161,6 +163,21 @@ export default function A4PaperPreview({
           >
             <Shuffle className="w-3.5 h-3.5" />
             <span>{isShufflePackageActive ? "Bộ Mã Đề (Bật)" : "Bộ Mã Đề"}</span>
+          </button>
+
+          {/* Scratchpad Workbox Mode Button */}
+          <button
+            type="button"
+            onClick={() => setShowScratchpadWorkbox(!showScratchpadWorkbox)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              showScratchpadWorkbox
+                ? "bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Bật/Tắt khung nháp ô ly dưới mỗi câu hỏi tự luận"
+          >
+            <Grid className="w-3.5 h-3.5" />
+            <span>{showScratchpadWorkbox ? "Khung Nháp (Bật)" : "Khung Nháp"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -579,6 +596,17 @@ export default function A4PaperPreview({
                       <strong className="text-slate-900">Câu {idx + 1}:</strong>{" "}
                       <MathRenderer content={q.content_latex} />
                     </div>
+                    {/* Scratchpad Workbox if enabled */}
+                    {showScratchpadWorkbox && (
+                      <div className="mt-2 p-2 border border-dashed border-slate-400 rounded bg-slate-50/50 print:bg-white text-[10px] text-slate-500">
+                        <div className="flex items-center justify-between mb-1 text-[9px] text-slate-400 font-sans italic">
+                          <span>Khung nháp / Các bước tính toán:</span>
+                          <span>VINH PHÁT Scratchpad</span>
+                        </div>
+                        <div className="h-16 border-b border-dotted border-slate-300 w-full mb-2"></div>
+                        <div className="h-16 border-b border-dotted border-slate-300 w-full"></div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -593,6 +621,17 @@ export default function A4PaperPreview({
                       <strong className="text-slate-900">Câu {idx + 1}:</strong>{" "}
                       <MathRenderer content={q.content_latex} />
                     </div>
+                    {/* Scratchpad Workbox if enabled */}
+                    {showScratchpadWorkbox && (
+                      <div className="mt-2 p-2 border border-dashed border-slate-400 rounded bg-slate-50/50 print:bg-white text-[10px] text-slate-500">
+                        <div className="flex items-center justify-between mb-1 text-[9px] text-slate-400 font-sans italic">
+                          <span>Khung nháp / Bài giải:</span>
+                          <span>VINH PHÁT Scratchpad</span>
+                        </div>
+                        <div className="h-20 border-b border-dotted border-slate-300 w-full mb-2"></div>
+                        <div className="h-20 border-b border-dotted border-slate-300 w-full"></div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

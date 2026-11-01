@@ -2155,6 +2155,42 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 11: Cognitive Load & Advanced Math Density Inspector */}
+                  {(() => {
+                    // Count advanced math operators
+                    const advMathSymbols = (rawLatexCode.match(/\\(?:int|iint|iiint|oint|sum|prod|lim|sqrt|frac|dfrac|matrix|pmatrix|bmatrix|vmatrix|partial|nabla)/g) || []).length;
+                    const textWords = (rawLatexCode.replace(/\$[^$]*\$/g, " ").trim().split(/\s+/).filter(Boolean)).length || 1;
+                    const density = Math.round((advMathSymbols / textWords) * 100);
+
+                    // If density > 25% or advMathSymbols > 30, it is heavy cognitive load
+                    const isOverloaded = advMathSymbols > 35 || density > 30;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {!isOverloaded ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Tải nhận thức & Mật độ ký hiệu:{" "}
+                            {!isOverloaded ? (
+                              <span className="font-mono text-emerald-700">HỢP LÝ SƯ PHẠM ({density}%)</span>
+                            ) : (
+                              <span className="font-mono text-amber-700">MẬT ĐỘ CAO ({density}%)</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {!isOverloaded
+                              ? `✓ Tổng cộng ${advMathSymbols} ký hiệu toán nâng cao (tích phân, tổng, giới hạn, căn/phân số). Nhịp độ đọc đề vừa phải.`
+                              : `⚠️ Cảnh báo: Có ${advMathSymbols} ký hiệu nâng cao (${density}% mật độ từ). Học sinh có thể mất nhiều thời gian đọc hiểu đề.`}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2185,7 +2221,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `7. Độc lập câu hỏi: 100% ĐỘC LẬP (Không phát hiện trùng lặp đề dẫn)`,
                         `8. Phương án nhiễu trắc nghiệm: ĐỒNG ĐỀU & HỢP LÝ`,
                         `9. Phân bổ đáp án đúng (A/B/C/D): CÂN BẰNG KHẢO THÍ`,
-                        `10. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `10. Tải nhận thức & Ký hiệu toán học: ĐẠT TIÊU CHUẨN`,
+                        `11. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
