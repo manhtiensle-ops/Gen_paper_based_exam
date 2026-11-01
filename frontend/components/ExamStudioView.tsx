@@ -73,6 +73,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
   const [rawLatexCode, setRawLatexCode] = useState<string>("");
   const [isPreambleFolded, setIsPreambleFolded] = useState<boolean>(true);
   const [isDirty, setIsDirty] = useState<boolean>(false);
+  const [lastSavedTime, setLastSavedTime] = useState<string>("Vừa xong");
+  const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
 
   // Restore draft from local storage on mount (Disaster Recovery)
@@ -112,6 +114,7 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
   // Debounced auto-save draft to local storage
   useEffect(() => {
     if (!examId || !rawLatexCode) return;
+    setIsAutoSaving(true);
     const timer = setTimeout(() => {
       saveExamDraft({
         schema_version: 2,
@@ -125,6 +128,13 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
         last_modified_timestamp: Date.now(),
         server_sync_timestamp: Date.now(),
       });
+      setIsAutoSaving(false);
+      const now = new Date();
+      setLastSavedTime(
+        `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(
+          now.getSeconds()
+        ).padStart(2, "0")}`
+      );
     }, 500);
     return () => clearTimeout(timer);
   }, [rawLatexCode, isDirty, splitRatio, activeMode, sidebarTab, examId, headerConfig.exam_name]);
@@ -736,6 +746,22 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
             <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold border border-emerald-200 shadow-2xs flex items-center space-x-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>TeX Live & OMML</span>
+            </span>
+            {/* Auto-save Status Indicator */}
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center space-x-1 transition-all ${
+                isAutoSaving
+                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                  : "bg-slate-100/90 text-slate-500 border-slate-200/80"
+              }`}
+              title="Trạng thái tự động lưu trữ bản nháp phòng mất điện/mất kết nối"
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isAutoSaving ? "bg-amber-500 animate-ping" : "bg-slate-400"
+                }`}
+              ></span>
+              <span>{isAutoSaving ? "Đang lưu..." : `Đã lưu ${lastSavedTime}`}</span>
             </span>
           </div>
         </div>

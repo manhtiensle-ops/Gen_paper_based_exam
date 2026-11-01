@@ -52,6 +52,7 @@ export default function A4PaperPreview({
   const [isTwoColumns, setIsTwoColumns] = useState<boolean>(true);
   const [showSolutions, setShowSolutions] = useState<boolean>(false);
   const [isEyeCarePaper, setIsEyeCarePaper] = useState<boolean>(false);
+  const [spacingDensity, setSpacingDensity] = useState<"compact" | "normal" | "relaxed">("normal");
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -126,6 +127,30 @@ export default function A4PaperPreview({
             <Eye className="w-3.5 h-3.5" />
             <span>{isEyeCarePaper ? "Giấy ngà chống lóa" : "Giấy trắng A4"}</span>
           </button>
+
+          {/* Density / Spacing Selector */}
+          <div className="flex items-center bg-slate-50 border border-slate-200 rounded px-1 py-0.5 space-x-1 text-[11px]">
+            <span className="text-slate-400 font-bold px-1 text-[10px]">Giãn dòng:</span>
+            {[
+              { id: "compact", label: "Gọn" },
+              { id: "normal", label: "Chuẩn" },
+              { id: "relaxed", label: "Thoáng" },
+            ].map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setSpacingDensity(d.id as any)}
+                className={`px-1.5 py-0.5 rounded transition-all cursor-pointer font-medium ${
+                  spacingDensity === d.id
+                    ? "bg-white text-indigo-700 shadow-2xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                title={`Mật độ ${d.label} để vừa vặn số trang A4`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
 
           {/* Zoom Controls */}
           <div className="flex items-center bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">
@@ -223,8 +248,20 @@ export default function A4PaperPreview({
           <div
             className={
               isTwoColumns
-                ? "columns-1 md:columns-2 gap-[8mm] text-[12px] leading-normal"
-                : "space-y-4 text-[13px] leading-relaxed"
+                ? `columns-1 md:columns-2 gap-[8mm] ${
+                    spacingDensity === "compact"
+                      ? "text-[11px] leading-tight"
+                      : spacingDensity === "relaxed"
+                      ? "text-[13px] leading-loose"
+                      : "text-[12px] leading-normal"
+                  }`
+                : `${
+                    spacingDensity === "compact"
+                      ? "space-y-2 text-[12px] leading-normal"
+                      : spacingDensity === "relaxed"
+                      ? "space-y-6 text-[14px] leading-loose"
+                      : "space-y-4 text-[13px] leading-relaxed"
+                  }`
             }
           >
             {/* If structured into GDPT 2018 Parts */}
