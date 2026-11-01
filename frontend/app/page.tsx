@@ -203,6 +203,14 @@ export default function Dashboard() {
     REAL_WORLD_MATH: "Toán thực tế",
   };
 
+  // Ánh xạ cấp độ tư duy / độ khó chuẩn sư phạm Việt Nam
+  const DIFFICULTY_VI_MAP: Record<string, string> = {
+    EASY: "Nhận biết (Dễ)",
+    MEDIUM: "Thông hiểu - Vận dụng",
+    HARD: "Vận dụng cao",
+    OLYMPIAD: "HSG / Chuyên sâu",
+  };
+
   // Ánh xạ trạng thái xử lý đề thi nguồn (Source Exam Status)
   const STATUS_VI_MAP: Record<string, { label: string; badge: string }> = {
     REVIEW_NEEDED: { label: "Chờ kiểm duyệt", badge: "bg-amber-50 text-amber-700 border border-amber-200" },
@@ -1267,7 +1275,7 @@ export default function Dashboard() {
                             {TOPIC_VI_MAP[slot.main_topic] || slot.main_topic}
                           </span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${getDifficultyBadgeStyle(slot.difficulty)}`}>
-                            {slot.difficulty}
+                            {DIFFICULTY_VI_MAP[slot.difficulty] || slot.difficulty}
                           </span>
                         </div>
                         {slot.question && (
@@ -1503,7 +1511,7 @@ export default function Dashboard() {
                     ) : (
                       /* Badge tĩnh cho Khách vãng lai (GUEST) */
                       <span className={`text-xs font-bold px-2.5 py-0.5 rounded select-none ${getDifficultyBadgeStyle(q.difficulty)}`}>
-                        {q.difficulty}
+                        {DIFFICULTY_VI_MAP[q.difficulty] || q.difficulty}
                       </span>
                     )}
                     {q.user_difficulty && (
@@ -2329,8 +2337,8 @@ export default function Dashboard() {
                           <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
                             {TOPIC_VI_MAP[c.main_topic] || c.main_topic}
                           </span>
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
-                            {c.difficulty}
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${getDifficultyBadgeStyle(c.difficulty)}`}>
+                            {DIFFICULTY_VI_MAP[c.difficulty] || c.difficulty}
                           </span>
                           <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700">
                             {c.section_type === "SHORT_ANSWER" ? "Điền đáp số" : "Tự luận"}
