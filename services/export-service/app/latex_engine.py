@@ -104,6 +104,15 @@ def generate_latex_source(
     # Common Vietnamese Math Macros
     tex.append("\\newcommand{\\heva}[1]{\\left\\{\\begin{aligned}#1\\end{aligned}\\right.}")
     tex.append("\\newcommand{\\hoac}[1]{\\left[\\begin{aligned}#1\\end{aligned}\\right.}")
+    tex.append("\\newcommand{\\vect}[1]{\\overrightarrow{#1}}")
+    tex.append("\\newcommand{\\dx}{\\,\\mathrm{d}x}")
+    tex.append("\\newcommand{\\dy}{\\,\\mathrm{d}y}")
+    tex.append("\\newcommand{\\dt}{\\,\\mathrm{d}t}")
+    tex.append("\\newcommand{\\C}{\\mathbb{C}}")
+    tex.append("\\newcommand{\\R}{\\mathbb{R}}")
+    tex.append("\\newcommand{\\Z}{\\mathbb{Z}}")
+    tex.append("\\newcommand{\\N}{\\mathbb{N}}")
+    tex.append("\\newcommand{\\parallelslant}{\\mathbin{/\\!/}}")
 
     tex.append("\\begin{document}")
 

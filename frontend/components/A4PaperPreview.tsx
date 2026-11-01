@@ -156,7 +156,7 @@ export default function A4PaperPreview({
             width: "210mm",
             minHeight: "297mm",
           }}
-          className="bg-white shadow-xl rounded-sm p-[18mm] text-slate-900 font-serif leading-relaxed transition-transform duration-150 print:shadow-none print:transform-none print:w-full print:p-0"
+          className="bg-white paper-sheet-elevation rounded-sm p-[20mm] text-slate-900 font-serif leading-relaxed transition-transform duration-150 print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative"
         >
           {/* Header sư phạm chuẩn Sở GD&ĐT / Trung tâm Vinh Phát */}
           <div className="grid grid-cols-2 gap-4 pb-4 border-b-2 border-slate-900 mb-5 text-center text-xs">

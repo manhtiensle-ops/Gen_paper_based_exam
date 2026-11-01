@@ -1,5 +1,6 @@
-# HSG Math Exam Studio (Nền Tảng Biên Soạn & Số Hóa Đề Thi Toán HSG)
-**Hệ thống số hóa đề thi thông minh, quản lý ngân hàng câu hỏi và phòng studio biên soạn đề thi Toán Học Sinh Giỏi cấp THCS (Lớp 8 - 9) theo chuẩn in ấn quốc gia.**
+# HSG Math Exam Studio — dethi.ttgdvinhphat.com
+**Nền tảng Biên soạn, Số hóa Đề thi & Barem Điểm Chuẩn Sư Phạm — Trực thuộc Trung Tâm Giáo Dục VINH PHÁT**
+*Hệ thống số hóa đề thi thông minh, quản lý ngân hàng câu hỏi và phòng studio biên soạn đề thi Toán Học Sinh Giỏi cấp THCS (Lớp 8 - 9) theo chuẩn in ấn quốc gia.*
 
 [![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](./docker-compose.yml)
 [![Next.js 14](https://img.shields.io/badge/Frontend-Next.js%2014-black?logo=next.js)](./frontend)
@@ -224,6 +225,21 @@ Gen_paper_based_exam/
 - **Lưu trữ đối tượng:** MinIO Object Storage (S3 API Compatible).
 - **Trình biên dịch in ấn:** TeX Live Full Native (`pdflatex`, `longtable`, `tikz`, `mathptmx`), `python-docx` tích hợp XML OMML Native.
 - **Trí tuệ nhân tạo (AI):** OmniRoute Proxy (`antigravity/gemini-3.8-flash-tiered`) hỗ trợ Structured Output JSON.
+
+---
+
+## 🧪 Kiểm Thử & Đảm Bảo Chất Lượng (Quality Assurance)
+
+Hệ thống tích hợp bộ công cụ kiểm thử tự động một chạm, bảo đảm 100% tính toàn vẹn của cả 3 tầng hệ thống trước khi triển khai:
+
+```bash
+# Thực thi toàn bộ kiểm thử hệ thống (LaTeX Engine, Core API, Next.js Build)
+./run_all_tests.sh
+```
+
+- **LaTeX & Math Engine (`tests/test_latex_engine.py`):** Kiểm thử 9 macro toán học Bộ GD&ĐT (`\vect`, `\parallelslant`, `\dx`, `\R`...), bảng mã T5 tiếng Việt và định dạng khổ giấy A4.
+- **Core API & Database (`tests/test_core_api_utils.py`):** Kiểm thử thuật toán slugify tiếng Việt chuẩn SEO và kiểm tra 4 cụm Composite Index trên PostgreSQL.
+- **Frontend App (`npm run build`):** Xác thực cấu trúc Next.js App Router, kiểm tra 8/8 routes tĩnh và tính tương thích TypeScript.
 
 ---
 

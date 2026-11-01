@@ -669,48 +669,49 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
 
   return (
     <div className="h-screen w-screen bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden select-none">
-      {/* 1. TOPBAR - LIGHT ACADEMIC THEME (TRẮNG NGÀ CHUẨN MỰC) */}
-      <header className="h-14 bg-white border-b border-slate-200 px-5 flex items-center justify-between shadow-sm shrink-0 z-30">
+      {/* 1. TOPBAR - LIGHT ACADEMIC THEME (FROSTED GLASS BOUTIQUE SAAS) */}
+      <header className="h-14 frosted-glass border-b border-slate-200/90 px-5 flex items-center justify-between shadow-xs shrink-0 z-30 transition-all">
         <div className="flex items-center space-x-3">
           {onBack && (
             <button
               onClick={onBack}
-              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 transition-all flex items-center space-x-1"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 shadow-2xs hover:shadow-xs transition-all flex items-center space-x-1 cursor-pointer"
             >
               <span>← Trở lại</span>
             </button>
           )}
           <div className="flex items-center space-x-2">
             <h1 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-              <span className="text-indigo-600 font-extrabold">Exam Studio</span>
+              <span className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-indigo-900 bg-clip-text text-transparent font-black tracking-tight">Exam Studio</span>
               <span className="text-slate-300">/</span>
-              <span className="text-slate-700 truncate max-w-sm font-medium">{headerConfig.exam_name}</span>
+              <span className="text-slate-700 truncate max-w-sm font-semibold">{headerConfig.exam_name}</span>
             </h1>
             <button
               onClick={() => {
                 setHeaderForm(headerConfig);
                 setIsHeaderModalOpen(true);
               }}
-              className="text-xs px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 transition-all flex items-center space-x-1.5 cursor-pointer shadow-xs"
+              className="text-xs px-2.5 py-1 rounded-xl bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200/80 transition-all flex items-center space-x-1.5 cursor-pointer shadow-2xs"
               title="Tùy biến tiêu đề kỳ thi, trường học, năm học & thời gian"
             >
               <Settings className="w-3.5 h-3.5 text-indigo-600" />
               <span>Tiêu đề & Trường</span>
             </button>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
-              TeX Live & OMML
+            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold border border-emerald-200 shadow-2xs flex items-center space-x-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>TeX Live & OMML</span>
             </span>
           </div>
         </div>
 
         {/* Center: Mode Switcher & Score Badge */}
         <div className="flex items-center space-x-3">
-          <div className="flex bg-slate-100 p-0.5 rounded-xl text-xs font-bold border border-slate-200 shadow-inner">
+          <div className="flex bg-slate-100/90 p-1 rounded-2xl text-xs font-bold border border-slate-200/90 shadow-inner">
             <button
               onClick={() => handleModeSwitch("EXAM")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
+              className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer ${
                 activeMode === "EXAM"
-                  ? "bg-white text-indigo-700 shadow-sm"
+                  ? "bg-white text-indigo-700 shadow-sm font-extrabold"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
@@ -719,9 +720,9 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
             </button>
             <button
               onClick={() => handleModeSwitch("RUBRIC")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
+              className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer ${
                 activeMode === "RUBRIC"
-                  ? "bg-white text-indigo-700 shadow-sm"
+                  ? "bg-white text-indigo-700 shadow-sm font-extrabold"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
@@ -730,7 +731,7 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
             </button>
           </div>
 
-          <div className="flex items-center space-x-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs shadow-sm">
+          <div className="flex items-center space-x-2 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-slate-200/90 text-xs shadow-2xs">
             <span className="text-slate-500 font-medium">Tổng điểm:</span>
             <span
               className={`font-black ${
@@ -807,22 +808,22 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
           </button>
 
           {/* Export Buttons */}
-          <div className="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+          <div className="flex items-center space-x-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/90 shadow-inner">
             <button
               onClick={() => handleDownload("docx")}
-              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-indigo-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
+              className="px-3 py-1 text-slate-700 hover:bg-white hover:text-blue-700 text-xs font-extrabold rounded-xl transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer"
               title="Xuất file Word OMML chuẩn Bộ GD&ĐT (không vỡ bảng, sửa công thức tự nhiên)"
             >
               <Download className="w-3.5 h-3.5 text-blue-600" />
-              <span>Word</span>
+              <span>Word .docx</span>
             </button>
             <button
               onClick={() => handleDownload("pdf")}
-              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-rose-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
+              className="px-3 py-1 text-slate-700 hover:bg-white hover:text-rose-700 text-xs font-extrabold rounded-xl transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer"
               title="Tải bản in PDF TeX Live gốc"
             >
               <Download className="w-3.5 h-3.5 text-rose-600" />
-              <span>PDF In</span>
+              <span>PDF In A4</span>
             </button>
           </div>
         </div>

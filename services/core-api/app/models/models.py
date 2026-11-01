@@ -99,6 +99,11 @@ class Question(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    __table_args__ = (
+        Index("idx_questions_filter_pedagogy", "grade", "main_topic", "difficulty", "is_verified"),
+        Index("idx_questions_tenant_scope", "tenant_id", "scope", "is_public"),
+    )
+
 class ExamBlueprint(Base):
     __tablename__ = "exam_blueprints"
 
@@ -145,6 +150,11 @@ class GeneratedExam(Base):
     template_document = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_generated_exams_user_created", "user_id", "created_at"),
+        Index("idx_generated_exams_tenant_folder", "tenant_id", "folder_id"),
+    )
 
     items = relationship("ExamItem", back_populates="exam", cascade="all, delete-orphan", order_by="ExamItem.order_index")
 

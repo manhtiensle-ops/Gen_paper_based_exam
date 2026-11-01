@@ -1037,12 +1037,13 @@ export default function Dashboard() {
   return (
     <div className="space-y-4">
       {/* Unified Glassmorphic Segmented Navigation Bar */}
-      <div className="flex bg-slate-200/50 p-1 rounded-2xl border border-slate-200/80 shadow-2xs space-x-1 overflow-x-auto backdrop-blur-sm">
+      {/* TAB NAVIGATION: MODERN SEGMENTED PILLS WITH BACKDROP BLUR */}
+      <div className="flex bg-slate-200/60 p-1.5 rounded-2xl border border-slate-300/70 shadow-inner space-x-1 overflow-x-auto backdrop-blur-md">
         <button
           onClick={() => handleTabChange("generator")}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
             activeTab === "generator"
-              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
+              ? "bg-white text-indigo-700 shadow-md ring-1 ring-slate-900/5 scale-[1.02]"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
@@ -1052,24 +1053,24 @@ export default function Dashboard() {
 
         <button
           onClick={() => handleTabChange("questions")}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
             activeTab === "questions"
-              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
+              ? "bg-white text-indigo-700 shadow-md ring-1 ring-slate-900/5 scale-[1.02]"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
           <BookOpen className="w-4 h-4 text-indigo-600" />
           <span>Ngân hàng câu hỏi</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-mono font-bold">
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/70 font-mono font-bold shadow-2xs">
             {totalQuestions || questions.length}
           </span>
         </button>
 
         <button
           onClick={() => handleTabChange("ingestion")}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
             activeTab === "ingestion"
-              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
+              ? "bg-white text-indigo-700 shadow-md ring-1 ring-slate-900/5 scale-[1.02]"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
@@ -1079,16 +1080,16 @@ export default function Dashboard() {
 
         <button
           onClick={() => handleTabChange("review")}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
             activeTab === "review"
-              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
+              ? "bg-white text-indigo-700 shadow-md ring-1 ring-slate-900/5 scale-[1.02]"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
           <ShieldCheck className="w-4 h-4 text-indigo-600" />
           <span>Hàng đợi kiểm duyệt</span>
           {pendingReviewCount > 0 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-mono font-bold animate-pulse">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-mono font-bold animate-pulse shadow-sm shadow-amber-500/30">
               {pendingReviewCount}
             </span>
           )}
@@ -1096,9 +1097,9 @@ export default function Dashboard() {
 
         <button
           onClick={() => handleTabChange("studio")}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
             activeTab === "studio"
-              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
+              ? "bg-white text-indigo-700 shadow-md ring-1 ring-slate-900/5 scale-[1.02]"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
@@ -1209,17 +1210,18 @@ export default function Dashboard() {
               <button
                 onClick={() => handleGenerateExam()}
                 disabled={generating}
-                className="w-full py-3 px-4 bg-gradient-to-b from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl text-xs sm:text-sm shadow-[0_4px_14px_0_rgba(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.45)] active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 disabled:opacity-50 group cursor-pointer"
+                className="w-full py-3.5 px-4 shimmer-btn text-white font-extrabold rounded-2xl text-xs sm:text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 disabled:opacity-50 group cursor-pointer border border-indigo-400/30"
               >
                 {generating ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin text-indigo-200" />
-                    <span>Đang tìm kiếm & xếp slot...</span>
+                    <span className="tracking-wide">Đang phân tích ma trận & xếp slot...</span>
                   </>
                 ) : (
                   <>
-                    <Shuffle className="w-4 h-4 text-indigo-200 group-hover:rotate-45 transition-transform duration-300" />
-                    <span>Tổ hợp Đề thi Mới (Zero-Hallucination)</span>
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-bounce" />
+                    <Shuffle className="w-4 h-4 text-indigo-100 group-hover:rotate-90 transition-transform duration-500" />
+                    <span className="tracking-wide">Tổ hợp Đề thi AI (Zero-Hallucination)</span>
                   </>
                 )}
               </button>
@@ -1298,11 +1300,14 @@ export default function Dashboard() {
           </div>
 
           {/* CỘT 3: CANVAS XEM TRƯỚC VÀ DUYỆT ĐỀ THI (Flex-1, Cuộn dọc tự nhiên, CHỐNG TRÀN NGANG) */}
-          <div className="flex-1 overflow-x-hidden p-5 sm:p-7 bg-slate-100/50 flex flex-col items-center">
+          <div className="flex-1 overflow-x-hidden p-5 sm:p-7 bg-slate-100/60 flex flex-col items-center">
             {generatedExam ? (
-              <div className="w-full max-w-3xl bg-white p-7 sm:p-9 rounded-2xl border border-slate-200/90 shadow-sm space-y-7">
-                <div className="text-center border-b border-slate-200 pb-5 space-y-1">
-                  <h2 className="text-xl font-bold tracking-tight text-slate-900">{generatedExam.title.toUpperCase()}</h2>
+              <div className="w-full max-w-3xl bg-white p-7 sm:p-10 rounded-2xl paper-sheet-elevation border border-slate-200/90 space-y-7 relative">
+                <div className="text-center border-b border-slate-200/90 pb-5 space-y-1.5">
+                  <span className="inline-block px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200/70 mb-1">
+                    Bản thảo khảo thí chính thức
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">{generatedExam.title.toUpperCase()}</h2>
                   <p className="text-xs text-slate-500 font-semibold tracking-wide">
                     KỲ THI CHỌN HỌC SINH GIỎI TOÁN THCS - THỜI GIAN LÀM BÀI: 120 PHÚT
                   </p>
@@ -1313,7 +1318,7 @@ export default function Dashboard() {
                     <div key={slot.slot_index} className="pt-6 first:pt-0 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <span className="font-bold text-slate-900 text-sm">
+                          <span className="font-extrabold text-slate-900 text-sm">
                             Câu {slot.slot_index}. ({slot.points} điểm)
                           </span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getTopicBadgeStyle(slot.main_topic)}`}>
@@ -1328,7 +1333,7 @@ export default function Dashboard() {
                             {slot.question && (
                               <button
                                 onClick={() => setEditingQuestion(slot.question)}
-                                className="text-xs text-slate-500 hover:text-slate-800 font-semibold flex items-center space-x-1 py-1 px-2.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+                                className="text-xs text-slate-500 hover:text-slate-800 font-semibold flex items-center space-x-1 py-1 px-2.5 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
                               >
                                 <Edit3 className="w-3 h-3" />
                                 <span>Sửa</span>
@@ -1336,7 +1341,7 @@ export default function Dashboard() {
                             )}
                             <button
                               onClick={() => openSwapModal(slot.slot_index, slot.question?.id, slot.main_topic, slot.difficulty)}
-                              className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1 py-1 px-2.5 rounded-lg hover:bg-indigo-50 cursor-pointer"
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1 py-1 px-2.5 rounded-lg hover:bg-indigo-50 cursor-pointer transition-colors"
                             >
                               <Shuffle className="w-3 h-3" />
                               <span>{slot.question ? "Đổi câu khác" : "Chọn câu lấp slot này"}</span>
@@ -1346,7 +1351,7 @@ export default function Dashboard() {
                       </div>
 
                       {slot.question ? (
-                        <div className="text-[15px] font-serif leading-[1.75] text-slate-800 bg-[#FCFBF9] p-4 rounded-xl border border-slate-200/70 shadow-[inset_0_1px_2px_rgba(15,23,42,0.02)]">
+                        <div className="text-[15px] font-serif leading-[1.8] text-slate-800 bg-[#FCFBF9] p-4.5 rounded-xl border border-amber-900/10 shadow-[inset_0_1px_3px_rgba(15,23,42,0.03)] hover:border-indigo-300/60 transition-colors">
                           {renderQuestionContent(slot.question)}
                         </div>
                       ) : (
@@ -1391,13 +1396,13 @@ export default function Dashboard() {
               </h2>
 
               {/* Scope Segmented Switch: Của tôi / Đơn vị / Mẫu Vinh Phát / Tất cả */}
-              <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/80 space-x-1">
+              <div className="inline-flex bg-slate-100/90 p-1 rounded-xl border border-slate-200/90 space-x-1 shadow-inner">
                 <button
                   type="button"
                   onClick={() => setFilterScope("ALL")}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     filterScope === "ALL"
-                      ? "bg-white text-indigo-600 shadow-2xs"
+                      ? "bg-white text-indigo-600 shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -1407,9 +1412,9 @@ export default function Dashboard() {
                   <button
                     type="button"
                     onClick={() => setFilterScope("MINE")}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
                       filterScope === "MINE"
-                        ? "bg-white text-indigo-600 shadow-2xs"
+                        ? "bg-white text-indigo-600 shadow-sm"
                         : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -1419,9 +1424,9 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setFilterScope("SYSTEM")}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
                     filterScope === "SYSTEM"
-                      ? "bg-white text-indigo-600 shadow-2xs"
+                      ? "bg-white text-indigo-600 shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -1749,9 +1754,9 @@ export default function Dashboard() {
       {activeTab === "ingestion" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Upload card */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5 h-fit">
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-sm space-y-5 h-fit relative">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <h2 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">
                 <UploadCloud className="w-5 h-5 text-indigo-600" />
                 <span>Số Hóa Đề Thi (.docx / .pdf)</span>
               </h2>
@@ -1759,7 +1764,7 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setBatchFiles([])}
-                  className="text-xs text-rose-600 hover:text-rose-700 font-semibold"
+                  className="text-xs text-rose-600 hover:text-rose-700 font-bold transition-colors cursor-pointer"
                 >
                   Xóa tất cả ({batchFiles.length})
                 </button>
@@ -1772,7 +1777,7 @@ export default function Dashboard() {
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Chọn một hoặc nhiều tệp đề thi (Batch Upload)
                 </label>
-                <div className="relative border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/30 hover:bg-indigo-50/60 rounded-xl p-5 text-center transition-all cursor-pointer group">
+                <div className="relative border-2 border-dashed border-indigo-200/90 hover:border-indigo-500 bg-indigo-50/20 hover:bg-indigo-50/50 rounded-2xl p-6 text-center transition-all cursor-pointer group shadow-inner">
                   <input
                     type="file"
                     multiple
@@ -1785,12 +1790,14 @@ export default function Dashboard() {
                     }}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
-                  <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
-                    <UploadCloud className="w-8 h-8 text-indigo-500 group-hover:scale-110 transition-transform" />
-                    <p className="text-xs font-bold text-indigo-900">
+                  <div className="flex flex-col items-center justify-center space-y-2.5 pointer-events-none">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-100/70 flex items-center justify-center text-indigo-600 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-xs">
+                      <UploadCloud className="w-6 h-6" />
+                    </div>
+                    <p className="text-xs font-extrabold text-indigo-950">
                       Kéo thả hoặc nhấn để chọn nhiều file cùng lúc
                     </p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-400 font-medium">
                       Hỗ trợ hàng loạt định dạng .DOCX và .PDF (Tối đa 50MB/file)
                     </p>
                   </div>
@@ -1875,7 +1882,7 @@ export default function Dashboard() {
               <button
                 type="submit"
                 disabled={uploading || (batchFiles.length === 0 && (!uploadFile || !uploadTitle))}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition-all flex flex-col items-center justify-center space-y-1 disabled:opacity-50"
+                className="w-full py-3.5 px-4 shimmer-btn text-white font-extrabold rounded-2xl text-xs sm:text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-[0.98] transition-all flex flex-col items-center justify-center space-y-1.5 disabled:opacity-50 cursor-pointer border border-indigo-400/30"
               >
                 {uploading ? (
                   <>
@@ -2043,18 +2050,18 @@ export default function Dashboard() {
             </div>
 
             {/* Sub-tabs / Filter Buttons & Batch Approve */}
-            <div className="flex items-center flex-wrap gap-2">
-              <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl">
+            <div className="flex items-center flex-wrap gap-2.5">
+              <div className="flex items-center space-x-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/90 shadow-inner">
                 <button
                   onClick={() => setReviewStatusFilter("pending")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
                     reviewStatusFilter === "pending"
-                      ? "bg-white text-indigo-700 shadow-xs"
+                      ? "bg-white text-indigo-700 shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   <span>Chờ kiểm duyệt</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
                     pendingReviewCount > 0 ? "bg-amber-100 text-amber-800 font-bold" : "bg-slate-200 text-slate-700"
                   }`}>
                     {pendingReviewCount}
@@ -2065,7 +2072,7 @@ export default function Dashboard() {
                   onClick={() => setReviewStatusFilter("approved")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     reviewStatusFilter === "approved"
-                      ? "bg-white text-indigo-700 shadow-xs"
+                      ? "bg-white text-indigo-700 shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -2076,7 +2083,7 @@ export default function Dashboard() {
                   onClick={() => setReviewStatusFilter("all")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     reviewStatusFilter === "all"
-                      ? "bg-white text-indigo-700 shadow-xs"
+                      ? "bg-white text-indigo-700 shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -2089,7 +2096,7 @@ export default function Dashboard() {
                   type="button"
                   disabled={approvingAll}
                   onClick={handleBatchApprove}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
                   title="Phê duyệt toàn bộ các câu hỏi đang chờ duyệt vào Ngân hàng chính thức"
                 >
                   {approvingAll ? (

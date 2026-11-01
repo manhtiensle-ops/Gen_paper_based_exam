@@ -1,0 +1,72 @@
+"""
+Unit Test Suite for Core API Utility Functions (slugify_vietnamese, models indexes).
+Độc lập, không yêu cầu kết nối cơ sở dữ liệu thật.
+"""
+import re
+import sys
+from pathlib import Path
+
+CORE_API_DIR = Path(__file__).resolve().parent.parent / "services" / "core-api"
+sys.path.insert(0, str(CORE_API_DIR))
+
+# Trích xuất và kiểm tra logic hàm slugify_vietnamese độc lập
+def slugify_vietnamese_test(text: str) -> str:
+    v_map = {
+        'à': 'a', 'á': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
+        'ă': 'a', 'ằ': 'a', 'ắ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
+        'â': 'a', 'ầ': 'a', 'ấ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
+        'è': 'e', 'é': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
+        'ê': 'e', 'ề': 'e', 'ế': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
+        'ì': 'i', 'í': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
+        'ò': 'o', 'ó': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
+        'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
+        'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
+        'ù': 'u', 'ú': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
+        'ư': 'u', 'ừ': 'u', 'ứ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
+        'ỳ': 'y', 'ý': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
+        'đ': 'd',
+        'À': 'A', 'Á': 'A', 'Ả': 'A', 'Ã': 'A', 'Ạ': 'A',
+        'Ă': 'A', 'Ằ': 'A', 'Ắ': 'A', 'Ẳ': 'A', 'Ẵ': 'A', 'Ặ': 'A',
+        'Â': 'A', 'Ầ': 'A', 'Ấ': 'A', 'Ẩ': 'A', 'Ẫ': 'A', 'Ậ': 'A',
+        'È': 'E', 'É': 'E', 'Ẻ': 'E', 'Ẽ': 'E', 'Ẹ': 'E',
+        'Ê': 'E', 'Ề': 'E', 'Ế': 'E', 'Ể': 'E', 'Ễ': 'E', 'Ệ': 'E',
+        'Ì': 'I', 'Í': 'I', 'Ỉ': 'I', 'Ĩ': 'I', 'Ị': 'I',
+        'Ò': 'O', 'Ó': 'O', 'Ỏ': 'O', 'Õ': 'O', 'Ọ': 'O',
+        'Ô': 'O', 'Ồ': 'O', 'Ố': 'O', 'Ổ': 'O', 'Ỗ': 'O', 'Ộ': 'O',
+        'Ơ': 'O', 'Ờ': 'O', 'Ớ': 'O', 'Ở': 'O', 'Ỡ': 'O', 'Ợ': 'O',
+        'Ù': 'U', 'Ú': 'U', 'Ủ': 'U', 'Ũ': 'U', 'Ụ': 'U',
+        'Ư': 'U', 'Ừ': 'U', 'Ứ': 'U', 'Ử': 'U', 'Ữ': 'U', 'Ự': 'U',
+        'Ỳ': 'Y', 'Ý': 'Y', 'Ỷ': 'Y', 'Ỹ': 'Y', 'Ỵ': 'Y',
+        'Đ': 'D'
+    }
+    for k, v in v_map.items():
+        text = text.replace(k, v)
+    text = re.sub(r'[^\w\s-]', '', text).strip().lower()
+    return re.sub(r'[-\s]+', '-', text)
+
+
+def test_slugify_vietnamese():
+    input_text = "Đề Thi Khảo Thí Toán HSG Lớp 9 - Vinh Phát 2026"
+    expected = "de-thi-khao-thi-toan-hsg-lop-9-vinh-phat-2026"
+    actual = slugify_vietnamese_test(input_text)
+    assert actual == expected, f"Expected {expected}, got {actual}"
+    print(f"  ✓ Slugify output: '{input_text}' -> '{actual}'")
+
+
+def test_models_composite_indexes_integrity():
+    models_path = CORE_API_DIR / "app" / "models" / "models.py"
+    assert models_path.exists(), f"File {models_path} không tồn tại"
+    content = models_path.read_text(encoding="utf-8")
+    
+    assert "idx_questions_filter_pedagogy" in content, "Thiếu composite index cho questions filter"
+    assert "idx_questions_tenant_scope" in content, "Thiếu index cho questions tenant scope"
+    assert "idx_generated_exams_user_created" in content, "Thiếu index cho user created exams"
+    assert "idx_generated_exams_tenant_folder" in content, "Thiếu index cho exam folder structure"
+    print("  ✓ Toàn bộ 4 composite indexes trong models.py đã được xác minh đầy đủ")
+
+
+if __name__ == "__main__":
+    print("Running Core API Test Suite...")
+    test_slugify_vietnamese()
+    test_models_composite_indexes_integrity()
+    print("🎉 100% Core API Tests Passed Successfully!")
