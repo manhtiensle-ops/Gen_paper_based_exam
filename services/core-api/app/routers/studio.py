@@ -463,7 +463,7 @@ def get_exam_latex_preview(
 
     items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
     if not items:
-        items = sync_exam_slots_to_items(exam_id, db)
+        items = sync_exam_slots_to_items(exam_id=exam_id, force=False, db=db)
 
     items_payload = [{
         "id": str(it.id),

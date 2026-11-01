@@ -96,6 +96,8 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     duration_minutes: 150,
     show_sbd_box: true,
   });
+  const [isHeaderModalOpen, setIsHeaderModalOpen] = useState(false);
+  const [headerForm, setHeaderForm] = useState(headerConfig);
 
   // Debounced auto-save draft to local storage
   useEffect(() => {
@@ -324,7 +326,22 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       if (res.ok) {
         const data = await res.json();
         setItems(data);
-        compileLivePreview(data, layoutKnobs, activeMode);
+        
+        // Cố gắng tải header_config đã lưu
+        let currentHeader = headerConfig;
+        try {
+          const exRes = await fetch(`/api/generator/exams/${examId}`);
+          if (exRes.ok) {
+            const exData = await exRes.json();
+            if (exData.header_config && Object.keys(exData.header_config).length > 0) {
+              currentHeader = { ...headerConfig, ...exData.header_config };
+              setHeaderConfig(currentHeader);
+              setHeaderForm(currentHeader);
+            }
+          }
+        } catch (err) {}
+
+        compileLivePreview(data, layoutKnobs, activeMode, currentHeader);
         loadTemplateDoc();
       }
     } catch (e) {
@@ -344,7 +361,8 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const compileLivePreview = async (
     currentItems = items,
     knobs = layoutKnobs,
-    mode = activeMode
+    mode = activeMode,
+    customHeader = headerConfig
   ) => {
     setCompiling(true);
     try {
@@ -353,7 +371,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           layout_knobs: knobs,
-          header_config: headerConfig,
+          header_config: customHeader,
           mode: mode,
         }),
       });
@@ -369,6 +387,59 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       console.error("Compile preview error:", e);
     } finally {
       setCompiling(false);
+    }
+  };
+
+  const handleSaveHeader = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setHeaderConfig(headerForm);
+    setIsHeaderModalOpen(false);
+    try {
+      await fetch(`/api/studio/exams/${examId}/header`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ header_config: headerForm }),
+      });
+      compileLivePreview(items, layoutKnobs, activeMode, headerForm);
+    } catch (err) {
+      console.error("Error saving header:", err);
+    }
+  };
+
+  const applyPresetHeader = (preset: "hanoi" | "hcm" | "vinhphat") => {
+    if (preset === "vinhphat") {
+      setHeaderForm({
+        governing_body: "TRUNG TÂM GIÁO DỤC VINH PHÁT",
+        department_or_school: "BAN KHẢO THÍ & BỒI DƯỠNG TOÁN",
+        exam_name: "KỲ THI KHẢO SÁT CHẤT LƯỢNG HỌC SINH GIỎI",
+        academic_year: "Năm học: 2026 - 2027",
+        subject_title: "Môn thi: TOÁN 9",
+        exam_code: "ĐỀ CHÍNH THỨC",
+        duration_minutes: 150,
+        show_sbd_box: true,
+      });
+    } else if (preset === "hcm") {
+      setHeaderForm({
+        governing_body: "SỞ GIÁO DỤC VÀ ĐÀO TẠO TP HỒ CHÍ MINH",
+        department_or_school: "TRƯỜNG THPT CHUYÊN LÊ HỒNG PHONG",
+        exam_name: "KỲ THI TUYỂN SINH VÀO LỚP 10 CHUYÊN",
+        academic_year: "Năm học: 2026 - 2027",
+        subject_title: "Môn thi: TOÁN CHUYÊN",
+        exam_code: "ĐỀ CHÍNH THỨC",
+        duration_minutes: 150,
+        show_sbd_box: true,
+      });
+    } else {
+      setHeaderForm({
+        governing_body: "SỞ GIÁO DỤC VÀ ĐÀO TẠO HÀ NỘI",
+        department_or_school: "TRƯỜNG THCS CHUYÊN HÀ NỘI - AMSTERDAM",
+        exam_name: "KỲ THI CHỌN ĐỘI TUYỂN HỌC SINH GIỎI LỚP 9",
+        academic_year: "Năm học: 2026 - 2027",
+        subject_title: "Môn thi: TOÁN 9",
+        exam_code: "ĐỀ CHÍNH THỨC",
+        duration_minutes: 150,
+        show_sbd_box: true,
+      });
     }
   };
 
@@ -572,6 +643,17 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               <span className="text-slate-300">/</span>
               <span className="text-slate-700 truncate max-w-sm font-medium">{headerConfig.exam_name}</span>
             </h1>
+            <button
+              onClick={() => {
+                setHeaderForm(headerConfig);
+                setIsHeaderModalOpen(true);
+              }}
+              className="text-xs px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 transition-all flex items-center space-x-1.5 cursor-pointer shadow-xs"
+              title="Tùy biến tiêu đề kỳ thi, trường học, năm học & thời gian"
+            >
+              <Settings className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Tiêu đề & Trường</span>
+            </button>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
               TeX Live & OMML
             </span>
@@ -1501,6 +1583,170 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           </div>
         )}
       </div>
+
+      {/* HEADER CONFIG MODAL */}
+      {isHeaderModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                  <Settings className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Cấu Hình Tiêu Đề Đề Thi & Trường Học</h3>
+                  <p className="text-[11px] text-slate-500">Thông tin xuất hiện ở đầu trang in A4 và tài liệu Word/PDF</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsHeaderModalOpen(false)}
+                className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 flex items-center justify-center text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Presets */}
+            <div className="px-6 pt-3 pb-2 bg-indigo-50/40 border-b border-indigo-100/50 flex items-center space-x-2 overflow-x-auto text-[11px]">
+              <span className="font-semibold text-indigo-900 shrink-0">Mẫu gợi ý nhanh:</span>
+              <button
+                type="button"
+                onClick={() => applyPresetHeader("vinhphat")}
+                className="px-2.5 py-1 rounded-md bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium transition cursor-pointer shadow-xs shrink-0"
+              >
+                🌟 TTGD VINH PHÁT
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPresetHeader("hanoi")}
+                className="px-2.5 py-1 rounded-md bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium transition cursor-pointer shadow-xs shrink-0"
+              >
+                🏛️ Sở Hà Nội - Amsterdam
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPresetHeader("hcm")}
+                className="px-2.5 py-1 rounded-md bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium transition cursor-pointer shadow-xs shrink-0"
+              >
+                🏢 Sở TP.HCM - Lê Hồng Phong
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <form onSubmit={handleSaveHeader} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Cơ quan chủ quản</label>
+                  <input
+                    type="text"
+                    value={headerForm.governing_body}
+                    onChange={(e) => setHeaderForm({ ...headerForm, governing_body: e.target.value })}
+                    placeholder="Ví dụ: SỞ GIÁO DỤC VÀ ĐÀO TẠO..."
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Đơn vị / Trường ra đề</label>
+                  <input
+                    type="text"
+                    value={headerForm.department_or_school}
+                    onChange={(e) => setHeaderForm({ ...headerForm, department_or_school: e.target.value })}
+                    placeholder="Ví dụ: TRƯỜNG THCS CHUYÊN..."
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Tên kỳ thi</label>
+                <input
+                  type="text"
+                  value={headerForm.exam_name}
+                  onChange={(e) => setHeaderForm({ ...headerForm, exam_name: e.target.value })}
+                  placeholder="Ví dụ: KỲ THI CHỌN HỌC SINH GIỎI TOÁN 9"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Môn thi</label>
+                  <input
+                    type="text"
+                    value={headerForm.subject_title}
+                    onChange={(e) => setHeaderForm({ ...headerForm, subject_title: e.target.value })}
+                    placeholder="Môn thi: TOÁN 9"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Năm học</label>
+                  <input
+                    type="text"
+                    value={headerForm.academic_year}
+                    onChange={(e) => setHeaderForm({ ...headerForm, academic_year: e.target.value })}
+                    placeholder="Năm học: 2026 - 2027"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Thời gian (phút)</label>
+                  <input
+                    type="number"
+                    min={15}
+                    max={360}
+                    value={headerForm.duration_minutes}
+                    onChange={(e) => setHeaderForm({ ...headerForm, duration_minutes: Number(e.target.value) || 150 })}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 items-center pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Mã đề / Nhãn đề</label>
+                  <input
+                    type="text"
+                    value={headerForm.exam_code}
+                    onChange={(e) => setHeaderForm({ ...headerForm, exam_code: e.target.value })}
+                    placeholder="Ví dụ: ĐỀ CHÍNH THỨC"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  />
+                </div>
+                <div className="flex items-center pt-4">
+                  <label className="flex items-center space-x-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={headerForm.show_sbd_box}
+                      onChange={(e) => setHeaderForm({ ...headerForm, show_sbd_box: e.target.checked })}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                    />
+                    <span>Hiện khung Số Báo Danh & Phòng Thi</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsHeaderModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition cursor-pointer flex items-center space-x-1.5"
+                >
+                  <span>Lưu & Cập Nhật Trang In</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* QUESTION EDIT MODAL */}
       <QuestionEditModal
