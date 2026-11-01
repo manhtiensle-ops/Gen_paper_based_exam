@@ -77,6 +77,7 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [lastSavedTime, setLastSavedTime] = useState<string>("Vừa xong");
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
+  const [auditReportCopied, setAuditReportCopied] = useState<boolean>(false);
   const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
 
   // Restore draft from local storage on mount (Disaster Recovery)
@@ -1688,6 +1689,68 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                   Thống kê phân bổ câu hỏi theo chuyên đề và trọng số điểm dùng cho hồ sơ lưu trữ tổ chuyên môn.
                 </p>
 
+                {/* Visual Topic Distribution Bar */}
+                {(() => {
+                  const topicPoints: Record<string, number> = {};
+                  items.forEach((it) => {
+                    const snap = it.problem_snapshot || {};
+                    const topic = TOPIC_VI_MAP[snap.main_topic] || snap.main_topic || "Đại số";
+                    const pts = parseFloat(it.max_points) || 0;
+                    topicPoints[topic] = (topicPoints[topic] || 0) + pts;
+                  });
+                  const topicColors = [
+                    "bg-indigo-500",
+                    "bg-emerald-500",
+                    "bg-amber-500",
+                    "bg-rose-500",
+                    "bg-cyan-500",
+                    "bg-purple-500",
+                  ];
+                  const topicsList = Object.entries(topicPoints);
+                  return (
+                    <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                        <span>Phân bổ tỷ trọng kiến thức</span>
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          {topicsList.length} chuyên đề
+                        </span>
+                      </div>
+                      {/* Stacked Progress Bar */}
+                      <div className="h-2.5 w-full bg-slate-200 rounded-full flex overflow-hidden">
+                        {topicsList.map(([topName, pts], idx) => {
+                          const pct = currentTotalScore > 0 ? (pts / currentTotalScore) * 100 : 0;
+                          return (
+                            <div
+                              key={topName}
+                              style={{ width: `${pct}%` }}
+                              className={`${topicColors[idx % topicColors.length]} h-full transition-all`}
+                              title={`${topName}: ${pts} điểm (${Math.round(pct)}%)`}
+                            />
+                          );
+                        })}
+                      </div>
+                      {/* Legend Chips */}
+                      <div className="flex flex-wrap gap-2 pt-1 text-[10px]">
+                        {topicsList.map(([topName, pts], idx) => {
+                          const pct = currentTotalScore > 0 ? Math.round((pts / currentTotalScore) * 100) : 0;
+                          return (
+                            <div key={topName} className="flex items-center space-x-1">
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  topicColors[idx % topicColors.length]
+                                }`}
+                              />
+                              <span className="text-slate-600 font-medium">
+                                {topName}: <strong className="text-slate-800">{pts}đ</strong> ({pct}%)
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <table className="w-full text-left border-collapse text-[11px]">
                     <thead>
@@ -1815,6 +1878,50 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Pedagogy Audit Report Export Action */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400">Biên bản thẩm định chuẩn hồ sơ lưu trữ</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const dollarCount = (rawLatexCode.match(/\$/g) || []).length;
+                      const isMathOk = dollarCount % 2 === 0;
+                      const isScoreOk = currentTotalScore === 10 || currentTotalScore === 20 || currentTotalScore === 100;
+                      const report = [
+                        `# BIÊN BẢN THẨM ĐỊNH SƯ PHẠM ĐỀ THI`,
+                        `* Nền tảng Khảo thí: dethi.ttgdvinhphat.com (Trung tâm GD Vinh Phát)`,
+                        `* Thời gian thẩm định: ${new Date().toLocaleString("vi-VN")}`,
+                        `* Đơn vị ban hành: ${headerConfig.department_or_school || "Chưa cấu hình"}`,
+                        `* Kỳ thi: ${headerConfig.exam_name || "Chưa cấu hình"} - Mã đề: ${headerConfig.exam_code || "101"}`,
+                        `----------------------------------------------------`,
+                        `1. Thang điểm: ${currentTotalScore} điểm (${isScoreOk ? "ĐẠT CHUẨN" : "CẦN LƯU Ý"})`,
+                        `2. Số lượng câu hỏi: ${items.length} câu (${items.length > 0 ? "ĐẠT CHUẨN" : "CHƯA ĐẠT"})`,
+                        `3. Kiểm định cú pháp XeLaTeX: ${dollarCount} ký tự $ (${isMathOk ? "ĐỐI XỨNG HỢP LỆ" : "CẢNH BÁO LỖI BIÊN DỊCH"})`,
+                        `4. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `----------------------------------------------------`,
+                        `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
+                      ].join("\n");
+
+                      navigator.clipboard?.writeText(report);
+                      setAuditReportCopied(true);
+                      setTimeout(() => setAuditReportCopied(false), 2000);
+                    }}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-all cursor-pointer"
+                  >
+                    {auditReportCopied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-emerald-700">Đã chép biên bản</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Xuất Biên Bản Thẩm Định</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
