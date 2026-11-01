@@ -19,13 +19,14 @@
 ### PHẦN II: CHÍNH SÁCH SAO LƯU & PHỤC HỒI THẢM HỌA (BACKUP & DISASTER RECOVERY)
 *(Đồng thuận kỹ thuật giữa CEO Vinh Phát & My_credential_devops_hermes)*
 
-1. **Chu kỳ Sao lưu Dữ liệu**:
+1. **Chu kỳ Sao lưu Dữ liệu & Đích đến (Primary Storage: MEGA 20GB E2EE)**:
    - **Tần suất**: Tự động thực thi mỗi ngày vào lúc **02:00 AM UTC+7** thông qua `scripts/backup_to_telegram.sh` và Cronjob hệ thống.
    - **Đối tượng sao lưu**: Toàn bộ cơ sở dữ liệu PostgreSQL (`math_exam_db`) bao gồm bảng câu hỏi (`questions`), ngân hàng đề thi (`generated_exams`), ma trận (`blueprints`) và audit logs.
-   - **Định dạng & Mã hóa**: Xuất bản `pg_dump` dạng nén gzip và mã hóa AES trước khi truyền tải.
-2. **Lưu trữ Offsite & Giám sát**:
-   - **Kênh thông báo & Lưu trữ an toàn**: Đẩy bản snapshot mã hóa trực tiếp lên kênh Telegram lưu trữ bảo mật thông qua `@Backup_dethi_ttgdvinhphat_bot` (`CHAT_ID: 6560430166`).
-   - **Thời gian lưu trữ (Retention Policy)**: Duy trì tối thiểu 7 bản daily gần nhất, 4 bản weekly và 12 bản monthly.
+   - **Định dạng & Mã hóa**: Xuất bản `pg_dump` dạng nén gzip -9 và đẩy thẳng lên Cloud Storage qua `rclone copy $BACKUP_FILE mega:vinhphat_db_backups`.
+   - **Lưu trữ thứ cấp (Cold Backup)**: Sao chép định kỳ hàng tháng sang Google Drive (`gdrive:vinhphat_cold_backups`).
+2. **Kênh Giám sát & Báo cáo Trạng thái**:
+   - **Kênh thông báo**: Bot Telegram (`@Backup_dethi_ttgdvinhphat_bot`) gửi báo cáo Markdown chứa: Tên file, dung lượng (MB), mã SHA-256 xác thực toàn vẹn và trạng thái upload Cloud. **Tuyệt đối không gửi file nhị phân thô qua Telegram** để tránh nghẽn băng thông và rủi ro rò rỉ.
+   - **Thời gian lưu trữ (Retention Policy)**: Duy trì 30 ngày trên Cloud MEGA (`rclone delete --min-age 30d mega:vinhphat_db_backups`) và 14 ngày trên đĩa cứng cục bộ.
 3. **Diễn tập Phục hồi (DR Drill)**:
    - Định kỳ vào ngày đầu tiên của mỗi tháng, `Sub_Database_Provisioner` và `Worker_BlueTeam` phối hợp thử nghiệm khôi phục dữ liệu từ bản sao lưu gần nhất lên môi trường Staging/Isolated để kiểm tra tính toàn vẹn.
 
