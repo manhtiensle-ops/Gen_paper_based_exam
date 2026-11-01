@@ -22,6 +22,22 @@ def get_minio_client() -> Minio:
         client.make_bucket(bucket_name)
     return client
 
+def escape_latex_text(text: Any) -> str:
+    if not text:
+        return ""
+    text = str(text)
+    replacements = [
+        ("&", r"\&"),
+        ("%", r"\%"),
+        ("$", r"\$"),
+        ("#", r"\#"),
+        ("_", r"\_"),
+    ]
+    for old, new in replacements:
+        pattern = f"(?<!\\\\){re.escape(old)}"
+        text = re.sub(pattern, new, text)
+    return text
+
 
 def generate_latex_source(
     exam_id: str,
@@ -42,13 +58,13 @@ def generate_latex_source(
     item_gap = layout_knobs.get("item_gap_pt", 10)
     math_skip = layout_knobs.get("math_skip_pt", 6)
 
-    # Header vars
-    gov_body = header_config.get("governing_body", "SỞ GIÁO DỤC VÀ ĐÀO TẠO")
-    school = header_config.get("department_or_school", "TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN")
-    exam_name = header_config.get("exam_name", title or "KỲ THI CHỌN HỌC SINH GIỎI LỚP 9")
-    acad_year = header_config.get("academic_year", "Năm học: 2026 - 2027")
-    subj = header_config.get("subject_title", "Môn thi: TOÁN 9")
-    code = header_config.get("exam_code", "ĐỀ CHÍNH THỨC")
+    # Header vars (auto-escaped for TeX formatting)
+    gov_body = escape_latex_text(header_config.get("governing_body", "SỞ GIÁO DỤC VÀ ĐÀO TẠO"))
+    school = escape_latex_text(header_config.get("department_or_school", "TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN"))
+    exam_name = escape_latex_text(header_config.get("exam_name", title or "KỲ THI CHỌN HỌC SINH GIỎI LỚP 9"))
+    acad_year = escape_latex_text(header_config.get("academic_year", "Năm học: 2026 - 2027"))
+    subj = escape_latex_text(header_config.get("subject_title", "Môn thi: TOÁN 9"))
+    code = escape_latex_text(header_config.get("exam_code", "ĐỀ CHÍNH THỨC"))
     duration = header_config.get("duration_minutes", 150)
     show_sbd = header_config.get("show_sbd_box", True)
 

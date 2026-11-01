@@ -2,6 +2,7 @@ import os
 import uuid
 import re
 import unicodedata
+import logging
 from typing import List, Optional, Dict, Any
 from urllib.parse import quote
 import requests
@@ -10,6 +11,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import or_, and_
+
+logger = logging.getLogger(__name__)
 
 from ..database import get_db
 from ..models import ExamBlueprint, GeneratedExam, Question, ExamItem
@@ -542,8 +545,10 @@ def download_exam_file(
                 if resp.status_code == 200:
                     data = resp.json()
                     file_key = data.get("pdf_key")
-            except Exception:
-                pass
+                else:
+                    logger.error(f"LaTeX export preview returned {resp.status_code}: {resp.text}")
+            except Exception as e:
+                logger.error(f"Failed to compile PDF preview during download: {e}")
 
         # Fallback nếu vẫn chưa có
         if not file_key:
