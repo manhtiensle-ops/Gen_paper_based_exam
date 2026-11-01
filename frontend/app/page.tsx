@@ -74,6 +74,7 @@ export default function Dashboard() {
   const [loadingReview, setLoadingReview] = useState<boolean>(false);
   const [pendingReviewCount, setPendingReviewCount] = useState<number>(0);
   const [reviewStatusFilter, setReviewStatusFilter] = useState<"pending" | "approved" | "all">("pending");
+  const [approvingAll, setApprovingAll] = useState(false);
 
   // Source Exams State
   const [sourceExams, setSourceExams] = useState<any[]>([]);
@@ -273,6 +274,26 @@ export default function Dashboard() {
       if (res.ok) {
         setQuestions((prev) =>
           prev.map((q) => (q.id === questionId ? { ...q, difficulty: newDiff } : q))
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleQuickTopicChange = async (questionId: string, newTopic: string) => {
+    try {
+      const res = await fetch(`/api/questions/${questionId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ main_topic: newTopic }),
+      });
+      if (res.ok) {
+        setQuestions((prev) =>
+          prev.map((q) => (q.id === questionId ? { ...q, main_topic: newTopic } : q))
+        );
+        setReviewQuestions((prev) =>
+          prev.map((q) => (q.id === questionId ? { ...q, main_topic: newTopic } : q))
         );
       }
     } catch (e) {
@@ -881,6 +902,34 @@ export default function Dashboard() {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  // Phê duyệt đồng loạt tất cả câu hỏi chờ duyệt
+  const handleBatchApprove = async () => {
+    const unapproved = reviewQuestions.filter((q) => !q.is_verified);
+    if (unapproved.length === 0) return;
+
+    if (!confirm(`Bạn có chắc muốn phê duyệt đồng loạt ${unapproved.length} câu hỏi vào Ngân hàng chính thức?`)) {
+      return;
+    }
+
+    setApprovingAll(true);
+    try {
+      await Promise.all(
+        unapproved.map((q) =>
+          fetch(`/api/questions/${q.id}/verify`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ is_verified: true }),
+          })
+        )
+      );
+      await Promise.all([fetchReviewQuestions(), fetchPendingCount(), fetchQuestions()]);
+    } catch (e) {
+      console.error("Batch approve failed:", e);
+    } finally {
+      setApprovingAll(false);
     }
   };
 
@@ -1920,45 +1969,64 @@ export default function Dashboard() {
               </p>
             </div>
 
-            {/* Sub-tabs / Filter Buttons */}
-            <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl">
-              <button
-                onClick={() => setReviewStatusFilter("pending")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
-                  reviewStatusFilter === "pending"
-                    ? "bg-white text-indigo-700 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <span>Chờ kiểm duyệt</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                  pendingReviewCount > 0 ? "bg-amber-100 text-amber-800 font-bold" : "bg-slate-200 text-slate-700"
-                }`}>
-                  {pendingReviewCount}
-                </span>
-              </button>
+            {/* Sub-tabs / Filter Buttons & Batch Approve */}
+            <div className="flex items-center flex-wrap gap-2">
+              <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl">
+                <button
+                  onClick={() => setReviewStatusFilter("pending")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                    reviewStatusFilter === "pending"
+                      ? "bg-white text-indigo-700 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>Chờ kiểm duyệt</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    pendingReviewCount > 0 ? "bg-amber-100 text-amber-800 font-bold" : "bg-slate-200 text-slate-700"
+                  }`}>
+                    {pendingReviewCount}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => setReviewStatusFilter("approved")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  reviewStatusFilter === "approved"
-                    ? "bg-white text-indigo-700 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <span>Đã phê duyệt</span>
-              </button>
+                <button
+                  onClick={() => setReviewStatusFilter("approved")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    reviewStatusFilter === "approved"
+                      ? "bg-white text-indigo-700 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>Đã phê duyệt</span>
+                </button>
 
-              <button
-                onClick={() => setReviewStatusFilter("all")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  reviewStatusFilter === "all"
-                    ? "bg-white text-indigo-700 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <span>Tất cả</span>
-              </button>
+                <button
+                  onClick={() => setReviewStatusFilter("all")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    reviewStatusFilter === "all"
+                      ? "bg-white text-indigo-700 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <span>Tất cả</span>
+                </button>
+              </div>
+
+              {pendingReviewCount > 0 && reviewStatusFilter === "pending" && (
+                <button
+                  type="button"
+                  disabled={approvingAll}
+                  onClick={handleBatchApprove}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
+                  title="Phê duyệt toàn bộ các câu hỏi đang chờ duyệt vào Ngân hàng chính thức"
+                >
+                  {approvingAll ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-3.5 h-3.5" />
+                  )}
+                  <span>Phê duyệt tất cả ({pendingReviewCount} câu)</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1990,9 +2058,18 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800">
-                        {TOPIC_VI_MAP[q.main_topic] || q.main_topic}
-                      </span>
+                      <select
+                        value={q.main_topic}
+                        onChange={(e) => handleQuickTopicChange(q.id, e.target.value)}
+                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full border cursor-pointer ${getTopicBadgeStyle(q.main_topic)}`}
+                        title="Đổi nhanh chuyên đề"
+                      >
+                        {Object.entries(TOPIC_VI_MAP).map(([key, label]) => (
+                          <option key={key} value={key} className="bg-white text-slate-800">
+                            {label}
+                          </option>
+                        ))}
+                      </select>
                       <select
                         value={q.difficulty}
                         onChange={(e) => handleQuickDifficultyChange(q.id, e.target.value)}
