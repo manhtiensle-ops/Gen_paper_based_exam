@@ -2223,6 +2223,37 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 13: Decimal Grading Rubric Inspector & Recommender */}
+                  {(() => {
+                    const isTotalScore10 = Math.abs(currentTotalScore - 10) < 0.01;
+                    const isTotalScoreValid = isTotalScore10 || currentTotalScore === 20 || currentTotalScore === 100;
+                    
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {isTotalScoreValid ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Thang điểm thập phân & Phân bổ (Bộ GD&ĐT):{" "}
+                            {isTotalScoreValid ? (
+                              <span className="font-mono text-emerald-700">CHUẨN XÁC ({currentTotalScore.toFixed(2)} đ)</span>
+                            ) : (
+                              <span className="font-mono text-amber-700">LỆCH THANG ĐIỂM ({currentTotalScore.toFixed(2)} đ)</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {isTotalScoreValid
+                              ? `✓ Tổng điểm chuẩn quy định (${currentTotalScore.toFixed(2)} điểm). Thang điểm thập phân đáp ứng chuẩn khảo thí Bộ GD&ĐT 2025.`
+                              : `⚠️ Cảnh báo: Tổng điểm hiện tại là ${currentTotalScore.toFixed(2)}đ (khác 10.00đ hoặc 100đ). Cần kiểm tra lại trọng số điểm các phần.`}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2255,7 +2286,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `9. Phân bổ đáp án đúng (A/B/C/D): CÂN BẰNG KHẢO THÍ`,
                         `10. Tải nhận thức & Ký hiệu toán học: ĐẠT TIÊU CHUẨN`,
                         `11. Hình vẽ & Đồ thị minh họa (TikZ): ĐẦY ĐỦ / HỢP LỆ`,
-                        `12. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `12. Thang điểm thập phân & Phân bổ (Bộ GD&ĐT): ${isScoreOk ? "CHUẨN XÁC" : "CẦN LƯU Ý"} (${currentTotalScore.toFixed(2)}đ)`,
+                        `13. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

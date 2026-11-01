@@ -22,7 +22,8 @@ import {
   CheckSquare,
   Shuffle,
   Grid,
-  Languages
+  Languages,
+  ShieldCheck
 } from "lucide-react";
 
 interface QuestionItem {
@@ -76,6 +77,7 @@ export default function A4PaperPreview({
   const [isShufflePackageActive, setIsShufflePackageActive] = useState<boolean>(false);
   const [showScratchpadWorkbox, setShowScratchpadWorkbox] = useState<boolean>(false);
   const [isBilingualMode, setIsBilingualMode] = useState<boolean>(false);
+  const [showBlindGradingHeader, setShowBlindGradingHeader] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -195,6 +197,21 @@ export default function A4PaperPreview({
           >
             <Languages className="w-3.5 h-3.5" />
             <span>{isBilingualMode ? "Song Ngữ (Bật)" : "Song Ngữ"}</span>
+          </button>
+
+          {/* Blind Grading Anonymization Mode Button */}
+          <button
+            type="button"
+            onClick={() => setShowBlindGradingHeader(!showBlindGradingHeader)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              showBlindGradingHeader
+                ? "bg-rose-100 border-rose-300 text-rose-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Bật/Tắt phách chấm thi giấu tên thí sinh chống gian lận"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>{showBlindGradingHeader ? "Đầu Phách (Bật)" : "Đầu Phách"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -469,11 +486,30 @@ export default function A4PaperPreview({
             </div>
           </div>
 
-          {/* Candidate Info Box */}
-          <div className="flex justify-between items-center text-xs italic mb-4 pb-2 border-b border-dashed border-slate-300">
-            <span>Họ và tên thí sinh: ............................................................................</span>
-            <span>Số báo danh: .............................</span>
-          </div>
+          {/* Candidate Info Box or Blind Grading Cutout Header */}
+          {showBlindGradingHeader ? (
+            <div className="mb-4 p-2.5 border-2 border-dashed border-rose-400 bg-rose-50/40 print:bg-white rounded text-xs">
+              <div className="flex justify-between items-center pb-1.5 border-b border-rose-300 text-rose-900 font-semibold">
+                <span className="flex items-center gap-1">
+                  <Scissors className="w-3.5 h-3.5 text-rose-600 rotate-90" />
+                  ĐẦU PHÁCH THI (CẮT DỌC ĐƯỜNG NÉT ĐỨT TRƯỚC KHI CHẤM BÀI)
+                </span>
+                <span className="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-rose-300">
+                  Số Phách: [ .................... ]
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mt-2 italic text-slate-700 text-[11px]">
+                <div>Họ & Tên: .......................................</div>
+                <div>Số Báo Danh: ...................</div>
+                <div>Phòng Thi: ...........</div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-between items-center text-xs italic mb-4 pb-2 border-b border-dashed border-slate-300">
+              <span>Họ và tên thí sinh: ............................................................................</span>
+              <span>Số báo danh: .............................</span>
+            </div>
+          )}
 
           {/* Flashcard Cutout Layout Simulation */}
           {isFlashcardCutoutMode ? (
