@@ -45,7 +45,9 @@ import {
   Filter,
   BarChart3,
   Copy,
-  Check
+  Check,
+  ShieldAlert,
+  ShieldCheck
 } from "lucide-react";
 
 interface Props {
@@ -66,7 +68,7 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
   const activePointerIdRef = useRef<number | null>(null);
 
   // Left Sidebar Tab: "editor" | "rubric-table" | "items" | "knobs" | "spec-matrix"
-  const [sidebarTab, setSidebarTab] = useState<"editor" | "rubric-table" | "items" | "knobs" | "spec-matrix">("editor");
+  const [sidebarTab, setSidebarTab] = useState<"editor" | "rubric-table" | "items" | "knobs" | "spec-matrix" | "integrity">("editor");
   const [templateDoc, setTemplateDoc] = useState<any | null>(null);
 
   // Raw LaTeX Code State for Live Editor
@@ -1016,6 +1018,19 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                 <BarChart3 className="w-3.5 h-3.5" />
                 <span>Bảng Đặc Tả</span>
               </button>
+
+              <button
+                onClick={() => setSidebarTab("integrity")}
+                className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
+                  sidebarTab === "integrity"
+                    ? "border-amber-600 text-amber-700 bg-white"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+                title="Trợ lý kiểm tra tính toàn vẹn sư phạm và toán học"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                <span>Kiểm Định</span>
+              </button>
             </div>
 
             {/* Split Presets */}
@@ -1699,6 +1714,107 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       })}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: INTEGRITY INSPECTOR */}
+          {sidebarTab === "integrity" && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-slate-800 text-xs flex items-center space-x-1.5">
+                    <ShieldAlert className="w-4 h-4 text-amber-600" />
+                    <span>Trợ Lý Kiểm Định Sư Phạm & Toàn Vẹn Đề Thi</span>
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    XeLaTeX Engine Ready
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Tự động quét cấu trúc câu hỏi, barem điểm số và cú pháp LaTeX để đảm bảo đề thi đạt chuẩn in ấn thương mại và sư phạm.
+                </p>
+
+                {/* Audit Checks */}
+                <div className="space-y-2 pt-1 text-[11px]">
+                  {/* Check 1: Total points */}
+                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                    {currentTotalScore === 10 || currentTotalScore === 20 || currentTotalScore === 100 ? (
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <div className="font-bold text-slate-800">
+                        Thang điểm tổng: <span className="font-mono text-indigo-700">{currentTotalScore} điểm</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">
+                        {currentTotalScore === 10 || currentTotalScore === 20 || currentTotalScore === 100
+                          ? "✓ Chuẩn thang điểm quy định (10đ hoặc 20đ hoặc 100đ)."
+                          : "⚠️ Lưu ý: Tổng điểm hiện tại chưa theo thang điểm chuẩn 10đ, 20đ hoặc 100đ."}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Check 2: Question count */}
+                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                    {items.length > 0 ? (
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <div className="font-bold text-slate-800">
+                        Số lượng câu hỏi: <span className="font-mono text-indigo-700">{items.length} câu</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">
+                        {items.length > 0
+                          ? "✓ Đề thi có đầy đủ danh mục các câu hỏi thành phần."
+                          : "⚠️ Cảnh báo: Đề thi đang trống câu hỏi."}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Check 3: LaTeX syntax brackets */}
+                  {(() => {
+                    const openDollar = (rawLatexCode.match(/\$/g) || []).length;
+                    const isMathBalanced = openDollar % 2 === 0;
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {isMathBalanced ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">Cú pháp khối toán học LaTeX ($)</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {isMathBalanced
+                              ? "✓ Tất cả các dấu công thức toán học ($) đều đã đóng ngoặc đối xứng."
+                              : "⚠️ Cảnh báo: Phát hiện số lượng ký tự $ lẻ, có thể gây lỗi TeX khi biên dịch in ấn."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Check 4: Header institution */}
+                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                    {headerConfig.department_or_school && headerConfig.exam_name ? (
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <div className="font-bold text-slate-800">Tiêu đề & Cơ quan ban hành</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">
+                        {headerConfig.department_or_school && headerConfig.exam_name
+                          ? `✓ Đã cấu hình: ${headerConfig.department_or_school} - ${headerConfig.exam_name}`
+                          : "⚠️ Chưa nhập đầy đủ tên trường hoặc tiêu đề kỳ thi."}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

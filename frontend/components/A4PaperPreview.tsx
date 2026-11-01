@@ -11,7 +11,8 @@ import {
   FileDown,
   RotateCcw,
   QrCode,
-  Eye
+  Eye,
+  Stamp
 } from "lucide-react";
 
 interface QuestionItem {
@@ -53,6 +54,8 @@ export default function A4PaperPreview({
   const [showSolutions, setShowSolutions] = useState<boolean>(false);
   const [isEyeCarePaper, setIsEyeCarePaper] = useState<boolean>(false);
   const [spacingDensity, setSpacingDensity] = useState<"compact" | "normal" | "relaxed">("normal");
+  const [watermarkText, setWatermarkText] = useState<string>("");
+  const [showWatermarkInput, setShowWatermarkInput] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -152,6 +155,44 @@ export default function A4PaperPreview({
             ))}
           </div>
 
+          {/* Watermark Selector & Input */}
+          <div className="relative flex items-center">
+            <button
+              type="button"
+              onClick={() => setShowWatermarkInput(!showWatermarkInput)}
+              className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded border transition-all cursor-pointer ${
+                watermarkText.trim()
+                  ? "bg-indigo-50 border-indigo-300 text-indigo-700 font-bold"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+              }`}
+              title="Thêm đóng dấu chìm watermark bản quyền đề thi"
+            >
+              <Stamp className="w-3.5 h-3.5" />
+              <span>{watermarkText.trim() ? "Dấu chìm: Bật" : "Dấu chìm"}</span>
+            </button>
+
+            {showWatermarkInput && (
+              <div className="absolute top-full left-0 mt-1 z-30 bg-white border border-slate-200 rounded-lg p-2 shadow-lg flex items-center space-x-1.5 w-64">
+                <input
+                  type="text"
+                  placeholder="Ví dụ: VINH PHÁT - ĐỀ THI THỬ"
+                  value={watermarkText}
+                  onChange={(e) => setWatermarkText(e.target.value)}
+                  className="flex-1 text-xs px-2 py-1 border border-slate-200 rounded focus:outline-hidden focus:border-indigo-500"
+                />
+                {watermarkText && (
+                  <button
+                    type="button"
+                    onClick={() => setWatermarkText("")}
+                    className="text-[10px] text-slate-400 hover:text-slate-600 px-1"
+                  >
+                    Xóa
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Zoom Controls */}
           <div className="flex items-center bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">
             <button
@@ -201,8 +242,23 @@ export default function A4PaperPreview({
           }}
           className={`${
             isEyeCarePaper ? "bg-[#fbf7ee] text-stone-900 border-[#ebdcc4]" : "bg-white text-slate-900"
-          } paper-sheet-elevation rounded-sm p-[20mm] font-serif leading-relaxed transition-all duration-200 print:bg-white print:text-black print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative`}
+          } paper-sheet-elevation rounded-sm p-[20mm] font-serif leading-relaxed transition-all duration-200 print:bg-white print:text-black print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative overflow-hidden`}
         >
+          {/* Watermark Overlay (if configured) */}
+          {watermarkText.trim() && (
+            <div
+              className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10"
+              style={{
+                transform: "rotate(-35deg)",
+                opacity: 0.08,
+              }}
+            >
+              <span className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-widest text-center max-w-[80%] leading-tight">
+                {watermarkText.trim()}
+              </span>
+            </div>
+          )}
+
           {/* Header sư phạm chuẩn Sở GD&ĐT / Trung tâm Vinh Phát */}
           <div className="grid grid-cols-2 gap-4 pb-4 border-b-2 border-slate-900 mb-5 text-center text-xs">
             <div>
