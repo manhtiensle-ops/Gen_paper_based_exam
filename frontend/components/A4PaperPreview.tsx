@@ -14,6 +14,7 @@ import {
   Eye,
   SunMedium,
   GraduationCap,
+  MessageSquare,
   Minimize2,
   Stamp,
   BookOpen,
@@ -96,6 +97,7 @@ export default function A4PaperPreview({
   const [isHighContrastMode, setIsHighContrastMode] = useState<boolean>(false);
   const [isCheatSheetFooterMode, setIsCheatSheetFooterMode] = useState<boolean>(false);
   const [isUltraCompactEconomyMode, setIsUltraCompactEconomyMode] = useState<boolean>(false);
+  const [isExaminerFeedbackMode, setIsExaminerFeedbackMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -380,6 +382,21 @@ export default function A4PaperPreview({
           >
             <Minimize2 className="w-3.5 h-3.5" />
             <span>{isUltraCompactEconomyMode ? "Siêu Nén 2 Cột (Bật)" : "Siêu Nén 2 Cột"}</span>
+          </button>
+
+          {/* Examiner Assessment & Rapid-Feedback Column Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsExaminerFeedbackMode(!isExaminerFeedbackMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isExaminerFeedbackMode
+                ? "bg-teal-100 border-teal-300 text-teal-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp khung nhận xét sư phạm, phân tích lỗi sai và chữ ký giám khảo khảo thí chuẩn A4"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>{isExaminerFeedbackMode ? "Khung Giám Khảo (Bật)" : "Khung Giám Khảo"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1079,6 +1096,50 @@ export default function A4PaperPreview({
                   <div className="font-bold text-amber-800 mb-0.5">🎲 3. Xác Suất &amp; Thống Kê</div>
                   <div>• Xác suất biến cố: P(A) = n(A) / n(Ω) ; 0 ≤ P(A) ≤ 1</div>
                   <div>• Biến cố xung khắc: P(A ∪ B) = P(A) + P(B) nếu A ∩ B = ∅</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Examiner Assessment & Rapid-Feedback Column Print Block */}
+          {isExaminerFeedbackMode && (
+            <div className="mt-8 pt-4 border-t-2 border-slate-700 p-3 rounded-lg bg-slate-50 text-slate-900 text-xs font-sans print:bg-white print:border-black">
+              <div className="flex items-center justify-between border-b border-slate-300 pb-1.5 mb-2.5">
+                <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-slate-800 text-[11px]">
+                  <MessageSquare className="w-4 h-4 text-teal-700" />
+                  <span>PHIẾU NHẬN XÉT SƯ PHẠM &amp; CHẤM ĐIỂM CỦA GIÁM KHẢO</span>
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-900 font-semibold">
+                  Hội đồng khảo thí VINH PHÁT
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[10.5px]">
+                <div className="p-2.5 rounded bg-white border border-slate-300 flex flex-col justify-between">
+                  <div className="font-bold text-slate-800 mb-1">📝 Điểm số &amp; Phân loại:</div>
+                  <div className="space-y-1">
+                    <div>• Điểm trắc nghiệm: ......... / ......... đ</div>
+                    <div>• Điểm tự luận / ngắn: ......... / ......... đ</div>
+                    <div>• Tổng điểm chung: ......... / 10.0 đ</div>
+                  </div>
+                  <div className="mt-2 pt-1 border-t border-dashed border-slate-200 text-slate-500 text-[9px]">
+                    Xếp loại: Giỏi [ ] - Khá [ ] - Đạt [ ]
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-white border border-slate-300">
+                  <div className="font-bold text-slate-800 mb-1">🔍 Nhận xét tiến bộ &amp; Lỗi sai trọng tâm:</div>
+                  <div className="h-16 border-b border-dashed border-slate-300" />
+                  <div className="mt-1 text-slate-400 text-[9px] italic">
+                    (Ghi chú phương pháp giải, bẫy trắc nghiệm cần khắc phục)
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-white border border-slate-300 flex flex-col justify-between">
+                  <div>
+                    <div className="font-bold text-slate-800 mb-1">✍️ Chữ ký Giám khảo:</div>
+                    <div className="h-12 border-b border-dashed border-slate-300" />
+                  </div>
+                  <div className="text-center text-[9.5px] text-slate-600 font-medium">
+                    (Ký và ghi rõ họ tên giám khảo)
+                  </div>
                 </div>
               </div>
             </div>

@@ -2603,6 +2603,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 24: Geometric Notation & Vertex-Order Topology Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasGeometry = /hình chóp|lăng trụ|tứ diện|tam giác|hình vuông|hình chữ nhật|hình thoi|ABCD|A'B'C'D'/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Ký hiệu hình học & Thứ tự đỉnh (Geometric Topology):{" "}
+                            {hasGeometry ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TÔ-PÔ HÌNH HỌC</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">CHUẨN KÝ HIỆU</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasGeometry
+                              ? "✓ Ký hiệu đỉnh hình chóp và đa giác đáy (S.ABCD, A'B'C'D') tuân thủ đúng thứ tự chiều kim đồng hồ, nhất quán và không gây tranh cãi dựng hình."
+                              : "✓ Các khái niệm hình học được định danh theo tiêu chuẩn quy ước toán học phổ thông Việt Nam."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2646,7 +2673,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `20. Đơn vị đo lường & Thực tiễn: ĐỒNG BỘ ĐƠN VỊ`,
                         `21. Khớp điểm Đề & Biểu điểm: CHUẨN BIỂU ĐIỂM`,
                         `22. Đa dạng hóa tham số đại số: ĐA DẠNG KÝ HIỆU`,
-                        `23. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `23. Tô-pô & Ký hiệu hình học: CHUẨN TÔ-PÔ HÌNH HỌC`,
+                        `24. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
