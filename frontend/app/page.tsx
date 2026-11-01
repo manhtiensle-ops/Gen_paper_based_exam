@@ -95,6 +95,11 @@ export default function Dashboard() {
     const examId = generatedExam?.id;
     saveWorkspaceSession(tab, examId, generatedExam);
 
+    if (examId && (tab === "generator" || tab === "studio")) {
+      // Làm mới dữ liệu từ server để đồng bộ 2 chiều Generator <-> Exam Studio
+      fetchExamById(examId, tab);
+    }
+
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("tab", tab);
@@ -2077,6 +2082,10 @@ export default function Dashboard() {
         <ExamStudioView
           examId={generatedExam?.id || "6122d749-249f-496b-9e41-ffbe43d420a9"}
           onBack={() => handleTabChange("generator")}
+          onExamUpdated={() => {
+            const exId = generatedExam?.id;
+            if (exId) fetchExamById(exId, "studio");
+          }}
         />
       )}
 

@@ -42,9 +42,10 @@ import {
 interface Props {
   examId: string;
   onBack?: () => void;
+  onExamUpdated?: () => void;
 }
 
-export default function ExamStudioView({ examId, onBack }: Props) {
+export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeMode, setActiveMode] = useState<"EXAM" | "RUBRIC">("EXAM");
@@ -177,6 +178,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
   // Question editing modal
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
+  const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -1057,7 +1059,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
                       <div className="flex items-center space-x-1">
                         <button
-                          onClick={() => setEditingQuestion(snap)}
+                          onClick={() => {
+                            setEditingQuestion(snap);
+                            setEditingSlotIndex(it.order_index !== undefined ? it.order_index + 1 : idx + 1);
+                          }}
                           className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all"
                           title="Sửa nội dung câu hỏi"
                         >
@@ -1752,9 +1757,29 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       <QuestionEditModal
         question={editingQuestion}
         isOpen={Boolean(editingQuestion)}
-        onClose={() => setEditingQuestion(null)}
-        onSaveSuccess={(updatedQ) => {
-          loadExamItems();
+        onClose={() => {
+          setEditingQuestion(null);
+          setEditingSlotIndex(null);
+        }}
+        onSaveSuccess={async (updatedQ) => {
+          try {
+            if (editingSlotIndex !== null && examId) {
+              await fetch(`/api/generator/exams/${examId}/slots/${editingSlotIndex}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updatedQ)
+              });
+              if (typeof window !== "undefined") {
+                localStorage.removeItem(`exam_draft_${examId}`);
+              }
+            }
+          } catch (e) {
+            console.error("Lỗi đồng bộ slot từ Exam Studio:", e);
+          }
+          await loadExamItems(true);
+          onExamUpdated?.();
+          setEditingQuestion(null);
+          setEditingSlotIndex(null);
         }}
       />
     </div>
