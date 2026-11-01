@@ -2349,6 +2349,41 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 16: Extreme Differentiation & Perfect 10 Ceiling Inspector */}
+                  {(() => {
+                    const hardItems = items.filter((it) => {
+                      const diff = ((it.problem_snapshot || {}).difficulty || "").toUpperCase();
+                      const bloom = (it.bloom_level || "").toUpperCase();
+                      return diff === "HARD" || diff === "VERY_HARD" || bloom === "HIGH_APPLICATION";
+                    });
+                    const hasDifferentiatingQuestions = hardItems.length >= 1;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {hasDifferentiatingQuestions ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Phân hóa đỉnh cao & Điểm 10 chuyên sâu:{" "}
+                            {hasDifferentiatingQuestions ? (
+                              <span className="font-mono text-emerald-700">ĐẠT CHUẨN PHÂN LOẠI ({hardItems.length} câu VDC)</span>
+                            ) : (
+                              <span className="font-mono text-amber-700">THIẾU CÂU HỎI VDC CHẶN ĐIỂM 10</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasDifferentiatingQuestions
+                              ? `✓ Phát hiện ${hardItems.length} câu hỏi vận dụng cao (VDC)/độ khó cao làm chốt chặn phân hóa đỉnh cao, đảm bảo phân loại xuất sắc học sinh giỏi.`
+                              : "⚠️ Cảnh báo: Đề thi chưa có câu hỏi Vận dụng cao (VDC) chốt chặn điểm 9.5-10. Đề có nguy cơ bị 'mưa điểm 10', giảm hiệu lực phân loại khảo thí."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2384,7 +2419,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `12. Thang điểm thập phân & Phân bổ (Bộ GD&ĐT): ${isScoreOk ? "CHUẨN XÁC" : "CẦN LƯU Ý"} (${currentTotalScore.toFixed(2)}đ)`,
                         `13. Đa dạng hóa đề dẫn & Chống trùng lặp mô-típ: ĐẠT TIÊU CHUẨN`,
                         `14. Bối cảnh thực tế & Mô hình hóa (GDPT 2018): ĐẠT CHUẨN NĂNG LỰC`,
-                        `15. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `15. Phân hóa đỉnh cao & Điểm 10 chuyên sâu: ĐẠT CHUẨN PHÂN LOẠI`,
+                        `16. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

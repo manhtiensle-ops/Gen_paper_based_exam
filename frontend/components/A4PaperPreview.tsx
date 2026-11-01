@@ -25,7 +25,8 @@ import {
   Languages,
   ShieldCheck,
   Bookmark,
-  Type
+  Type,
+  Droplet
 } from "lucide-react";
 
 interface QuestionItem {
@@ -82,6 +83,7 @@ export default function A4PaperPreview({
   const [showBlindGradingHeader, setShowBlindGradingHeader] = useState<boolean>(false);
   const [showPocketKeyStrip, setShowPocketKeyStrip] = useState<boolean>(false);
   const [isLargePrintMode, setIsLargePrintMode] = useState<boolean>(false);
+  const [isEcoInkMode, setIsEcoInkMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -246,6 +248,21 @@ export default function A4PaperPreview({
           >
             <Type className="w-3.5 h-3.5" />
             <span>{isLargePrintMode ? "Chữ Lớn (16pt)" : "Chữ Lớn"}</span>
+          </button>
+
+          {/* Draft Eco-Ink Minimalist Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsEcoInkMode(!isEcoInkMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isEcoInkMode
+                ? "bg-emerald-100 border-emerald-300 text-emerald-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Chế độ in tiết kiệm mực: lược bỏ nền màu, dùng viền mảnh hairline 0.5pt"
+          >
+            <Droplet className="w-3.5 h-3.5" />
+            <span>{isEcoInkMode ? "Tiết Kiệm Mực (Bật)" : "Tiết Kiệm Mực"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -461,12 +478,12 @@ export default function A4PaperPreview({
             minHeight: isBookletMode ? "210mm" : "297mm",
           }}
           className={`${
-            isEcoGrayscale
+            isEcoGrayscale || isEcoInkMode
               ? "bg-white text-black grayscale print:grayscale border-slate-300"
               : isEyeCarePaper
               ? "bg-[#fbf7ee] text-stone-900 border-[#ebdcc4]"
               : "bg-white text-slate-900"
-          } paper-sheet-elevation rounded-sm ${
+          } ${isEcoInkMode ? "shadow-none ring-0 border border-slate-200" : "paper-sheet-elevation"} rounded-sm ${
             isBookletMode ? "p-[12mm]" : "p-[20mm]"
           } font-serif ${
             isLargePrintMode ? "text-[16px] leading-[1.9]" : "leading-relaxed"
