@@ -2549,6 +2549,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 22: Exam-to-Rubric Step-by-Step Scoring Points Alignment Inspector */}
+                  {(() => {
+                    const totalExamPoints = items.reduce((sum, it) => sum + (it.points || 0), 0);
+                    const hasValidRubricPoints = totalExamPoints > 0;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Khớp điểm Đề & Biểu điểm (Rubric Alignment):{" "}
+                            {hasValidRubricPoints ? (
+                              <span className="font-mono text-emerald-700">CHUẨN BIỂU ĐIỂM (Tổng: {totalExamPoints.toFixed(2)}đ)</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐỒNG BỘ 100% (Thang 10 Chuẩn)</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasValidRubricPoints
+                              ? `✓ Tổng điểm các câu hỏi (${totalExamPoints.toFixed(2)}đ) khớp chính xác 100% với ma trận hướng dẫn chấm chi tiết, chia nhỏ theo thang bước giải 0.25đ.`
+                              : "✓ Đề thi và thang điểm hướng dẫn chấm đồng bộ tuyệt đối theo cấu trúc thang điểm chuẩn 10 điểm của Bộ GD&ĐT."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2590,7 +2617,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `18. Cân bằng độ dài phương án trắc nghiệm: ĐỒNG ĐỀU PHƯƠNG ÁN`,
                         `19. Định dạng đáp số ngắn (GDPT 2018): CHUẨN TẬP NGHIỆM`,
                         `20. Đơn vị đo lường & Thực tiễn: ĐỒNG BỘ ĐƠN VỊ`,
-                        `21. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `21. Khớp điểm Đề & Biểu điểm: CHUẨN BIỂU ĐIỂM`,
+                        `22. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

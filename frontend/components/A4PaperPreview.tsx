@@ -13,6 +13,7 @@ import {
   QrCode,
   Eye,
   SunMedium,
+  GraduationCap,
   Stamp,
   BookOpen,
   Sparkles,
@@ -92,6 +93,7 @@ export default function A4PaperPreview({
   const [isInvigilatorChecklistMode, setIsInvigilatorChecklistMode] = useState<boolean>(false);
   const [isPerforatedOmrMode, setIsPerforatedOmrMode] = useState<boolean>(false);
   const [isHighContrastMode, setIsHighContrastMode] = useState<boolean>(false);
+  const [isCheatSheetFooterMode, setIsCheatSheetFooterMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -346,6 +348,21 @@ export default function A4PaperPreview({
           >
             <SunMedium className="w-3.5 h-3.5" />
             <span>{isHighContrastMode ? "Tương Phản Cao (Bật)" : "Tương Phản Cao"}</span>
+          </button>
+
+          {/* Fast-Revision Formula & Key-Concept Cheat-Sheet Footer Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsCheatSheetFooterMode(!isCheatSheetFooterMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isCheatSheetFooterMode
+                ? "bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp dải tóm tắt công thức trọng tâm và định lý then chốt ở chân trang A4 dành cho ôn tập cấp tốc"
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>{isCheatSheetFooterMode ? "Sổ Tay Chân Trang (Bật)" : "Sổ Tay Chân Trang"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1012,6 +1029,38 @@ export default function A4PaperPreview({
                     </span>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Fast-Revision Formula & Key-Concept Cheat-Sheet Footer */}
+          {isCheatSheetFooterMode && (
+            <div className="mt-8 pt-4 border-t-2 border-dashed border-amber-400 bg-amber-50/60 p-3 rounded-lg text-slate-800 text-xs font-sans print:bg-white print:border-slate-500">
+              <div className="flex items-center justify-between border-b border-amber-200 pb-1.5 mb-2">
+                <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-amber-900 text-[11px]">
+                  <GraduationCap className="w-4 h-4 text-amber-700" />
+                  <span>SỔ TAY CÔNG THỨC & KHÁI NIỆM TRỌNG TÂM (FAST REVISION CHEAT-SHEET)</span>
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-200/70 text-amber-900 font-semibold">
+                  Tài liệu hỗ trợ tự học & ôn thi cấp tốc
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[10.5px] leading-relaxed">
+                <div className="p-2 rounded bg-white/80 border border-amber-200 shadow-2xs">
+                  <div className="font-bold text-amber-800 mb-0.5">📐 1. Giải Tích &amp; Hàm Số</div>
+                  <div>• Đạo hàm: (u · v)&apos; = u&apos;v + uv&apos; ; (u/v)&apos; = (u&apos;v - uv&apos;) / v²</div>
+                  <div>• Cực trị: y&apos; = 0 và đổi dấu qua x₀; y&apos;&apos;(x₀) &gt; 0 ⇒ Cực tiểu.</div>
+                </div>
+                <div className="p-2 rounded bg-white/80 border border-amber-200 shadow-2xs">
+                  <div className="font-bold text-amber-800 mb-0.5">📏 2. Hình Học Oxyz &amp; Không Gian</div>
+                  <div>• Thể tích: V(chóp) = (1/3) B · h ; V(trụ) = π R² h</div>
+                  <div>• Khoảng cách: d(M, (P)) = |Ax₀ + By₀ + Cz₀ + D| / √(A² + B² + C²)</div>
+                </div>
+                <div className="p-2 rounded bg-white/80 border border-amber-200 shadow-2xs">
+                  <div className="font-bold text-amber-800 mb-0.5">🎲 3. Xác Suất &amp; Thống Kê</div>
+                  <div>• Xác suất biến cố: P(A) = n(A) / n(Ω) ; 0 ≤ P(A) ≤ 1</div>
+                  <div>• Biến cố xung khắc: P(A ∪ B) = P(A) + P(B) nếu A ∩ B = ∅</div>
+                </div>
               </div>
             </div>
           )}
