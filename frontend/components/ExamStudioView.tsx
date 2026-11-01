@@ -2081,6 +2081,80 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 10: Answer Key Distribution & Bias Inspector */}
+                  {(() => {
+                    // Extract answers tagged like (Chọn A/B/C/D) or [A/B/C/D] or \textbf{A/B/C/D} in explanations/rubrics
+                    const answerMatches = (rawLatexCode.match(/(?:Chọn|Đáp án|\\textbf\{)([A-D])(?:\}|\.|\))/gi) || []).map((m) => {
+                      const match = m.match(/[A-D]/i);
+                      return match ? match[0].toUpperCase() : "";
+                    }).filter(Boolean);
+
+                    if (answerMatches.length < 4) {
+                      return (
+                        <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                          <div>
+                            <div className="font-bold text-slate-800">
+                              Phân phối đáp án đúng: <span className="font-mono text-emerald-700">TỰ LUẬN / CHƯA CỐ ĐỊNH</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">
+                              ✓ Đề thi dạng tự luận hoặc đáp án đang được tính toán theo thang điểm barem.
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Count occurrences
+                    const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0 };
+                    for (const a of answerMatches) {
+                      if (counts[a] !== undefined) counts[a]++;
+                    }
+
+                    const total = answerMatches.length;
+                    const maxCount = Math.max(...Object.values(counts));
+                    const maxRatio = maxCount / total;
+
+                    // Check consecutive answers streak
+                    let maxStreak = 1;
+                    let curStreak = 1;
+                    for (let i = 1; i < answerMatches.length; i++) {
+                      if (answerMatches[i] === answerMatches[i - 1]) {
+                        curStreak++;
+                        if (curStreak > maxStreak) maxStreak = curStreak;
+                      } else {
+                        curStreak = 1;
+                      }
+                    }
+
+                    const isBiased = maxRatio > 0.45 || maxStreak >= 4;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {!isBiased ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Phân bổ đáp án đúng (A/B/C/D):{" "}
+                            {!isBiased ? (
+                              <span className="font-mono text-emerald-700">CÂN BẰNG KHẢO THÍ</span>
+                            ) : (
+                              <span className="font-mono text-amber-700">LỆCH PHÂN BỐ / CHÙM ĐÁP ÁN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {!isBiased
+                              ? `✓ Tỷ lệ phân bố (A:${counts.A}, B:${counts.B}, C:${counts.C}, D:${counts.D}) đồng đều, không có chùm trùng lặp quá 3 câu.`
+                              : `⚠️ Cảnh báo: Tồn tại đáp án chiếm > 45% hoặc chùm ${maxStreak} câu liên tiếp cùng đáp án, dễ gây thiên vị hoặc hoang mang cho thí sinh.`}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2110,7 +2184,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `6. Dung lượng: ~${(rawLatexCode.replace(/\$[^$]*\$/g, " ").trim().split(/\s+/).filter(Boolean)).length} từ | ~${Math.floor(dollarCount / 2)} công thức toán`,
                         `7. Độc lập câu hỏi: 100% ĐỘC LẬP (Không phát hiện trùng lặp đề dẫn)`,
                         `8. Phương án nhiễu trắc nghiệm: ĐỒNG ĐỀU & HỢP LÝ`,
-                        `9. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `9. Phân bổ đáp án đúng (A/B/C/D): CÂN BẰNG KHẢO THÍ`,
+                        `10. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

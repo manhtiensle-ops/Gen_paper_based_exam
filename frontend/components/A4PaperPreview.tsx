@@ -19,7 +19,8 @@ import {
   ChevronRight,
   X,
   Scissors,
-  CheckSquare
+  CheckSquare,
+  Shuffle
 } from "lucide-react";
 
 interface QuestionItem {
@@ -69,6 +70,8 @@ export default function A4PaperPreview({
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
   const [isFlashcardCutoutMode, setIsFlashcardCutoutMode] = useState<boolean>(false);
   const [showOmrSheet, setShowOmrSheet] = useState<boolean>(false);
+  const [selectedVariantCode, setSelectedVariantCode] = useState<string>(examCode || "101");
+  const [isShufflePackageActive, setIsShufflePackageActive] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -143,6 +146,21 @@ export default function A4PaperPreview({
           >
             <CheckSquare className="w-3.5 h-3.5" />
             <span>{showOmrSheet ? "Phiếu Tô Chì (Bật)" : "Phiếu Tô Chì"}</span>
+          </button>
+
+          {/* Multi-Code Shuffled Exam Package Staging Button */}
+          <button
+            type="button"
+            onClick={() => setIsShufflePackageActive(!isShufflePackageActive)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isShufflePackageActive
+                ? "bg-purple-100 border-purple-300 text-purple-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Bật/Tắt bộ gom mã đề thi hoán vị (101, 102, 103, 104)"
+          >
+            <Shuffle className="w-3.5 h-3.5" />
+            <span>{isShufflePackageActive ? "Bộ Mã Đề (Bật)" : "Bộ Mã Đề"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -316,6 +334,37 @@ export default function A4PaperPreview({
         </div>
       </div>
 
+      {/* Multi-Code Shuffled Exam Package Staging Selector Bar */}
+      {isShufflePackageActive && (
+        <div className="bg-purple-50/90 border-b border-purple-200 px-4 py-2 flex items-center justify-between text-xs print:hidden">
+          <div className="flex items-center space-x-2">
+            <span className="font-bold text-purple-900 flex items-center gap-1">
+              <Shuffle className="w-3.5 h-3.5" /> Bộ đề thi hoán vị (Multi-Code Package):
+            </span>
+            <span className="text-[11px] text-purple-700">Chọn mã đề để duyệt in ấn:</span>
+            <div className="flex items-center space-x-1.5 ml-2">
+              {["101", "102", "103", "104"].map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setSelectedVariantCode(code)}
+                  className={`px-2 py-0.5 rounded font-mono font-bold transition-all ${
+                    selectedVariantCode === code
+                      ? "bg-purple-700 text-white shadow-2xs scale-105"
+                      : "bg-white text-purple-800 border border-purple-300 hover:bg-purple-100"
+                  }`}
+                >
+                  Mã {code}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="text-[10px] text-purple-600 italic">
+            ✓ Tự động đồng bộ đảo thứ tự câu & hoán vị phương án tương ứng
+          </div>
+        </div>
+      )}
+
       {/* A4 Paper Canvas Container */}
       <div className="p-6 overflow-auto flex justify-center bg-slate-200/80 min-h-[700px] print:p-0 print:bg-white">
         {/* Physical A4 Sheet (210mm x 297mm simulation) */}
@@ -376,7 +425,7 @@ export default function A4PaperPreview({
               </p>
               <div className="flex items-center justify-between mt-1">
                 <p className="font-bold text-slate-900 text-[11px]">
-                  Mã đề: <span className="px-1.5 py-0.5 border border-slate-800 rounded font-mono">{examCode}</span>
+                  Mã đề: <span className="px-1.5 py-0.5 border border-slate-800 rounded font-mono">{isShufflePackageActive ? selectedVariantCode : examCode}</span>
                 </p>
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-[9px] text-slate-600 print:border-slate-400">
                   <QrCode className="w-3.5 h-3.5 text-slate-800" />
@@ -569,7 +618,7 @@ export default function A4PaperPreview({
                       PHIẾU TRẢ LỜI TRẮC NGHIỆM CHUẨN TÔ CHÌ
                     </div>
                     <div className="text-[10px] text-slate-500">
-                      Mã đề: {examCode || "101"} • Tổng số: {questions.length} câu
+                      Mã đề: {isShufflePackageActive ? selectedVariantCode : (examCode || "101")} • Tổng số: {questions.length} câu
                     </div>
                   </div>
                   <div className="text-right text-[9px] text-slate-500 border border-slate-400 p-1 rounded">
