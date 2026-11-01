@@ -87,8 +87,12 @@ jobs:
           filters: |
             frontend:
               - 'frontend/**'
+              - '.github/workflows/**'
+              - 'docker-compose.yml'
             core_api:
               - 'services/core-api/**'
+              - '.github/workflows/**'
+              - 'docker-compose.yml'
             export_service:
               - 'services/export-service/**'
             ingestion_worker:
