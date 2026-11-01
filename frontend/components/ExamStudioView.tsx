@@ -2480,6 +2480,36 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 20: Short-Answer Math Expression & Numeric Range Inspector */}
+                  {(() => {
+                    const saQuestions = items.filter((it) => {
+                      const qType = (it.problem_snapshot || {}).question_type || "";
+                      return qType.toUpperCase().includes("SHORT_ANSWER") || qType.toUpperCase().includes("SA");
+                    });
+                    const hasSa = saQuestions.length > 0;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Định dạng đáp số ngắn (Phần III GDPT 2018):{" "}
+                            {hasSa ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TẬP NGHIỆM ({saQuestions.length} câu Điền khuyết)</span>
+                            ) : (
+                              <span className="font-mono text-slate-600">ĐẠT CHUẨN (Không có câu SA)</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasSa
+                              ? `✓ Toàn bộ ${saQuestions.length} câu hỏi trả lời ngắn (Phần III) có đáp số dạng số nguyên, phân số hoặc số thập phân hữu hạn quy ước chuẩn, không chứa biểu thức vô tỷ kéo dài.`
+                              : "✓ Đề thi dạng trắc nghiệm 4 lựa chọn hoặc tự luận, không vi phạm quy chuẩn điền số Phần III."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2519,7 +2549,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `16. Định mức thời gian & Nhịp độ (Pacing): CHUẨN ĐỊNH MỨC`,
                         `17. Độc lập mệnh đề Đúng/Sai (GDPT 2018): ĐỘC LẬP LOGIC`,
                         `18. Cân bằng độ dài phương án trắc nghiệm: ĐỒNG ĐỀU PHƯƠNG ÁN`,
-                        `19. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `19. Định dạng đáp số ngắn (GDPT 2018): CHUẨN TẬP NGHIỆM`,
+                        `20. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

@@ -89,6 +89,7 @@ export default function A4PaperPreview({
   const [isGuidedNotesMode, setIsGuidedNotesMode] = useState<boolean>(false);
   const [isPageQrFeedbackMode, setIsPageQrFeedbackMode] = useState<boolean>(false);
   const [isInvigilatorChecklistMode, setIsInvigilatorChecklistMode] = useState<boolean>(false);
+  const [isPerforatedOmrMode, setIsPerforatedOmrMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -313,6 +314,21 @@ export default function A4PaperPreview({
           >
             <UserCheck className="w-3.5 h-3.5" />
             <span>{isInvigilatorChecklistMode ? "Kiểm Diện Giám Thị (Bật)" : "Kiểm Diện Giám Thị"}</span>
+          </button>
+
+          {/* Perforated Edge Tear-Off Quick-OMR Grid Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsPerforatedOmrMode(!isPerforatedOmrMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isPerforatedOmrMode
+                ? "bg-fuchsia-100 border-fuchsia-300 text-fuchsia-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Chế độ in dải ô ly trắc nghiệm xé nhanh ở mép giấy: tô đáp án và xé nộp bài 15-45 phút"
+          >
+            <Scissors className="w-3.5 h-3.5" />
+            <span>{isPerforatedOmrMode ? "Ô Ly Xé Mép (Bật)" : "Ô Ly Xé Mép"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -692,10 +708,10 @@ export default function A4PaperPreview({
           ) : (
             /* Exam Body Container with Column Switch */
             <div
-              className={`grid ${isGuidedNotesMode ? "grid-cols-4 gap-4" : "grid-cols-1"}`}
+              className={`grid ${isGuidedNotesMode || isPerforatedOmrMode ? "grid-cols-4 gap-4" : "grid-cols-1"}`}
             >
               <div
-                className={`${isGuidedNotesMode ? "col-span-3" : ""} ${
+                className={`${isGuidedNotesMode || isPerforatedOmrMode ? "col-span-3" : ""} ${
                   isBookletMode
                     ? `columns-2 gap-[12mm] border-l-0 ${
                         spacingDensity === "compact"
@@ -880,6 +896,42 @@ export default function A4PaperPreview({
                   </div>
                   <div className="text-[9px] text-purple-600/80 italic text-center border-t border-purple-200 pt-1">
                     VINH PHÁT Guided Study System
+                  </div>
+                </div>
+              )}
+
+              {/* Perforated Edge Tear-Off Quick-OMR Column */}
+              {isPerforatedOmrMode && (
+                <div className="col-span-1 border-l-2 border-dashed border-fuchsia-400 pl-3 flex flex-col justify-between py-2 text-[9px] text-fuchsia-950 bg-fuchsia-50/30 print:bg-white print:border-slate-500">
+                  <div>
+                    <div className="flex items-center justify-between border-b border-fuchsia-300 pb-1 mb-2 font-bold text-fuchsia-900">
+                      <span className="flex items-center gap-1">
+                        <Scissors className="w-3 h-3 text-fuchsia-600 rotate-90" />
+                        PHIẾU XÉ NỘP BÀI
+                      </span>
+                      <span className="font-mono text-[8px] bg-white px-1 border border-fuchsia-300 rounded">
+                        15-45P
+                      </span>
+                    </div>
+                    <div className="text-[8px] italic text-slate-500 mb-2">
+                      Họ tên: .................... SBD: ......
+                    </div>
+                    <div className="space-y-1">
+                      {questions.slice(0, 16).map((q, idx) => (
+                        <div key={q.id || idx} className="flex items-center justify-between px-1 py-0.5 rounded bg-white/80 border border-fuchsia-100 font-mono text-[8.5px]">
+                          <span className="font-bold text-fuchsia-900 w-4">{idx + 1}.</span>
+                          <span className="flex gap-1 text-slate-400">
+                            <span>(A)</span>
+                            <span>(B)</span>
+                            <span>(C)</span>
+                            <span>(D)</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-[8px] text-fuchsia-700 italic text-center border-t border-fuchsia-200 pt-1">
+                    Dọc đường nét đứt để nộp bài
                   </div>
                 </div>
               )}
