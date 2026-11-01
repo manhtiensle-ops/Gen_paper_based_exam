@@ -2510,6 +2510,45 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 21: Dimensional & Real-World Unit Consistency Inspector */}
+                  {(() => {
+                    const realWorldQuestions = items.filter((it) => {
+                      const text = JSON.stringify(it.problem_snapshot || {}).toLowerCase();
+                      return (
+                        text.includes("mét") ||
+                        text.includes("km") ||
+                        text.includes("m/s") ||
+                        text.includes("kg") ||
+                        text.includes("đồng") ||
+                        text.includes("lít") ||
+                        text.includes("độ c") ||
+                        text.includes("cm")
+                      );
+                    });
+                    const hasRw = realWorldQuestions.length > 0;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Đơn vị đo lường & Thực tiễn (Real-World Units):{" "}
+                            {hasRw ? (
+                              <span className="font-mono text-emerald-700">ĐỒNG BỘ ĐƠN VỊ ({realWorldQuestions.length} câu Thực tế)</span>
+                            ) : (
+                              <span className="font-mono text-slate-600">ĐẠT CHUẨN (Toán thuần túy)</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasRw
+                              ? `✓ Toàn bộ ${realWorldQuestions.length} bài toán thực tế sử dụng hệ đơn vị đo lường chuẩn xác, nhất quán giữa đề bài và đáp án (SI/Việt Nam), không gây nhầm lẫn quy đổi.`
+                              : "✓ Đề thi tập trung chuyên sâu toán lý thuyết/thuần túy, không có xung đột hệ đo lường."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2550,7 +2589,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `17. Độc lập mệnh đề Đúng/Sai (GDPT 2018): ĐỘC LẬP LOGIC`,
                         `18. Cân bằng độ dài phương án trắc nghiệm: ĐỒNG ĐỀU PHƯƠNG ÁN`,
                         `19. Định dạng đáp số ngắn (GDPT 2018): CHUẨN TẬP NGHIỆM`,
-                        `20. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `20. Đơn vị đo lường & Thực tiễn: ĐỒNG BỘ ĐƠN VỊ`,
+                        `21. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

@@ -12,6 +12,7 @@ import {
   RotateCcw,
   QrCode,
   Eye,
+  SunMedium,
   Stamp,
   BookOpen,
   Sparkles,
@@ -90,6 +91,7 @@ export default function A4PaperPreview({
   const [isPageQrFeedbackMode, setIsPageQrFeedbackMode] = useState<boolean>(false);
   const [isInvigilatorChecklistMode, setIsInvigilatorChecklistMode] = useState<boolean>(false);
   const [isPerforatedOmrMode, setIsPerforatedOmrMode] = useState<boolean>(false);
+  const [isHighContrastMode, setIsHighContrastMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -330,6 +332,21 @@ export default function A4PaperPreview({
             <Scissors className="w-3.5 h-3.5" />
             <span>{isPerforatedOmrMode ? "Ô Ly Xé Mép (Bật)" : "Ô Ly Xé Mép"}</span>
           </button>
+
+          {/* High-Contrast & Visual Accessibility Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsHighContrastMode(!isHighContrastMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isHighContrastMode
+                ? "bg-slate-900 border-black text-white font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Chế độ in siêu tương phản đen-trắng tuyệt đối, hỗ trợ thí sinh thị lực yếu hoặc khiếm thị"
+          >
+            <SunMedium className="w-3.5 h-3.5" />
+            <span>{isHighContrastMode ? "Tương Phản Cao (Bật)" : "Tương Phản Cao"}</span>
+          </button>
           {/* 1 col vs 2 col switch */}
           <button
             type="button"
@@ -544,7 +561,9 @@ export default function A4PaperPreview({
             minHeight: isBookletMode ? "210mm" : "297mm",
           }}
           className={`${
-            isEcoGrayscale || isEcoInkMode
+            isHighContrastMode
+              ? "bg-white text-black font-semibold contrast-200 border-2 border-black"
+              : isEcoGrayscale || isEcoInkMode
               ? "bg-white text-black grayscale print:grayscale border-slate-300"
               : isEyeCarePaper
               ? "bg-[#fbf7ee] text-stone-900 border-[#ebdcc4]"
@@ -552,7 +571,11 @@ export default function A4PaperPreview({
           } ${isEcoInkMode ? "shadow-none ring-0 border border-slate-200" : "paper-sheet-elevation"} rounded-sm ${
             isBookletMode ? "p-[12mm]" : "p-[20mm]"
           } font-serif ${
-            isLargePrintMode ? "text-[16px] leading-[1.9]" : "leading-relaxed"
+            isHighContrastMode
+              ? "text-[16.5px] leading-[2.0] tracking-wide"
+              : isLargePrintMode
+              ? "text-[16px] leading-[1.9]"
+              : "leading-relaxed"
           } transition-all duration-200 print:bg-white print:text-black print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative overflow-hidden`}
         >
           {/* Watermark Overlay (if configured) */}
