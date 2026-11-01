@@ -260,8 +260,8 @@ def compile_latex_to_preview(
         with open(tex_file, "w", encoding="utf-8") as f:
             f.write(tex_source)
 
-        # Chạy pdflatex (non-stop)
-        cmd = ["pdflatex", "-interaction=nonstopmode", "document.tex"]
+        # Chạy pdflatex (non-stop, no shell escape for security)
+        cmd = ["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "document.tex"]
         run_res = subprocess.run(cmd, cwd=temp_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace", timeout=30)
 
         pdf_file = os.path.join(temp_dir, "document.pdf")
@@ -323,7 +323,7 @@ def compile_raw_latex_to_preview(
         with open(tex_file, "w", encoding="utf-8") as f:
             f.write(latex_source)
 
-        cmd = ["pdflatex", "-interaction=nonstopmode", "document.tex"]
+        cmd = ["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "document.tex"]
         run_res = subprocess.run(cmd, cwd=temp_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
 
         pdf_file = os.path.join(temp_dir, "document.pdf")

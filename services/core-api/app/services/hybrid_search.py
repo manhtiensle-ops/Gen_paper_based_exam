@@ -13,15 +13,30 @@ def search_candidate_questions(
     structure_type: Optional[str] = None,
     reference_embedding: Optional[List[float]] = None,
     exclude_ids: Optional[List[UUID]] = None,
+    tenant_id: Optional[str] = None,
+    user_id: Optional[UUID] = None,
     limit: int = 10
 ) -> List[Question]:
     """
     Hybrid Search:
     - Filters deterministically by SQL attributes (is_verified = TRUE, grade, section_type, main_topic, difficulty)
+    - Enforces Multi-Tenancy isolation: only matches PUBLIC questions or questions owned by current tenant/user
     - If reference_embedding is provided, ranks results by Cosine Distance using pgvector (<=> operator).
     - Otherwise sorts by usage_count ASC to favor under-used questions.
     """
     query = db.query(Question).filter(Question.is_verified == True, Question.grade == grade)
+
+    # Multi-tenancy isolation filter
+    if user_id or tenant_id:
+        conditions = [Question.scope == "PUBLIC"]
+        if user_id:
+            conditions.append(Question.user_id == user_id)
+        if tenant_id:
+            conditions.append(Question.tenant_id == tenant_id)
+        from sqlalchemy import or_
+        query = query.filter(or_(*conditions))
+    else:
+        query = query.filter(Question.scope == "PUBLIC")
 
     if section_type:
         query = query.filter(Question.section_type == section_type)

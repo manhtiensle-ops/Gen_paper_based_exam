@@ -1,7 +1,23 @@
 import "./globals.css";
 import React from "react";
+import { Be_Vietnam_Pro, JetBrains_Mono } from "next/font/google";
 import UserNavBadge from "@/components/UserNavBadge";
 import HeaderNavLinks from "@/components/HeaderNavLinks";
+
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["vietnamese", "latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-be-vietnam-pro",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
 
 export const metadata = {
   metadataBase: new URL("https://dethi.ttgdvinhphat.com"),
@@ -67,19 +83,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi">
+    <html lang="vi" className={`${beVietnamPro.variable} ${jetbrainsMono.variable}`}>
       <head>
-        {/* Google Fonts: Be Vietnam Pro & JetBrains Mono chuẩn Việt hóa */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
-        />
         {/* JSON-LD Schema.org Structured Data */}
         <script
           type="application/ld+json"
@@ -109,7 +114,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+      <body className={`min-h-screen flex flex-col bg-slate-50 text-slate-800 ${beVietnamPro.variable} ${jetbrainsMono.variable}`}>
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40 shadow-2xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
             <a href="/" className="flex items-center space-x-3 group">

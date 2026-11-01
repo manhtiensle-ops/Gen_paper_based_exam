@@ -179,6 +179,8 @@ def generate_exam(
                 structure_type=structure_type,
                 reference_embedding=ref_embedding,
                 exclude_ids=used_ids,
+                tenant_id=current_user.tenant_id if current_user else None,
+                user_id=current_user.id if current_user else None,
                 limit=1
             )
 
@@ -228,7 +230,11 @@ def generate_exam(
 
 # Slot Swapping: Retrieve alternative questions for a given slot
 @router.post("/swap", response_model=List[QuestionResponse])
-def swap_question_candidates(payload: SwapQuestionRequest, db: Session = Depends(get_db)):
+def swap_question_candidates(
+    payload: SwapQuestionRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
     current_q = db.query(Question).filter(Question.id == payload.current_question_id).first()
     if not current_q:
         raise HTTPException(status_code=404, detail="Reference question not found")
@@ -248,6 +254,8 @@ def swap_question_candidates(payload: SwapQuestionRequest, db: Session = Depends
         structure_type=current_q.structure_type,
         reference_embedding=ref_embedding,
         exclude_ids=exclude_ids,
+        tenant_id=current_user.tenant_id if current_user else None,
+        user_id=current_user.id if current_user else None,
         limit=5
     )
     return candidates

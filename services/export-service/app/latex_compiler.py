@@ -257,13 +257,13 @@ def compile_exam_latex(exam_data: Dict[str, Any], layout_knobs: Optional[Dict[st
                     except Exception as e:
                         print(f"[Warning] Failed to fetch figure {fig_key}: {e}")
 
-        # Run pdflatex 2 passes to resolve \pageref{LastPage}
-        cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "exam.tex"]
+        # Run pdflatex 2 passes to resolve \pageref{LastPage} (with -no-shell-escape for security)
+        cmd = ["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "-halt-on-error", "exam.tex"]
         res1 = subprocess.run(cmd, cwd=td, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if res1.returncode != 0:
             print("[LaTeX Error]:", res1.stdout[-600:])
             # Fallback compile without halt-on-error
-            res1 = subprocess.run(["pdflatex", "-interaction=nonstopmode", "exam.tex"], cwd=td, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            res1 = subprocess.run(["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "exam.tex"], cwd=td, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         # Pass 2 for references
         subprocess.run(cmd, cwd=td, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
