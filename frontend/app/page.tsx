@@ -1451,10 +1451,10 @@ export default function Dashboard() {
                 className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none"
               >
                 <option value="">Mọi độ khó</option>
-                <option value="EASY">Cơ bản</option>
-                <option value="MEDIUM">Vận dụng</option>
+                <option value="EASY">Nhận biết (Dễ)</option>
+                <option value="MEDIUM">Thông hiểu - Vận dụng</option>
                 <option value="HARD">Vận dụng cao</option>
-                <option value="OLYMPIAD">Học sinh giỏi (Olympiad)</option>
+                <option value="OLYMPIAD">HSG / Chuyên sâu</option>
               </select>
 
               <select
@@ -1525,10 +1525,10 @@ export default function Dashboard() {
                         className={`text-xs font-bold px-2 py-0.5 rounded border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer ${getDifficultyBadgeStyle(q.difficulty)}`}
                         title="Bấm để đổi nhanh độ khó"
                       >
-                        <option value="EASY">Cơ bản (EASY)</option>
-                        <option value="MEDIUM">Vận dụng (MEDIUM)</option>
-                        <option value="HARD">Vận dụng cao (HARD)</option>
-                        <option value="OLYMPIAD">Học sinh giỏi (OLYMPIAD)</option>
+                        <option value="EASY">Nhận biết (Dễ)</option>
+                        <option value="MEDIUM">Thông hiểu - Vận dụng</option>
+                        <option value="HARD">Vận dụng cao</option>
+                        <option value="OLYMPIAD">HSG / Chuyên sâu</option>
                       </select>
                     ) : (
                       /* Badge tĩnh cho Khách vãng lai (GUEST) */
@@ -2115,10 +2115,10 @@ export default function Dashboard() {
                         onChange={(e) => handleQuickDifficultyChange(q.id, e.target.value)}
                         className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                       >
-                        <option value="EASY">Cơ bản (EASY)</option>
-                        <option value="MEDIUM">Vận dụng (MEDIUM)</option>
-                        <option value="HARD">Vận dụng cao (HARD)</option>
-                        <option value="OLYMPIAD">Học sinh giỏi (OLYMPIAD)</option>
+                        <option value="EASY">Nhận biết (Dễ)</option>
+                        <option value="MEDIUM">Thông hiểu - Vận dụng</option>
+                        <option value="HARD">Vận dụng cao</option>
+                        <option value="OLYMPIAD">HSG / Chuyên sâu</option>
                       </select>
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
                         q.is_verified
@@ -2289,10 +2289,10 @@ export default function Dashboard() {
                   className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">Tất cả Độ khó</option>
-                  <option value="EASY">Cơ bản (EASY)</option>
-                  <option value="MEDIUM">Vận dụng (MEDIUM)</option>
-                  <option value="HARD">Vận dụng cao (HARD)</option>
-                  <option value="OLYMPIAD">Học sinh giỏi (OLYMPIAD)</option>
+                  <option value="EASY">Nhận biết (Dễ)</option>
+                  <option value="MEDIUM">Thông hiểu - Vận dụng</option>
+                  <option value="HARD">Vận dụng cao</option>
+                  <option value="OLYMPIAD">HSG / Chuyên sâu</option>
                 </select>
 
                 <select
