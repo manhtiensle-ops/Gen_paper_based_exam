@@ -62,6 +62,7 @@ def get_questions_availability_stats(
 
 @router.get("", response_model=PaginatedQuestionsResponse)
 def list_questions(
+    search: Optional[str] = Query(None),
     grade: Optional[int] = Query(None),
     section_type: Optional[str] = Query(None),
     main_topic: Optional[str] = Query(None),
@@ -74,6 +75,17 @@ def list_questions(
     db: Session = Depends(get_db)
 ):
     query = db.query(Question)
+
+    # Tìm kiếm theo từ khóa nội dung đề, lời giải hoặc chủ đề
+    if search and search.strip():
+        search_term = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                Question.content_latex.ilike(search_term),
+                Question.solution_latex.ilike(search_term),
+                Question.main_topic.ilike(search_term)
+            )
+        )
 
     # Lọc theo Scope (Cá nhân, Đơn vị, Mẫu chuẩn Vinh Phát)
     if not current_user:

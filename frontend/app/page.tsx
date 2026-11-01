@@ -65,6 +65,8 @@ export default function Dashboard() {
   const [filterDifficulty, setFilterDifficulty] = useState("");
   const [filterSection, setFilterSection] = useState("");
   const [filterScope, setFilterScope] = useState<"ALL" | "MINE" | "TENANT" | "SYSTEM">("ALL");
+  const [filterSearch, setFilterSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // Source Exams State
   const [sourceExams, setSourceExams] = useState<any[]>([]);
@@ -264,6 +266,7 @@ export default function Dashboard() {
       const pageToFetch = pageOverride !== undefined ? pageOverride : currentPage;
       const effectiveScope = scopeOverride !== undefined ? scopeOverride : filterScope;
       const params = new URLSearchParams();
+      if (debouncedSearch && debouncedSearch.trim()) params.append("search", debouncedSearch.trim());
       if (filterTopic) params.append("main_topic", filterTopic);
       if (filterDifficulty) params.append("difficulty", filterDifficulty);
       if (filterSection) params.append("section_type", filterSection);
@@ -383,6 +386,13 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(filterSearch);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [filterSearch]);
+
+  useEffect(() => {
     fetchQuestions();
     fetchSourceExams();
     fetchBlueprints();
@@ -390,10 +400,10 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    // Reset về trang 1 khi người dùng đổi bộ lọc hoặc scope
+    // Reset về trang 1 khi người dùng đổi bộ lọc, scope hoặc từ khóa tìm kiếm
     setCurrentPage(1);
     fetchQuestions(1, filterScope);
-  }, [filterTopic, filterDifficulty, filterSection, filterScope, pageSize]);
+  }, [filterTopic, filterDifficulty, filterSection, filterScope, debouncedSearch, pageSize]);
 
   // Quick Preset Selection Handler from Creative Empty State
   const handleSelectPresetFromEmptyState = async (keyword: string) => {
@@ -1207,6 +1217,27 @@ export default function Dashboard() {
 
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* Search input with live debounce */}
+              <div className="relative flex-1 min-w-[220px] max-w-sm">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={filterSearch}
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                  placeholder="Tìm theo từ khóa đề bài, LaTeX, lời giải..."
+                  className="w-full pl-8 pr-7 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
+                />
+                {filterSearch && (
+                  <button
+                    onClick={() => setFilterSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    title="Xóa tìm kiếm"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
               <select
                 value={filterTopic}
                 onChange={(e) => setFilterTopic(e.target.value)}
