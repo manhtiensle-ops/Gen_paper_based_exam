@@ -93,7 +93,7 @@ export default function Dashboard() {
   const [blueprintModalOpen, setBlueprintModalOpen] = useState(false);
   const [examTitle, setExamTitle] = useState("Đề thi chọn HSG Toán 9 - Đề số 01");
   const [generating, setGenerating] = useState(false);
-  const [exporting, setExporting] = useState<"docx" | "pdf" | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
 
   // Handle tab navigation with URL Query string & Session persistence
   const handleTabChange = (tab: "generator" | "questions" | "ingestion" | "review" | "studio") => {
@@ -836,12 +836,13 @@ export default function Dashboard() {
   };
 
   // Export & Download Exam directly to Client (Option B - Direct Streaming)
-  const handleExport = (type: "docx" | "pdf") => {
+  const handleExport = (type: "docx" | "pdf", mode: "EXAM" | "RUBRIC" = "EXAM") => {
     if (!generatedExam) return;
-    setExporting(type);
+    const exportKey = `${type}_${mode}`;
+    setExporting(exportKey);
     
     // Direct browser download without alert
-    const downloadUrl = `/api/generator/exams/${generatedExam.id}/download?format=${type}`;
+    const downloadUrl = `/api/generator/exams/${generatedExam.id}/download?format=${type}&mode=${mode}`;
     const link = document.createElement("a");
     link.href = downloadUrl;
     link.setAttribute("download", "");
@@ -851,7 +852,7 @@ export default function Dashboard() {
 
     setTimeout(() => {
       setExporting(null);
-    }, 1500);
+    }, 2000);
   };
 
   // Toggle Verification State
@@ -1113,26 +1114,58 @@ export default function Dashboard() {
 
             {generatedExam && (
               <div className="pt-4 border-t border-slate-200/80 space-y-3">
-                <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Xuất bản đề thi (Word & PDF)
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleExport("docx")}
-                    disabled={exporting !== null}
-                    className="py-2 px-2.5 bg-blue-50 border border-blue-200/80 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 flex items-center justify-center space-x-1 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span className="truncate">{exporting === "docx" ? "Đang xuất..." : "Tải Word (.docx)"}</span>
-                  </button>
-                  <button
-                    onClick={() => handleExport("pdf")}
-                    disabled={exporting !== null}
-                    className="py-2 px-2.5 bg-rose-50 border border-rose-200/80 text-rose-700 rounded-xl text-xs font-bold hover:bg-rose-100 flex items-center justify-center space-x-1 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span className="truncate">{exporting === "pdf" ? "Đang xuất..." : "Tải PDF In ấn"}</span>
-                  </button>
+                {/* 1. Đề thi học sinh */}
+                <div className="space-y-1.5">
+                  <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Xuất bản Đề thi (Học sinh)
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleExport("docx", "EXAM")}
+                      disabled={exporting !== null}
+                      className="py-2 px-2.5 bg-blue-50 border border-blue-200/80 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 flex items-center justify-center space-x-1 cursor-pointer transition-all disabled:opacity-60"
+                      title="Tải file Word .docx câu hỏi không kèm đáp án"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span className="truncate">{exporting === "docx_EXAM" ? "Đang xuất..." : "Word Đề thi (.docx)"}</span>
+                    </button>
+                    <button
+                      onClick={() => handleExport("pdf", "EXAM")}
+                      disabled={exporting !== null}
+                      className="py-2 px-2.5 bg-rose-50 border border-rose-200/80 text-rose-700 rounded-xl text-xs font-bold hover:bg-rose-100 flex items-center justify-center space-x-1 cursor-pointer transition-all disabled:opacity-60"
+                      title="Tải file PDF câu hỏi sẵn sàng in ấn A4"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span className="truncate">{exporting === "pdf_EXAM" ? "Đang xuất..." : "PDF Đề thi In ấn"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Hướng dẫn chấm & Barem */}
+                <div className="space-y-1.5 pt-1">
+                  <span className="block text-[11px] font-bold text-emerald-600 uppercase tracking-wider flex items-center space-x-1">
+                    <span>Hướng dẫn chấm & Barem điểm</span>
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleExport("docx", "RUBRIC")}
+                      disabled={exporting !== null}
+                      className="py-2 px-2.5 bg-emerald-50 border border-emerald-200/80 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 flex items-center justify-center space-x-1 cursor-pointer transition-all disabled:opacity-60"
+                      title="Tải file Word .docx kèm lời giải chi tiết và barem điểm"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span className="truncate">{exporting === "docx_RUBRIC" ? "Đang xuất..." : "Word Barem (.docx)"}</span>
+                    </button>
+                    <button
+                      onClick={() => handleExport("pdf", "RUBRIC")}
+                      disabled={exporting !== null}
+                      className="py-2 px-2.5 bg-amber-50 border border-amber-200/80 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-100 flex items-center justify-center space-x-1 cursor-pointer transition-all disabled:opacity-60"
+                      title="Tải file PDF Hướng dẫn chấm và barem điểm 0.25đ"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span className="truncate">{exporting === "pdf_RUBRIC" ? "Đang xuất..." : "PDF Đáp án & Barem"}</span>
+                    </button>
+                  </div>
                 </div>
 
                 <button
