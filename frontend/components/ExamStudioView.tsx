@@ -36,7 +36,9 @@ import {
   Code2,
   Play,
   Bot,
-  ChevronDown
+  ChevronDown,
+  HelpCircle,
+  Command
 } from "lucide-react";
 
 interface Props {
@@ -164,6 +166,7 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
 
   // AI Multimodal Drawer State
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [showShortcutModal, setShowShortcutModal] = useState(false);
   const [agentInput, setAgentInput] = useState("");
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
@@ -495,7 +498,7 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
     }
   };
 
-  // Global Shortcuts: Ctrl + S (compile), Ctrl + K (toggle AI Drawer)
+  // Global Shortcuts: Ctrl + S (compile), Ctrl + K (toggle AI Drawer), Ctrl + P (export PDF), Ctrl + E (export Word)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -510,10 +513,18 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
         e.preventDefault();
         setAiDrawerOpen((prev) => !prev);
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        handleDownload("pdf");
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        handleDownload("docx");
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [sidebarTab, rawLatexCode, activeMode, compiling]);
+  }, [sidebarTab, rawLatexCode, activeMode, compiling, items, layoutKnobs]);
 
   // Reorder Item
   const moveItem = async (index: number, direction: "up" | "down") => {
@@ -812,20 +823,31 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
             <button
               onClick={() => handleDownload("docx")}
               className="px-3 py-1 text-slate-700 hover:bg-white hover:text-blue-700 text-xs font-extrabold rounded-xl transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer"
-              title="Xuất file Word OMML chuẩn Bộ GD&ĐT (không vỡ bảng, sửa công thức tự nhiên)"
+              title="Xuất file Word OMML chuẩn Bộ GD&ĐT (Phím tắt: Ctrl+E)"
             >
               <Download className="w-3.5 h-3.5 text-blue-600" />
               <span>Word .docx</span>
+              <kbd className="text-[9px] bg-slate-200 text-slate-600 px-1 py-0.2 rounded font-mono hidden sm:inline">⌘E</kbd>
             </button>
             <button
               onClick={() => handleDownload("pdf")}
               className="px-3 py-1 text-slate-700 hover:bg-white hover:text-rose-700 text-xs font-extrabold rounded-xl transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer"
-              title="Tải bản in PDF TeX Live gốc"
+              title="Tải bản in PDF TeX Live gốc (Phím tắt: Ctrl+P)"
             >
               <Download className="w-3.5 h-3.5 text-rose-600" />
               <span>PDF In A4</span>
+              <kbd className="text-[9px] bg-slate-200 text-slate-600 px-1 py-0.2 rounded font-mono hidden sm:inline">⌘P</kbd>
             </button>
           </div>
+
+          {/* Shortcut Help Button */}
+          <button
+            onClick={() => setShowShortcutModal(true)}
+            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white/80 rounded-xl transition-all border border-slate-200/80 shadow-2xs cursor-pointer"
+            title="Xem danh sách phím tắt hữu ích"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
@@ -1915,6 +1937,53 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
           setEditingSlotIndex(null);
         }}
       />
+      {/* SHORTCUTS CHEATSHEET MODAL */}
+      {showShortcutModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Command className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-bold text-slate-800 text-sm">Phím Tắt Nhanh Trong Exam Studio</h3>
+              </div>
+              <button
+                onClick={() => setShowShortcutModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-slate-700 font-medium">Biên dịch mã LaTeX / Render Live</span>
+                <kbd className="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-800 shadow-2xs">Ctrl + S</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-slate-700 font-medium">Bật / Tắt Ngăn Trợ Lý AI</span>
+                <kbd className="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-800 shadow-2xs">Ctrl + K</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-slate-700 font-medium">Tải Bản In PDF TeX Live Gốc</span>
+                <kbd className="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-800 shadow-2xs">Ctrl + P</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-slate-700 font-medium">Xuất File Word OMML Chuẩn Bộ GD&ĐT</span>
+                <kbd className="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-800 shadow-2xs">Ctrl + E</kbd>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setShowShortcutModal(false)}
+                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
+              >
+                Đã Hiểu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

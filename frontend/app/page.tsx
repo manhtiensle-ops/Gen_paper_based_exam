@@ -5,6 +5,7 @@ import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
 import ExamStudioView from "@/components/ExamStudioView";
 import BlueprintBuilderModal from "@/components/BlueprintBuilderModal";
+import ExamMatrixHeatmap from "@/components/ExamMatrixHeatmap";
 import CreativeEmptyState from "@/components/CreativeEmptyState";
 import ExamWorkspaceRail from "@/components/ExamWorkspaceRail";
 import {
@@ -1192,6 +1193,14 @@ export default function Dashboard() {
                     <Sliders className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Xem & Sửa chi tiết ma trận</span>
                   </button>
+
+                  {/* Bản đồ nhiệt ma trận kiến thức (Exam Matrix Heatmap) */}
+                  {selectedBlueprintId && (
+                    <ExamMatrixHeatmap
+                      blueprint={blueprints.find((b) => b.id === selectedBlueprintId) || null}
+                      className="mt-2"
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-2">

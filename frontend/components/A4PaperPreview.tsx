@@ -9,7 +9,8 @@ import {
   Columns,
   Maximize2,
   FileDown,
-  RotateCcw
+  RotateCcw,
+  QrCode
 } from "lucide-react";
 
 interface QuestionItem {
@@ -181,9 +182,15 @@ export default function A4PaperPreview({
               <p className="italic text-[10px] text-slate-600 mt-0.5">
                 Thời gian làm bài: {durationMinutes} phút (không kể thời gian phát đề)
               </p>
-              <p className="font-bold text-slate-900 mt-1 text-[11px]">
-                Mã đề: <span className="px-1.5 py-0.5 border border-slate-800 rounded font-mono">{examCode}</span>
-              </p>
+              <div className="flex items-center justify-between mt-1">
+                <p className="font-bold text-slate-900 text-[11px]">
+                  Mã đề: <span className="px-1.5 py-0.5 border border-slate-800 rounded font-mono">{examCode}</span>
+                </p>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-[9px] text-slate-600 print:border-slate-400">
+                  <QrCode className="w-3.5 h-3.5 text-slate-800" />
+                  <span className="font-mono">dethi.ttgdvinhphat.com</span>
+                </div>
+              </div>
             </div>
           </div>
 

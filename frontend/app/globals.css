@@ -128,4 +128,30 @@ button:active:not(:disabled), .btn-tactile:active {
   background: rgba(148, 163, 184, 1);
 }
 
+/* High-Fidelity Paper Print Styles (A4 Standard) */
+@page {
+  size: A4 portrait;
+  margin: 15mm 15mm 20mm 15mm;
+}
+
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Ẩn triệt để thanh header, footer, thanh công cụ khi in trực tiếp */
+  header, footer, nav, .print\:hidden {
+    display: none !important;
+  }
+
+  /* Tránh ngắt trang bừa bãi giữa chừng một câu hỏi trắc nghiệm/tự luận */
+  .break-inside-avoid, [data-question-item] {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
+
 
