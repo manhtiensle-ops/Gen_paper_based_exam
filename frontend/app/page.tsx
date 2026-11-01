@@ -68,6 +68,12 @@ export default function Dashboard() {
   const [filterSearch, setFilterSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  // Review Queue State (Phê duyệt và chuẩn hóa câu hỏi Ingest)
+  const [reviewQuestions, setReviewQuestions] = useState<any[]>([]);
+  const [loadingReview, setLoadingReview] = useState<boolean>(false);
+  const [pendingReviewCount, setPendingReviewCount] = useState<number>(0);
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<"pending" | "approved" | "all">("pending");
+
   // Source Exams State
   const [sourceExams, setSourceExams] = useState<any[]>([]);
   const [uploadTitle, setUploadTitle] = useState("");
@@ -301,6 +307,50 @@ export default function Dashboard() {
     }
   };
 
+  // Fetch pending review count for badge
+  const fetchPendingCount = async () => {
+    try {
+      const res = await fetch("/api/questions?is_verified=false&page_size=1");
+      if (res.ok) {
+        const data = await res.json();
+        setPendingReviewCount(data.total ?? 0);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Fetch Review Queue Questions with Filter (Pending / Approved / All)
+  const fetchReviewQuestions = async () => {
+    setLoadingReview(true);
+    try {
+      const params = new URLSearchParams();
+      if (reviewStatusFilter === "pending") params.append("is_verified", "false");
+      else if (reviewStatusFilter === "approved") params.append("is_verified", "true");
+      params.append("page_size", "50");
+
+      const res = await fetch(`/api/questions?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.items)) {
+          setReviewQuestions(data.items);
+          if (reviewStatusFilter === "pending") {
+            setPendingReviewCount(data.total || data.items.length);
+          }
+        } else if (Array.isArray(data)) {
+          setReviewQuestions(data);
+          if (reviewStatusFilter === "pending") {
+            setPendingReviewCount(data.length);
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingReview(false);
+    }
+  };
+
   // Fetch Source Exams with Scope (Chỉ xem đề của chính tài khoản)
   const fetchSourceExams = async () => {
     try {
@@ -402,7 +452,14 @@ export default function Dashboard() {
     fetchSourceExams();
     fetchBlueprints();
     fetchSavedExamsAndFolders();
+    fetchPendingCount();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "review") {
+      fetchReviewQuestions();
+    }
+  }, [activeTab, reviewStatusFilter]);
 
   useEffect(() => {
     // Reset về trang 1 khi người dùng đổi bộ lọc, scope hoặc từ khóa tìm kiếm
@@ -806,6 +863,8 @@ export default function Dashboard() {
         body: JSON.stringify({ is_verified: !currentStatus })
       });
       if (res.ok) {
+        fetchReviewQuestions();
+        fetchPendingCount();
         fetchQuestions();
       }
     } catch (e) {
@@ -914,6 +973,11 @@ export default function Dashboard() {
         >
           <ShieldCheck className="w-4 h-4 text-indigo-600" />
           <span>Hàng đợi kiểm duyệt</span>
+          {pendingReviewCount > 0 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-mono font-bold animate-pulse">
+              {pendingReviewCount}
+            </span>
+          )}
         </button>
 
         <button
@@ -1781,75 +1845,151 @@ export default function Dashboard() {
       {/* TAB 4: REVIEW QUEUE */}
       {activeTab === "review" && (
         <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm space-y-6 max-w-5xl mx-auto">
-          <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-600" />
-            <span>Hàng Đợi Kiểm Duyệt Câu Hỏi Mới Ingest</span>
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <ShieldCheck className="w-5 h-5 text-indigo-600" />
+                <span>Hàng Đợi Kiểm Duyệt & Chuẩn Hóa Câu Hỏi</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Thẩm định công thức toán học, cấu trúc và phân loại độ khó trước khi đưa vào Ngân hàng chính thức.
+              </p>
+            </div>
 
-          <div className="space-y-4">
-            {questions.map((q) => (
-              <div
-                key={q.id}
-                className="p-5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 space-y-4 shadow-sm"
+            {/* Sub-tabs / Filter Buttons */}
+            <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl">
+              <button
+                onClick={() => setReviewStatusFilter("pending")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                  reviewStatusFilter === "pending"
+                    ? "bg-white text-indigo-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800">
-                      {TOPIC_VI_MAP[q.main_topic] || q.main_topic}
-                    </span>
-                    <select
-                      value={q.difficulty}
-                      onChange={(e) => handleQuickDifficultyChange(q.id, e.target.value)}
-                      className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                    >
-                      <option value="EASY">Cơ bản (EASY)</option>
-                      <option value="MEDIUM">Vận dụng (MEDIUM)</option>
-                      <option value="HARD">Vận dụng cao (HARD)</option>
-                      <option value="OLYMPIAD">Học sinh giỏi (OLYMPIAD)</option>
-                    </select>
-                    {q.user_difficulty && (
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                        {q.user_difficulty}
-                      </span>
-                    )}
-                  </div>
+                <span>Chờ kiểm duyệt</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                  pendingReviewCount > 0 ? "bg-amber-100 text-amber-800 font-bold" : "bg-slate-200 text-slate-700"
+                }`}>
+                  {pendingReviewCount}
+                </span>
+              </button>
 
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setEditingQuestion(q)}
-                      className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 transition-all flex items-center space-x-1"
-                      title="Sửa nội dung hoặc lời giải"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Sửa</span>
-                    </button>
-                    <button
-                      onClick={() => handleToggleVerify(q.id, q.is_verified)}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1 ${
-                        q.is_verified
-                          ? "bg-rose-50 text-rose-700 hover:bg-rose-100"
-                          : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                      }`}
-                    >
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      <span>{q.is_verified ? "Thu hồi duyệt" : "Phê duyệt đưa vào Ngân hàng"}</span>
-                    </button>
-                  </div>
-                </div>
+              <button
+                onClick={() => setReviewStatusFilter("approved")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  reviewStatusFilter === "approved"
+                    ? "bg-white text-indigo-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <span>Đã phê duyệt</span>
+              </button>
 
-                <div className="text-sm">
-                  {renderQuestionContent(q)}
-                </div>
-
-                {q.solution_latex && (
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-xs space-y-1">
-                    <span className="font-bold text-slate-700">Lời giải chi tiết:</span>
-                    <MathRenderer content={q.solution_latex} />
-                  </div>
-                )}
-              </div>
-            ))}
+              <button
+                onClick={() => setReviewStatusFilter("all")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  reviewStatusFilter === "all"
+                    ? "bg-white text-indigo-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <span>Tất cả</span>
+              </button>
+            </div>
           </div>
+
+          {loadingReview ? (
+            <div className="py-16 text-center space-y-3">
+              <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto" />
+              <p className="text-xs text-slate-500 font-medium">Đang tải danh sách câu hỏi kiểm duyệt...</p>
+            </div>
+          ) : reviewQuestions.length === 0 ? (
+            <div className="text-center py-16 space-y-3 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto" />
+              <h3 className="text-base font-bold text-slate-800">
+                {reviewStatusFilter === "pending"
+                  ? "Tuyệt vời! Không còn câu hỏi nào đang chờ duyệt"
+                  : "Không tìm thấy câu hỏi nào phù hợp"}
+              </h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                {reviewStatusFilter === "pending"
+                  ? "Toàn bộ tài liệu số hóa đã được thẩm định chất lượng và sẵn sàng đưa vào đề thi."
+                  : "Vui lòng chọn bộ lọc khác hoặc tải thêm tài liệu đề thi mới vào hệ thống."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {reviewQuestions.map((q) => (
+                <div
+                  key={q.id}
+                  className="p-5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 space-y-4 shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800">
+                        {TOPIC_VI_MAP[q.main_topic] || q.main_topic}
+                      </span>
+                      <select
+                        value={q.difficulty}
+                        onChange={(e) => handleQuickDifficultyChange(q.id, e.target.value)}
+                        className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                      >
+                        <option value="EASY">Cơ bản (EASY)</option>
+                        <option value="MEDIUM">Vận dụng (MEDIUM)</option>
+                        <option value="HARD">Vận dụng cao (HARD)</option>
+                        <option value="OLYMPIAD">Học sinh giỏi (OLYMPIAD)</option>
+                      </select>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                        q.is_verified
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}>
+                        {q.is_verified ? "Đã duyệt" : "Chờ duyệt"}
+                      </span>
+                      {q.user_difficulty && (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                          {q.user_difficulty}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setEditingQuestion(q)}
+                        className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 transition-all flex items-center space-x-1"
+                        title="Sửa nội dung hoặc lời giải"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Sửa</span>
+                      </button>
+                      <button
+                        onClick={() => handleToggleVerify(q.id, q.is_verified)}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1 ${
+                          q.is_verified
+                            ? "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                            : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                        }`}
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        <span>{q.is_verified ? "Thu hồi duyệt" : "Phê duyệt đưa vào Ngân hàng"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="text-sm">
+                    {renderQuestionContent(q)}
+                  </div>
+
+                  {q.solution_latex && (
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-xs space-y-1">
+                      <span className="font-bold text-slate-700">Lời giải chi tiết:</span>
+                      <MathRenderer content={q.solution_latex} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
