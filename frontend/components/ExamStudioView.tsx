@@ -1276,12 +1276,85 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                     className="w-full accent-indigo-600 cursor-pointer"
                   />
                 </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-600 mb-1">
+                    <span>Khoảng cách công thức toán:</span>
+                    <span className="font-bold text-slate-900">{layoutKnobs.math_skip_pt}pt</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="2"
+                    max="12"
+                    step="1"
+                    value={layoutKnobs.math_skip_pt}
+                    onChange={(e) => {
+                      const updated = { ...layoutKnobs, math_skip_pt: parseInt(e.target.value) };
+                      setLayoutKnobs(updated);
+                    }}
+                    onMouseUp={() => compileLivePreview(items, layoutKnobs, activeMode)}
+                    className="w-full accent-indigo-600 cursor-pointer"
+                  />
+                </div>
               </div>
 
               {/* Margins */}
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                <h4 className="font-bold text-slate-800">Căn lề trang in A4 (cm)</h4>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-800">Căn lề trang in A4 (cm)</h4>
+                  <span className="text-[10px] text-slate-400 font-medium">Khổ A4 tiêu chuẩn</span>
+                </div>
+
+                {/* Nút Preset Căn Lề Chuẩn */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = {
+                        ...layoutKnobs,
+                        margin_top_cm: 2.0,
+                        margin_bottom_cm: 2.0,
+                        margin_left_cm: 3.0,
+                        margin_right_cm: 1.5,
+                      };
+                      setLayoutKnobs(updated);
+                      compileLivePreview(items, updated, activeMode);
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      layoutKnobs.margin_left_cm === 3.0 && layoutKnobs.margin_top_cm === 2.0
+                        ? "bg-indigo-50 border-indigo-400 text-indigo-900 shadow-xs ring-1 ring-indigo-200"
+                        : "bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span className="font-bold text-xs block text-slate-900">📋 Chuẩn NĐ 30/2020</span>
+                    <span className="text-[10px] text-slate-500 block mt-0.5">Lề trái 3cm đóng ghim</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = {
+                        ...layoutKnobs,
+                        margin_top_cm: 1.5,
+                        margin_bottom_cm: 1.5,
+                        margin_left_cm: 2.0,
+                        margin_right_cm: 1.5,
+                      };
+                      setLayoutKnobs(updated);
+                      compileLivePreview(items, updated, activeMode);
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      layoutKnobs.margin_left_cm === 2.0 && layoutKnobs.margin_top_cm === 1.5
+                        ? "bg-indigo-50 border-indigo-400 text-indigo-900 shadow-xs ring-1 ring-indigo-200"
+                        : "bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span className="font-bold text-xs block text-slate-900">📄 Tiết Kiệm Trang</span>
+                    <span className="text-[10px] text-slate-500 block mt-0.5">Lề 1.5 - 2cm gọn trang</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
                   <div>
                     <label className="text-slate-600 block mb-1">Lề Trên:</label>
                     <input
