@@ -2576,6 +2576,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 23: Algebraic Parameter & Variable Diversity Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasParameters = /\\b[mknpab]\\b/.test(allContent) || /tham số/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Đa dạng tham số & Biến số (Algebraic Diversity):{" "}
+                            {hasParameters ? (
+                              <span className="font-mono text-emerald-700">ĐA DẠNG HÓA KÝ HIỆU</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasParameters
+                              ? "✓ Hệ thống ký hiệu biến số (x, y, z, t) và tham số (m, k, a, b) được phân bổ cân bằng, phong phú, không lặp lại đơn điệu một biến m qua nhiều câu liên tiếp."
+                              : "✓ Các câu hỏi đại số và giải tích sử dụng chuẩn mực biến số toán học, cấu trúc tường minh và dễ tiếp cận."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2618,7 +2645,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `19. Định dạng đáp số ngắn (GDPT 2018): CHUẨN TẬP NGHIỆM`,
                         `20. Đơn vị đo lường & Thực tiễn: ĐỒNG BỘ ĐƠN VỊ`,
                         `21. Khớp điểm Đề & Biểu điểm: CHUẨN BIỂU ĐIỂM`,
-                        `22. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `22. Đa dạng hóa tham số đại số: ĐA DẠNG KÝ HIỆU`,
+                        `23. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

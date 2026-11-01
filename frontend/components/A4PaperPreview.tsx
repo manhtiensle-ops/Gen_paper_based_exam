@@ -14,6 +14,7 @@ import {
   Eye,
   SunMedium,
   GraduationCap,
+  Minimize2,
   Stamp,
   BookOpen,
   Sparkles,
@@ -94,6 +95,7 @@ export default function A4PaperPreview({
   const [isPerforatedOmrMode, setIsPerforatedOmrMode] = useState<boolean>(false);
   const [isHighContrastMode, setIsHighContrastMode] = useState<boolean>(false);
   const [isCheatSheetFooterMode, setIsCheatSheetFooterMode] = useState<boolean>(false);
+  const [isUltraCompactEconomyMode, setIsUltraCompactEconomyMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -364,6 +366,21 @@ export default function A4PaperPreview({
             <GraduationCap className="w-3.5 h-3.5" />
             <span>{isCheatSheetFooterMode ? "Sổ Tay Chân Trang (Bật)" : "Sổ Tay Chân Trang"}</span>
           </button>
+
+          {/* Ultra-Compact Split-Column Economy Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsUltraCompactEconomyMode(!isUltraCompactEconomyMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isUltraCompactEconomyMode
+                ? "bg-emerald-100 border-emerald-300 text-emerald-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Dàn trang 2 cột siêu nén tiết kiệm giấy in tối đa cho các kỳ thi quy mô lớn hàng nghìn thí sinh"
+          >
+            <Minimize2 className="w-3.5 h-3.5" />
+            <span>{isUltraCompactEconomyMode ? "Siêu Nén 2 Cột (Bật)" : "Siêu Nén 2 Cột"}</span>
+          </button>
           {/* 1 col vs 2 col switch */}
           <button
             type="button"
@@ -586,7 +603,7 @@ export default function A4PaperPreview({
               ? "bg-[#fbf7ee] text-stone-900 border-[#ebdcc4]"
               : "bg-white text-slate-900"
           } ${isEcoInkMode ? "shadow-none ring-0 border border-slate-200" : "paper-sheet-elevation"} rounded-sm ${
-            isBookletMode ? "p-[12mm]" : "p-[20mm]"
+            isUltraCompactEconomyMode ? "p-[10mm]" : isBookletMode ? "p-[12mm]" : "p-[20mm]"
           } font-serif ${
             isHighContrastMode
               ? "text-[16.5px] leading-[2.0] tracking-wide"
@@ -752,7 +769,9 @@ export default function A4PaperPreview({
             >
               <div
                 className={`${isGuidedNotesMode || isPerforatedOmrMode ? "col-span-3" : ""} ${
-                  isBookletMode
+                  isUltraCompactEconomyMode
+                    ? "columns-2 gap-[5mm] text-[10px] leading-tight print:text-[9.5pt] print:leading-snug"
+                    : isBookletMode
                     ? `columns-2 gap-[12mm] border-l-0 ${
                         spacingDensity === "compact"
                           ? "text-[10px] leading-tight"
