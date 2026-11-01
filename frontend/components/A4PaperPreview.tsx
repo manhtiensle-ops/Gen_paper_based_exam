@@ -15,6 +15,7 @@ import {
   SunMedium,
   GraduationCap,
   MessageSquare,
+  Grid3X3,
   Minimize2,
   Stamp,
   BookOpen,
@@ -98,6 +99,7 @@ export default function A4PaperPreview({
   const [isCheatSheetFooterMode, setIsCheatSheetFooterMode] = useState<boolean>(false);
   const [isUltraCompactEconomyMode, setIsUltraCompactEconomyMode] = useState<boolean>(false);
   const [isExaminerFeedbackMode, setIsExaminerFeedbackMode] = useState<boolean>(false);
+  const [isScratchpadGridMode, setIsScratchpadGridMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -397,6 +399,21 @@ export default function A4PaperPreview({
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span>{isExaminerFeedbackMode ? "Khung Giám Khảo (Bật)" : "Khung Giám Khảo"}</span>
+          </button>
+
+          {/* Scratchpad Grid-Sheet Pocket Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsScratchpadGridMode(!isScratchpadGridMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isScratchpadGridMode
+                ? "bg-sky-100 border-sky-300 text-sky-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp lưới ô ly mờ và chấm tọa độ nháp trực tiếp trên đề thi A4 giúp vẽ đồ thị nhanh"
+          >
+            <Grid3X3 className="w-3.5 h-3.5" />
+            <span>{isScratchpadGridMode ? "Lưới Ô Ly Nháp (Bật)" : "Lưới Ô Ly Nháp"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1140,6 +1157,32 @@ export default function A4PaperPreview({
                   <div className="text-center text-[9.5px] text-slate-600 font-medium">
                     (Ký và ghi rõ họ tên giám khảo)
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Scratchpad Grid-Sheet Pocket Print Block */}
+          {isScratchpadGridMode && (
+            <div className="mt-8 pt-4 border-t-2 border-dashed border-sky-400 p-3 rounded-lg bg-sky-50/50 text-slate-800 text-xs font-sans print:bg-white print:border-slate-500">
+              <div className="flex items-center justify-between border-b border-sky-200 pb-1 mb-2">
+                <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-sky-950 text-[11px]">
+                  <Grid3X3 className="w-4 h-4 text-sky-700" />
+                  <span>VÙNG SOẠN NHÁP &amp; PHÁC THẢO TỌA ĐỘ Ô LY (SCRATCHPAD GRID)</span>
+                </div>
+                <span className="text-[9px] text-sky-700 italic">
+                  Lưới tọa độ 5mm • Vẽ đồ thị hàm số &amp; hình học không gian
+                </span>
+              </div>
+              <div
+                className="h-28 w-full rounded border border-sky-300 bg-white relative overflow-hidden"
+                style={{
+                  backgroundImage: "radial-gradient(#0284c7 0.75px, transparent 0.75px)",
+                  backgroundSize: "6mm 6mm",
+                }}
+              >
+                <div className="absolute top-1 left-2 text-[9px] text-slate-300 select-none">
+                  (O, x, y) Phác thảo nháp đồ thị &amp; hình vẽ
                 </div>
               </div>
             </div>

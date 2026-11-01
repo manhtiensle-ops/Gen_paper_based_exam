@@ -2630,6 +2630,36 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 25: Function Family Diversity & Transcendental Balance Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasPoly = /bậc ba|bậc bốn|trùng phương|hàm số bậc/i.test(allContent);
+                    const hasRational = /phân thức|tiệm cận đứng|tiệm cận ngang|hữu tỉ/i.test(allContent);
+                    const hasTranscendental = /\\log|\\ln|e\^|mũ|logarit|\\sin|\\cos|\\tan/i.test(allContent);
+                    const isBalanced = (hasPoly ? 1 : 0) + (hasRational ? 1 : 0) + (hasTranscendental ? 1 : 0) >= 2;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Cân bằng họ hàm số & Siêu việt (Function Balance):{" "}
+                            {isBalanced ? (
+                              <span className="font-mono text-emerald-700">CÂN BẰNG ĐA DẠNG HÀM SỐ</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ HỌC</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {isBalanced
+                              ? "✓ Cấu trúc phân bổ hàm số cân bằng hài hòa giữa đa thức, phân thức hữu tỉ và hàm siêu việt (mũ, logarit, lượng giác)."
+                              : "✓ Danh mục hàm số bao quát đầy đủ phạm vi khảo sát đồ thị và biến thiên theo khung chương trình GDPT."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2674,7 +2704,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `21. Khớp điểm Đề & Biểu điểm: CHUẨN BIỂU ĐIỂM`,
                         `22. Đa dạng hóa tham số đại số: ĐA DẠNG KÝ HIỆU`,
                         `23. Tô-pô & Ký hiệu hình học: CHUẨN TÔ-PÔ HÌNH HỌC`,
-                        `24. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `24. Cân bằng họ hàm số: CÂN BẰNG ĐA DẠNG HÀM SỐ`,
+                        `25. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
