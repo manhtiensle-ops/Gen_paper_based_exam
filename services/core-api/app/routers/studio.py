@@ -125,8 +125,8 @@ def sync_exam_slots_to_items(exam_id: UUID, force: bool = False, db: Session = D
 def get_exam_items(exam_id: UUID, db: Session = Depends(get_db)):
     items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
     if not items:
-        # Tự động sync nếu chưa có
-        return sync_exam_slots_to_items(exam_id, db)
+        # Tự động sync nếu chưa có (truyền đúng keyword args để không bị gán db vào tham số force)
+        return sync_exam_slots_to_items(exam_id=exam_id, force=False, db=db)
     return items
 
 

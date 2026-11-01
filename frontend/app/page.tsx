@@ -1057,7 +1057,12 @@ export default function Dashboard() {
                 </div>
 
                 <button
-                  onClick={() => handleTabChange("studio")}
+                  onClick={() => {
+                    if (generatedExam?.id) {
+                      saveWorkspaceSession("studio", generatedExam.id, generatedExam);
+                    }
+                    handleTabChange("studio");
+                  }}
                   className="w-full mt-2 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-md transition-all cursor-pointer"
                 >
                   <Scale className="w-4 h-4" />
@@ -1964,21 +1969,35 @@ export default function Dashboard() {
                   <p className="text-xs">Đang tìm các câu hỏi khả dụng từ kho...</p>
                 </div>
               ) : swapCandidates.length === 0 ? (
-                <div className="py-16 text-center text-slate-400 text-xs space-y-2">
-                  <p>Không tìm thấy câu hỏi phù hợp với bộ lọc hiện tại.</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSwapFilterTopic("ALL");
-                      setSwapFilterDifficulty("ALL");
-                      setSwapFilterSection("ALL");
-                      setSwapSearchQuery("");
-                      fetchSwapCandidates({ main_topic: "ALL", difficulty: "ALL", section_type: "ALL", keyword: "" });
-                    }}
-                    className="text-indigo-600 font-bold hover:underline cursor-pointer"
-                  >
-                    Xóa bộ lọc để xem toàn bộ câu hỏi
-                  </button>
+                <div className="py-16 text-center text-slate-400 text-xs space-y-3">
+                  <p className="font-semibold text-slate-600">Không tìm thấy câu hỏi phù hợp với bộ lọc hiện tại.</p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                    {swapMode === "smart" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSwapMode("bank");
+                          fetchSwapCandidates({ mode: "bank" });
+                        }}
+                        className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg font-bold border border-indigo-200 transition-all cursor-pointer"
+                      >
+                        Chuyển sang Duyệt Toàn Bộ Ngân Hàng (1983 câu)
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSwapFilterTopic("ALL");
+                        setSwapFilterDifficulty("ALL");
+                        setSwapFilterSection("ALL");
+                        setSwapSearchQuery("");
+                        fetchSwapCandidates({ main_topic: "ALL", difficulty: "ALL", section_type: "ALL", keyword: "" });
+                      }}
+                      className="px-3 py-1.5 text-slate-500 hover:text-slate-800 font-bold hover:underline cursor-pointer"
+                    >
+                      Xóa bộ lọc để xem toàn bộ
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
