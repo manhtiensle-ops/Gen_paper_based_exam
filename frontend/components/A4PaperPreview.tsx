@@ -17,7 +17,8 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Scissors
 } from "lucide-react";
 
 interface QuestionItem {
@@ -65,6 +66,7 @@ export default function A4PaperPreview({
   const [isEcoGrayscale, setIsEcoGrayscale] = useState<boolean>(false);
   const [isPresentationMode, setIsPresentationMode] = useState<boolean>(false);
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
+  const [isFlashcardCutoutMode, setIsFlashcardCutoutMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -109,6 +111,21 @@ export default function A4PaperPreview({
           >
             <Maximize2 className="w-3.5 h-3.5" />
             <span>Trình Chiếu Lớp Học</span>
+          </button>
+
+          {/* Flashcard Cutout Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsFlashcardCutoutMode(!isFlashcardCutoutMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isFlashcardCutoutMode
+                ? "bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Bật/Tắt chế độ in thẻ bài đố cắt rời (Flashcard Cutout)"
+          >
+            <Scissors className="w-3.5 h-3.5" />
+            <span>{isFlashcardCutoutMode ? "Thẻ Bài Cắt Rời (Bật)" : "Thẻ Cắt Rời"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -358,9 +375,37 @@ export default function A4PaperPreview({
             <span>Số báo danh: .............................</span>
           </div>
 
-          {/* Exam Body Container with Column Switch */}
-          <div
-            className={
+          {/* Flashcard Cutout Layout Simulation */}
+          {isFlashcardCutoutMode ? (
+            <div className="grid grid-cols-2 gap-4 py-2">
+              {questions.map((q, idx) => (
+                <div
+                  key={q.id || idx}
+                  className="border-2 border-dashed border-slate-400 rounded-lg p-4 bg-white/80 relative flex flex-col justify-between min-h-[160px] shadow-2xs"
+                >
+                  <div className="absolute -top-3 left-4 bg-amber-200 text-amber-900 border border-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center space-x-1">
+                    <Scissors className="w-2.5 h-2.5" />
+                    <span>Thẻ {idx + 1}</span>
+                  </div>
+                  <div className="mt-2 text-[12px] leading-relaxed text-slate-900 font-serif">
+                    <MathRenderer content={q.content_latex} />
+                  </div>
+                  {showSolutions && q.solution_latex && (
+                    <div className="mt-3 pt-2 border-t border-dashed border-slate-300 text-[10px] text-slate-600 bg-slate-50 p-2 rounded">
+                      <span className="font-bold text-emerald-700">Đ/A: </span>
+                      <MathRenderer content={q.solution_latex} />
+                    </div>
+                  )}
+                  <div className="mt-2 text-[9px] text-slate-400 italic text-right">
+                    VINH PHÁT Flashcard • Đường cắt nét đứt ✁
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Exam Body Container with Column Switch */
+            <div
+              className={
               isBookletMode
                 ? `columns-2 gap-[12mm] border-l-0 ${
                     spacingDensity === "compact"
@@ -487,6 +532,7 @@ export default function A4PaperPreview({
               </div>
             )}
           </div>
+          )}
 
           {/* Exam Footer */}
           <div className="mt-8 pt-4 border-t border-slate-400 text-center text-xs italic text-slate-600">

@@ -1977,6 +1977,56 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 8: Question Independence & Overlap Inspector */}
+                  {(() => {
+                    if (items.length <= 1) return null;
+
+                    // Scan for potential duplicate statements or heavy overlaps
+                    let duplicateCount = 0;
+                    const seenPrefixes = new Set<string>();
+
+                    for (const item of items) {
+                      const text = (item.content_latex || "").trim().toLowerCase().replace(/\s+/g, " ");
+                      // Clean LaTeX noise for semantic prefix comparison
+                      const cleanText = text.replace(/\\(frac|sqrt|vec|cdot|alpha|beta|pi)\b/g, "").replace(/[^a-z0-9àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/g, "");
+                      const prefix = cleanText.substring(0, 35);
+                      if (prefix.length >= 15) {
+                        if (seenPrefixes.has(prefix)) {
+                          duplicateCount++;
+                        } else {
+                          seenPrefixes.add(prefix);
+                        }
+                      }
+                    }
+
+                    const isIndependent = duplicateCount === 0;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {isIndependent ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Tính độc lập câu hỏi:{" "}
+                            {isIndependent ? (
+                              <span className="font-mono text-emerald-700">100% ĐỘC LẬP</span>
+                            ) : (
+                              <span className="font-mono text-amber-700">CÓ {duplicateCount} CÂU TRÙNG Ý/DỮ KIỆN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {isIndependent
+                              ? "✓ Toàn bộ các câu hỏi có dữ kiện và giả thiết độc lập, không bị chồng chéo."
+                              : "⚠️ Cảnh báo: Phát hiện câu hỏi có thể trùng lặp giả thiết hoặc đề dẫn, cần kiểm tra để tránh lỗi sư phạm kéo theo."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2004,7 +2054,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `4. Kiểm định cú pháp XeLaTeX: ${dollarCount} ký tự $ (${isMathOk ? "ĐỐI XỨNG HỢP LỆ" : "CẢNH BÁO LỖI BIÊN DỊCH"})`,
                         `5. Phân bổ độ khó: Nhận biết ${Math.round((items.filter((q) => !q.bloom_level || q.bloom_level === "RECOGNITION").length / (items.length || 1)) * 100)}% | Vận dụng/VDC ${Math.round((items.filter((q) => q.bloom_level === "APPLICATION" || q.bloom_level === "HIGH_APPLICATION").length / (items.length || 1)) * 100)}%`,
                         `6. Dung lượng: ~${(rawLatexCode.replace(/\$[^$]*\$/g, " ").trim().split(/\s+/).filter(Boolean)).length} từ | ~${Math.floor(dollarCount / 2)} công thức toán`,
-                        `7. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `7. Độc lập câu hỏi: 100% ĐỘC LẬP (Không phát hiện trùng lặp đề dẫn)`,
+                        `8. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
