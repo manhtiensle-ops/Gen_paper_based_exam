@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from sqlalchemy.orm import Session
 from openai import OpenAI
 
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, cast, String
 from ..database import get_db
 from ..models import Question, User
 from ..services.quota_service import require_authenticated_user, get_current_user_optional, consume_ai_quota
@@ -84,7 +84,7 @@ def list_questions(
                 or_(
                     Question.content_latex.ilike(search_term),
                     Question.solution_latex.ilike(search_term),
-                    Question.main_topic.ilike(search_term)
+                    cast(Question.main_topic, String).ilike(search_term)
                 )
             )
 
