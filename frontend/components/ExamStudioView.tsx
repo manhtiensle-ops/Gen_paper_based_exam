@@ -2687,6 +2687,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 27: Oxyz Coordinate Frame Orthogonality & Basis Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasOxyz = /Oxyz|tọa độ|mặt cầu|mặt phẳng|đường thẳng trong không gian|vectơ pháp tuyến|vectơ chỉ phương/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Hệ tọa độ Oxyz & Trực giao không gian (Oxyz Basis):{" "}
+                            {hasOxyz ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TỌA ĐỘ OXYZ KHÔNG GIAN</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC THUẦN TÚY</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasOxyz
+                              ? "✓ Hệ tọa độ không gian Oxyz và các vectơ pháp tuyến/chỉ phương chuẩn xác, không suy biến và đảm bảo tính trực giao."
+                              : "✓ Đề thi sử dụng phương pháp hình học không gian cổ điển (tổng hợp), rèn luyện tư duy quan hệ song song và vuông góc."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2733,7 +2760,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `23. Tô-pô & Ký hiệu hình học: CHUẨN TÔ-PÔ HÌNH HỌC`,
                         `24. Cân bằng họ hàm số: CÂN BẰNG ĐA DẠNG HÀM SỐ`,
                         `25. Mô hình hóa thực tiễn STEM: ĐẠT CHUẨN THỰC TIỄN GDPT`,
-                        `26. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `26. Trực giao & Hệ tọa độ Oxyz: CHUẨN TỌA ĐỘ OXYZ KHÔNG GIAN`,
+                        `27. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

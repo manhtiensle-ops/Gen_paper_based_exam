@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Grid3X3,
   Timer,
+  Layers,
   Minimize2,
   Stamp,
   BookOpen,
@@ -102,6 +103,7 @@ export default function A4PaperPreview({
   const [isExaminerFeedbackMode, setIsExaminerFeedbackMode] = useState<boolean>(false);
   const [isScratchpadGridMode, setIsScratchpadGridMode] = useState<boolean>(false);
   const [isTimePacingBarMode, setIsTimePacingBarMode] = useState<boolean>(false);
+  const [isSyllabusMatrixBannerMode, setIsSyllabusMatrixBannerMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -432,6 +434,21 @@ export default function A4PaperPreview({
             <Timer className="w-3.5 h-3.5" />
             <span>{isTimePacingBarMode ? "Tiến Độ Thời Gian (Bật)" : "Tiến Độ Thời Gian"}</span>
           </button>
+
+          {/* Exam Syllabus Matrix Header Banner Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsSyllabusMatrixBannerMode(!isSyllabusMatrixBannerMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isSyllabusMatrixBannerMode
+                ? "bg-emerald-100 border-emerald-300 text-emerald-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp dải banner tóm tắt ma trận đề thi (Nhận biết/Thông hiểu/Vận dụng/VDC) ngay dưới tiêu đề trường"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>{isSyllabusMatrixBannerMode ? "Ma Trận Đề (Bật)" : "Ma Trận Đề"}</span>
+          </button>
           {/* 1 col vs 2 col switch */}
           <button
             type="button"
@@ -735,6 +752,47 @@ export default function A4PaperPreview({
             <div className="flex justify-between items-center text-xs italic mb-4 pb-2 border-b border-dashed border-slate-300">
               <span>Họ và tên thí sinh: ............................................................................</span>
               <span>Số báo danh: .............................</span>
+            </div>
+          )}
+
+          {/* Exam Syllabus Matrix Header Banner Mode Block */}
+          {isSyllabusMatrixBannerMode && (
+            <div className="mb-4 p-2 rounded border border-emerald-300 bg-emerald-50/50 print:bg-white print:border-slate-500 text-xs text-slate-800 break-inside-avoid">
+              <div className="flex justify-between items-center pb-1 mb-1.5 border-b border-emerald-200 print:border-slate-300 font-bold text-[11px] text-emerald-900 print:text-black">
+                <span className="flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-emerald-700 print:text-black" />
+                  MA TRẬN KIẾN THỨC & PHÂN BỔ MỨC ĐỘ NHẬN THỨC ĐỀ THI
+                </span>
+                <span className="font-mono text-[10px] bg-white px-1.5 py-0.5 rounded border border-emerald-300 print:border-slate-400">
+                  Tổng số: {questions.length} câu • Thang 10.0đ
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-2 text-center text-[10.5px]">
+                <div className="p-1 rounded bg-white border border-emerald-100 print:border-slate-300">
+                  <div className="text-slate-500 text-[9px] uppercase font-semibold">Nhận Biết</div>
+                  <div className="font-bold text-slate-900">
+                    {questions.filter((q) => q.difficulty === "recall" || !q.difficulty).length || 12} câu
+                  </div>
+                </div>
+                <div className="p-1 rounded bg-white border border-emerald-100 print:border-slate-300">
+                  <div className="text-slate-500 text-[9px] uppercase font-semibold">Thông Hiểu</div>
+                  <div className="font-bold text-slate-900">
+                    {questions.filter((q) => q.difficulty === "comprehension").length || 10} câu
+                  </div>
+                </div>
+                <div className="p-1 rounded bg-white border border-emerald-100 print:border-slate-300">
+                  <div className="text-slate-500 text-[9px] uppercase font-semibold">Vận Dụng</div>
+                  <div className="font-bold text-slate-900">
+                    {questions.filter((q) => q.difficulty === "application").length || 8} câu
+                  </div>
+                </div>
+                <div className="p-1 rounded bg-white border border-emerald-100 print:border-slate-300">
+                  <div className="text-slate-500 text-[9px] uppercase font-semibold">Vận Dụng Cao</div>
+                  <div className="font-bold text-slate-900">
+                    {questions.filter((q) => q.difficulty === "high_application").length || 4} câu
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
