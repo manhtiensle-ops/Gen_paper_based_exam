@@ -16,6 +16,7 @@ import {
   GraduationCap,
   MessageSquare,
   Grid3X3,
+  Timer,
   Minimize2,
   Stamp,
   BookOpen,
@@ -100,6 +101,7 @@ export default function A4PaperPreview({
   const [isUltraCompactEconomyMode, setIsUltraCompactEconomyMode] = useState<boolean>(false);
   const [isExaminerFeedbackMode, setIsExaminerFeedbackMode] = useState<boolean>(false);
   const [isScratchpadGridMode, setIsScratchpadGridMode] = useState<boolean>(false);
+  const [isTimePacingBarMode, setIsTimePacingBarMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -414,6 +416,21 @@ export default function A4PaperPreview({
           >
             <Grid3X3 className="w-3.5 h-3.5" />
             <span>{isScratchpadGridMode ? "Lưới Ô Ly Nháp (Bật)" : "Lưới Ô Ly Nháp"}</span>
+          </button>
+
+          {/* Time-Allocation Pacing Bar Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsTimePacingBarMode(!isTimePacingBarMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isTimePacingBarMode
+                ? "bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp thanh phân bổ thời gian gợi ý cho từng phần thi (Pacing Bar) giúp học sinh làm bài đúng tiến độ"
+          >
+            <Timer className="w-3.5 h-3.5" />
+            <span>{isTimePacingBarMode ? "Tiến Độ Thời Gian (Bật)" : "Tiến Độ Thời Gian"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -833,8 +850,13 @@ export default function A4PaperPreview({
             {/* If structured into GDPT 2018 Parts */}
             {part1Questions.length > 0 && (
               <div className="break-inside-avoid mb-4">
-                <div className="font-bold uppercase text-xs tracking-wider bg-slate-100 px-2 py-1 rounded mb-2 border-l-4 border-slate-900">
-                  PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn
+                <div className="font-bold uppercase text-xs tracking-wider bg-slate-100 px-2 py-1 rounded mb-2 border-l-4 border-slate-900 flex items-center justify-between">
+                  <span>PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn</span>
+                  {isTimePacingBarMode && (
+                    <span className="text-[10px] font-sans font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      ⏱ Thời gian gợi ý: ~20-25 phút
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] italic text-slate-600 mb-2">
                   Thí sinh trả lời từ câu 1 đến câu {part1Questions.length}. Mỗi câu hỏi chỉ chọn một phương án.
@@ -876,8 +898,13 @@ export default function A4PaperPreview({
             {/* Part 2: True/False Group */}
             {part2Questions.length > 0 && (
               <div className="break-inside-avoid mb-4">
-                <div className="font-bold uppercase text-xs tracking-wider bg-slate-100 px-2 py-1 rounded mb-2 border-l-4 border-indigo-700">
-                  PHẦN II. Câu trắc nghiệm đúng sai
+                <div className="font-bold uppercase text-xs tracking-wider bg-slate-100 px-2 py-1 rounded mb-2 border-l-4 border-slate-900 flex items-center justify-between">
+                  <span>PHẦN II. Câu trắc nghiệm đúng sai</span>
+                  {isTimePacingBarMode && (
+                    <span className="text-[10px] font-sans font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      ⏱ Thời gian gợi ý: ~25-30 phút
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] italic text-slate-600 mb-2">
                   Thí sinh trả lời từ câu 1 đến câu {part2Questions.length}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.
@@ -907,8 +934,13 @@ export default function A4PaperPreview({
             {/* Part 3: Short Answer */}
             {part3Questions.length > 0 && (
               <div className="break-inside-avoid mb-4">
-                <div className="font-bold uppercase text-xs tracking-wider bg-slate-100 px-2 py-1 rounded mb-2 border-l-4 border-amber-600">
-                  PHẦN III. Câu trắc nghiệm trả lời ngắn
+                <div className="font-bold uppercase text-xs tracking-wider bg-slate-100 px-2 py-1 rounded mb-2 border-l-4 border-slate-900 flex items-center justify-between">
+                  <span>PHẦN III. Câu trắc nghiệm trả lời ngắn</span>
+                  {isTimePacingBarMode && (
+                    <span className="text-[10px] font-sans font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      ⏱ Thời gian gợi ý: ~35-40 phút
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] italic text-slate-600 mb-2">
                   Thí sinh trả lời từ câu 1 đến câu {part3Questions.length}. Điền kết quả giải được vào ô tương ứng.

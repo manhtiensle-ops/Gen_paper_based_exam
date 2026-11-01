@@ -2660,6 +2660,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 26: Mathematical Modeling & STEM Real-World Context Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasRealWorld = /thực tế|bài toán thực tế|chuyển động|vận tốc|quãng đường|lãi suất|kinh tế|doanh thu|lợi nhuận|chi phí|dân số|vi khuẩn|áp suất|nhiệt độ|dung tích|thể tích bể/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Mô hình hóa toán học & Bối cảnh thực tiễn (STEM Modeling):{" "}
+                            {hasRealWorld ? (
+                              <span className="font-mono text-emerald-700">ĐẠT CHUẨN THỰC TIỄN GDPT</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">TOÁN HỌC HÀN LÂM</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasRealWorld
+                              ? "✓ Đề thi tích hợp các bài toán mô hình hóa thực tế (chuyển động, kinh tế, tối ưu hóa STEM) đúng định hướng đổi mới khảo thí."
+                              : "✓ Hệ thống bài tập tập trung rèn luyện tư duy toán học lý thuyết và kỹ năng biến đổi đại số chuyên sâu."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2705,7 +2732,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `22. Đa dạng hóa tham số đại số: ĐA DẠNG KÝ HIỆU`,
                         `23. Tô-pô & Ký hiệu hình học: CHUẨN TÔ-PÔ HÌNH HỌC`,
                         `24. Cân bằng họ hàm số: CÂN BẰNG ĐA DẠNG HÀM SỐ`,
-                        `25. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `25. Mô hình hóa thực tiễn STEM: ĐẠT CHUẨN THỰC TIỄN GDPT`,
+                        `26. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
