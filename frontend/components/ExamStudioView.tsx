@@ -1936,6 +1936,47 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 7: Difficulty Distribution Skew Inspector */}
+                  {(() => {
+                    const totalQuestions = items.length;
+                    if (totalQuestions === 0) return null;
+
+                    const easyCount = items.filter(
+                      (q) => !q.bloom_level || q.bloom_level === "RECOGNITION"
+                    ).length;
+                    const hardCount = items.filter(
+                      (q) => q.bloom_level === "APPLICATION" || q.bloom_level === "HIGH_APPLICATION"
+                    ).length;
+
+                    const easyPercent = Math.round((easyCount / totalQuestions) * 100);
+                    const hardPercent = Math.round((hardCount / totalQuestions) * 100);
+
+                    // Standard benchmark: Easy (40-60%), Hard/High Hard (20-40%)
+                    const isSkewedHard = hardPercent > 45;
+                    const isSkewedEasy = easyPercent > 70;
+                    const isBalanced = !isSkewedHard && !isSkewedEasy;
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        {isBalanced ? (
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Phân bổ độ khó: <span className="font-mono text-emerald-700">NB {easyPercent}%</span> | <span className="font-mono text-amber-700">VD/VDC {hardPercent}%</span> ({isBalanced ? "CÂN ĐỐI" : "LỆCH CHUẨN"})
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {isSkewedHard && "⚠️ Cảnh báo: Đề thi có tỷ trọng câu Vận dụng/VDC cao (>45%), cần rà soát lại nếu không phải đề HSG/Tuyển sinh."}
+                            {isSkewedEasy && "⚠️ Cảnh báo: Đề thi có quá nhiều câu Nhận biết (>70%), thiếu độ phân hóa năng lực học sinh."}
+                            {isBalanced && "✓ Tỷ lệ độ khó phân bổ hài hòa theo chuẩn ma trận sư phạm Bộ GD&ĐT."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -1961,8 +2002,9 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                           return acc + (diff === "EASY" ? 2 : diff === "MEDIUM" ? 4 : diff === "HARD" ? 8 : 15);
                         }, 0)} phút / ${headerConfig.duration_minutes || 150} phút quy định`,
                         `4. Kiểm định cú pháp XeLaTeX: ${dollarCount} ký tự $ (${isMathOk ? "ĐỐI XỨNG HỢP LỆ" : "CẢNH BÁO LỖI BIÊN DỊCH"})`,
-                        `5. Dung lượng: ~${(rawLatexCode.replace(/\$[^$]*\$/g, " ").trim().split(/\s+/).filter(Boolean)).length} từ | ~${Math.floor(dollarCount / 2)} công thức toán`,
-                        `6. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `5. Phân bổ độ khó: Nhận biết ${Math.round((items.filter((q) => !q.bloom_level || q.bloom_level === "RECOGNITION").length / (items.length || 1)) * 100)}% | Vận dụng/VDC ${Math.round((items.filter((q) => q.bloom_level === "APPLICATION" || q.bloom_level === "HIGH_APPLICATION").length / (items.length || 1)) * 100)}%`,
+                        `6. Dung lượng: ~${(rawLatexCode.replace(/\$[^$]*\$/g, " ").trim().split(/\s+/).filter(Boolean)).length} từ | ~${Math.floor(dollarCount / 2)} công thức toán`,
+                        `7. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

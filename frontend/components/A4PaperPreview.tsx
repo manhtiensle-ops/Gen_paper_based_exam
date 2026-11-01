@@ -14,7 +14,10 @@ import {
   Eye,
   Stamp,
   BookOpen,
-  Sparkles
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  X
 } from "lucide-react";
 
 interface QuestionItem {
@@ -60,6 +63,8 @@ export default function A4PaperPreview({
   const [showWatermarkInput, setShowWatermarkInput] = useState<boolean>(false);
   const [isBookletMode, setIsBookletMode] = useState<boolean>(false);
   const [isEcoGrayscale, setIsEcoGrayscale] = useState<boolean>(false);
+  const [isPresentationMode, setIsPresentationMode] = useState<boolean>(false);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -92,6 +97,19 @@ export default function A4PaperPreview({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Classroom Presentation Mode Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setCurrentSlideIndex(0);
+              setIsPresentationMode(true);
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold transition-colors shadow-2xs"
+            title="Trình chiếu từng câu hỏi lên màn hình tivi/projector lớp học"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+            <span>Trình Chiếu Lớp Học</span>
+          </button>
           {/* 1 col vs 2 col switch */}
           <button
             type="button"
@@ -479,6 +497,102 @@ export default function A4PaperPreview({
           </div>
         </div>
       </div>
+
+      {/* Classroom Presentation Mode Modal Overlay */}
+      {isPresentationMode && questions.length > 0 && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col justify-between p-6 text-white backdrop-blur-md">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex items-center space-x-3">
+              <span className="px-3 py-1 rounded bg-indigo-600 font-bold text-sm tracking-wide">
+                TRÌNH CHIẾU GIẢNG DẠY
+              </span>
+              <span className="text-slate-400 text-sm">
+                Câu {currentSlideIndex + 1} / {questions.length}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsPresentationMode(false)}
+              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Slide Body */}
+          <div className="flex-1 my-auto max-w-5xl w-full mx-auto flex flex-col justify-center overflow-y-auto px-4 py-8">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+              <div className="text-xl md:text-2xl font-serif leading-relaxed text-slate-100">
+                <strong className="text-indigo-400 mr-2">
+                  Câu {currentSlideIndex + 1}:
+                </strong>
+                <MathRenderer
+                  content={questions[currentSlideIndex]?.content_latex || ""}
+                />
+              </div>
+
+              {/* Solution Toggle in Presentation */}
+              {showSolutions && questions[currentSlideIndex]?.solution_latex && (
+                <div className="mt-8 pt-6 border-t border-slate-800/80 bg-slate-950/50 rounded-xl p-6">
+                  <div className="text-xs uppercase font-bold tracking-wider text-emerald-400 mb-2">
+                    Hướng dẫn giải & Đáp số:
+                  </div>
+                  <div className="text-base text-slate-300 leading-relaxed font-serif">
+                    <MathRenderer
+                      content={questions[currentSlideIndex].solution_latex!}
+                    />
+                  </div>
+                  {questions[currentSlideIndex].final_answer && (
+                    <div className="mt-3 text-sm font-bold text-amber-300">
+                      Đáp số: {questions[currentSlideIndex].final_answer}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer Controls */}
+          <div className="flex items-center justify-between border-t border-slate-800 pt-4 max-w-5xl w-full mx-auto">
+            <button
+              type="button"
+              disabled={currentSlideIndex === 0}
+              onClick={() => setCurrentSlideIndex((prev) => Math.max(0, prev - 1))}
+              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed font-medium transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+              <span>Câu trước</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowSolutions(!showSolutions)}
+              className={`px-5 py-2.5 rounded-xl font-bold transition-colors ${
+                showSolutions
+                  ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                  : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+              }`}
+            >
+              {showSolutions ? "Ẩn lời giải" : "Hiện lời giải"}
+            </button>
+
+            <button
+              type="button"
+              disabled={currentSlideIndex === questions.length - 1}
+              onClick={() =>
+                setCurrentSlideIndex((prev) =>
+                  Math.min(questions.length - 1, prev + 1)
+                )
+              }
+              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-colors"
+            >
+              <span>Câu tiếp theo</span>
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
