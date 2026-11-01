@@ -64,6 +64,7 @@ export default function Dashboard() {
   const [filterTopic, setFilterTopic] = useState("");
   const [filterDifficulty, setFilterDifficulty] = useState("");
   const [filterSection, setFilterSection] = useState("");
+  const [filterVerified, setFilterVerified] = useState("");
   const [filterScope, setFilterScope] = useState<"ALL" | "MINE" | "TENANT" | "SYSTEM">("ALL");
   const [filterSearch, setFilterSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -201,6 +202,15 @@ export default function Dashboard() {
     REAL_WORLD_MATH: "Toán thực tế",
   };
 
+  // Ánh xạ trạng thái xử lý đề thi nguồn (Source Exam Status)
+  const STATUS_VI_MAP: Record<string, { label: string; badge: string }> = {
+    REVIEW_NEEDED: { label: "Chờ kiểm duyệt", badge: "bg-amber-50 text-amber-700 border border-amber-200" },
+    PUBLISHED: { label: "Đã hoàn thành", badge: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
+    PROCESSING: { label: "Đang nhận diện", badge: "bg-blue-50 text-blue-700 border border-blue-200 animate-pulse" },
+    EXTRACTING: { label: "Đang bóc tách", badge: "bg-purple-50 text-purple-700 border border-purple-200 animate-pulse" },
+    FAILED: { label: "Lỗi xử lý", badge: "bg-rose-50 text-rose-700 border border-rose-200" },
+  };
+
   // Helper trả về style màu Pastel theo chuyên đề Toán THCS
   const getTopicBadgeStyle = (topic: string) => {
     switch (topic) {
@@ -281,6 +291,7 @@ export default function Dashboard() {
       if (filterTopic) params.append("main_topic", filterTopic);
       if (filterDifficulty) params.append("difficulty", filterDifficulty);
       if (filterSection) params.append("section_type", filterSection);
+      if (filterVerified !== "") params.append("is_verified", filterVerified);
       if (effectiveScope) params.append("scope", effectiveScope);
       params.append("page", pageToFetch.toString());
       params.append("page_size", pageSize.toString());
@@ -465,7 +476,7 @@ export default function Dashboard() {
     // Reset về trang 1 khi người dùng đổi bộ lọc, scope hoặc từ khóa tìm kiếm
     setCurrentPage(1);
     fetchQuestions(1, filterScope);
-  }, [filterTopic, filterDifficulty, filterSection, filterScope, debouncedSearch, pageSize]);
+  }, [filterTopic, filterDifficulty, filterSection, filterVerified, filterScope, debouncedSearch, pageSize]);
 
   // Quick Preset Selection Handler from Creative Empty State
   const handleSelectPresetFromEmptyState = async (keyword: string) => {
@@ -1376,6 +1387,16 @@ export default function Dashboard() {
                 <option value="SHORT_ANSWER">Điền đáp số</option>
                 <option value="ESSAY">Tự luận</option>
               </select>
+
+              <select
+                value={filterVerified}
+                onChange={(e) => setFilterVerified(e.target.value)}
+                className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none font-medium"
+              >
+                <option value="">Mọi trạng thái kiểm duyệt</option>
+                <option value="true">✅ Đã kiểm duyệt</option>
+                <option value="false">⏳ Chờ duyệt (Mới)</option>
+              </select>
             </div>
           </div>
 
@@ -1851,15 +1872,25 @@ export default function Dashboard() {
                         <p className="text-xs text-slate-400">Mã file: {exam.original_file_key}</p>
                       </div>
 
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-                        exam.status === "REVIEW_NEEDED"
-                          ? "bg-amber-100 text-amber-800"
-                          : exam.status === "PUBLISHED"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-blue-100 text-blue-800 animate-pulse"
-                      }`}>
-                        {exam.status}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+                          STATUS_VI_MAP[exam.status]?.badge || "bg-slate-100 text-slate-700"
+                        }`}>
+                          {STATUS_VI_MAP[exam.status]?.label || exam.status}
+                        </span>
+
+                        {exam.status === "REVIEW_NEEDED" && (
+                          <button
+                            type="button"
+                            onClick={() => handleTabChange("review")}
+                            className="text-xs font-bold px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all flex items-center space-x-1 shadow-xs"
+                            title="Chuyển đến Hàng đợi kiểm duyệt để thẩm định câu hỏi"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>Duyệt câu hỏi ➔</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {exam.page_image_keys && exam.page_image_keys.length > 0 && (
