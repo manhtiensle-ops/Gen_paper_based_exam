@@ -1,13 +1,10 @@
-"use client";
-
 import React, { useState } from "react";
-import {
-  Calculator,
-  Sigma,
-  Shapes,
-  Grid3X3,
-  Sparkles,
-  ChevronDown
+import { 
+  Calculator, 
+  Sigma, 
+  Sparkles, 
+  Shapes, 
+  Grid3X3 
 } from "lucide-react";
 
 interface MathSymbolItem {
@@ -35,18 +32,18 @@ const SYMBOL_GROUPS: MathSymbolGroup[] = [
     name: "Đại số & Phép tính",
     icon: <Calculator className="w-3.5 h-3.5" />,
     symbols: [
-      { label: "a/b", latex: "\\\\frac{a}{b}", display: "a/b", description: "Phân số" },
-      { label: "√x", latex: "\\\\sqrt{x}", display: "√x", description: "Căn bậc 2" },
-      { label: "ⁿ√x", latex: "\\\\sqrt[n]{x}", display: "ⁿ√x", description: "Căn bậc n" },
+      { label: "a/b", latex: "\\frac{a}{b}", display: "a/b", description: "Phân số" },
+      { label: "√x", latex: "\\sqrt{x}", display: "√x", description: "Căn bậc 2" },
+      { label: "ⁿ√x", latex: "\\sqrt[n]{x}", display: "ⁿ√x", description: "Căn bậc n" },
       { label: "xⁿ", latex: "x^{n}", display: "xⁿ", description: "Lũy thừa" },
       { label: "xₙ", latex: "x_{n}", display: "xₙ", description: "Chỉ số dưới" },
-      { label: "±", latex: "\\\\pm ", display: "±", description: "Cộng trừ" },
-      { label: "≠", latex: "\\\\neq ", display: "≠", description: "Khác" },
-      { label: "≤", latex: "\\\\le ", display: "≤", description: "Nhỏ hơn hoặc bằng" },
-      { label: "≥", latex: "\\\\ge ", display: "≥", description: "Lớn hơn hoặc bằng" },
-      { label: "≈", latex: "\\\\approx ", display: "≈", description: "Xấp xỉ" },
-      { label: "×", latex: "\\\\times ", display: "×", description: "Nhân" },
-      { label: "÷", latex: "\\\\div ", display: "÷", description: "Chia" },
+      { label: "±", latex: "\\pm ", display: "±", description: "Cộng trừ" },
+      { label: "≠", latex: "\\neq ", display: "≠", description: "Khác" },
+      { label: "≤", latex: "\\le ", display: "≤", description: "Nhỏ hơn hoặc bằng" },
+      { label: "≥", latex: "\\ge ", display: "≥", description: "Lớn hơn hoặc bằng" },
+      { label: "≈", latex: "\\approx ", display: "≈", description: "Xấp xỉ" },
+      { label: "×", latex: "\\times ", display: "×", description: "Nhân" },
+      { label: "÷", latex: "\\div ", display: "÷", description: "Chia" },
       { label: "|x|", latex: "|x|", display: "|x|", description: "Trị tuyệt đối" },
     ]
   },
@@ -55,17 +52,17 @@ const SYMBOL_GROUPS: MathSymbolGroup[] = [
     name: "Giải tích & Giới hạn",
     icon: <Sigma className="w-3.5 h-3.5" />,
     symbols: [
-      { label: "∫ f(x)dx", latex: "\\\\int f(x)\\\\,dx", display: "∫", description: "Tích phân bất định" },
-      { label: "∫ₐᵇ f(x)dx", latex: "\\\\int_{a}^{b} f(x)\\\\,dx", display: "∫ₐᵇ", description: "Tích phân xác định" },
-      { label: "lim", latex: "\\\\lim_{x \\\\to x_0} f(x)", display: "lim", description: "Giới hạn hàm số" },
-      { label: "∑", latex: "\\\\sum_{i=1}^{n}", display: "∑", description: "Tổng sigma" },
-      { label: "∏", latex: "\\\\prod_{i=1}^{n}", display: "∏", description: "Tích số" },
-      { label: "df/dx", latex: "\\\\frac{df}{dx}", display: "df/dx", description: "Đạo hàm" },
+      { label: "∫ f(x)dx", latex: "\\int f(x)\\,dx", display: "∫", description: "Tích phân bất định" },
+      { label: "∫ₐᵇ f(x)dx", latex: "\\int_{a}^{b} f(x)\\,dx", display: "∫ₐᵇ", description: "Tích phân xác định" },
+      { label: "lim", latex: "\\lim_{x \\to x_0} f(x)", display: "lim", description: "Giới hạn hàm số" },
+      { label: "∑", latex: "\\sum_{i=1}^{n}", display: "∑", description: "Tổng sigma" },
+      { label: "∏", latex: "\\prod_{i=1}^{n}", display: "∏", description: "Tích số" },
+      { label: "df/dx", latex: "\\frac{df}{dx}", display: "df/dx", description: "Đạo hàm" },
       { label: "f'(x)", latex: "f'(x)", display: "f'", description: "Đạo hàm cấp 1" },
       { label: "f''(x)", latex: "f''(x)", display: "f''", description: "Đạo hàm cấp 2" },
-      { label: "∞", latex: "\\\\infty", display: "∞", description: "Vô cực" },
-      { label: "ln(x)", latex: "\\\\ln(x)", display: "ln", description: "Logarit tự nhiên" },
-      { label: "logₐ(b)", latex: "\\\\log_{a}(b)", display: "log", description: "Logarit cơ số a" },
+      { label: "∞", latex: "\\infty", display: "∞", description: "Vô cực" },
+      { label: "ln(x)", latex: "\\ln(x)", display: "ln", description: "Logarit tự nhiên" },
+      { label: "logₐ(b)", latex: "\\log_{a}(b)", display: "log", description: "Logarit cơ số a" },
     ]
   },
   {
@@ -73,15 +70,15 @@ const SYMBOL_GROUPS: MathSymbolGroup[] = [
     name: "Lượng giác",
     icon: <Sparkles className="w-3.5 h-3.5" />,
     symbols: [
-      { label: "sin", latex: "\\\\sin(x)", display: "sin", description: "Sin" },
-      { label: "cos", latex: "\\\\cos(x)", display: "cos", description: "Cos" },
-      { label: "tan", latex: "\\\\tan(x)", display: "tan", description: "Tan" },
-      { label: "cot", latex: "\\\\cot(x)", display: "cot", description: "Cotang" },
-      { label: "π", latex: "\\\\pi", display: "π", description: "Pi" },
-      { label: "°", latex: "^{\\\\circ}", display: "°", description: "Độ" },
-      { label: "arcsin", latex: "\\\\arcsin(x)", display: "arcsin", description: "Hàm ngược sin" },
-      { label: "arccos", latex: "\\\\arccos(x)", display: "arccos", description: "Hàm ngược cos" },
-      { label: "arctan", latex: "\\\\arctan(x)", display: "arctan", description: "Hàm ngược tan" },
+      { label: "sin", latex: "\\sin(x)", display: "sin", description: "Sin" },
+      { label: "cos", latex: "\\cos(x)", display: "cos", description: "Cos" },
+      { label: "tan", latex: "\\tan(x)", display: "tan", description: "Tan" },
+      { label: "cot", latex: "\\cot(x)", display: "cot", description: "Cotang" },
+      { label: "π", latex: "\\pi", display: "π", description: "Pi" },
+      { label: "°", latex: "^{\\circ}", display: "°", description: "Độ" },
+      { label: "arcsin", latex: "\\arcsin(x)", display: "arcsin", description: "Hàm ngược sin" },
+      { label: "arccos", latex: "\\arccos(x)", display: "arccos", description: "Hàm ngược cos" },
+      { label: "arctan", latex: "\\arctan(x)", display: "arctan", description: "Hàm ngược tan" },
     ]
   },
   {
@@ -89,21 +86,21 @@ const SYMBOL_GROUPS: MathSymbolGroup[] = [
     name: "Hình học & Ký hiệu",
     icon: <Shapes className="w-3.5 h-3.5" />,
     symbols: [
-      { label: "u⃗", latex: "\\\\vec{u}", display: "u⃗", description: "Vector đơn" },
-      { label: "AB⃗", latex: "\\\\overrightarrow{AB}", display: "AB⃗", description: "Vector 2 điểm" },
-      { label: "ABĈ", latex: "\\\\widehat{ABC}", display: "ABĈ", description: "Góc ABC" },
-      { label: "Δ", latex: "\\\\Delta", display: "Δ", description: "Tam giác hoặc Delta" },
-      { label: "∥", latex: "\\\\parallel", display: "∥", description: "Song song" },
-      { label: "⊥", latex: "\\\\perp", display: "⊥", description: "Vuông góc" },
-      { label: "∈", latex: "\\\\in", display: "∈", description: "Thuộc" },
-      { label: "∉", latex: "\\\\notin", display: "∉", description: "Không thuộc" },
-      { label: "⊂", latex: "\\\\subset", display: "⊂", description: "Tập con" },
-      { label: "∪", latex: "\\\\cup", display: "∪", description: "Hợp" },
-      { label: "∩", latex: "\\\\cap", display: "∩", description: "Giao" },
-      { label: "∅", latex: "\\\\emptyset", display: "∅", description: "Tập rỗng" },
-      { label: "α", latex: "\\\\alpha", display: "α", description: "Alpha" },
-      { label: "β", latex: "\\\\beta", display: "β", description: "Beta" },
-      { label: "θ", latex: "\\\\theta", display: "θ", description: "Theta" },
+      { label: "u⃗", latex: "\\vec{u}", display: "u⃗", description: "Vector đơn" },
+      { label: "AB⃗", latex: "\\overrightarrow{AB}", display: "AB⃗", description: "Vector 2 điểm" },
+      { label: "ABĈ", latex: "\\widehat{ABC}", display: "ABĈ", description: "Góc ABC" },
+      { label: "Δ", latex: "\\Delta", display: "Δ", description: "Tam giác hoặc Delta" },
+      { label: "∥", latex: "\\parallel", display: "∥", description: "Song song" },
+      { label: "⊥", latex: "\\perp", display: "⊥", description: "Vuông góc" },
+      { label: "∈", latex: "\\in", display: "∈", description: "Thuộc" },
+      { label: "∉", latex: "\\notin", display: "∉", description: "Không thuộc" },
+      { label: "⊂", latex: "\\subset", display: "⊂", description: "Tập con" },
+      { label: "∪", latex: "\\cup", display: "∪", description: "Hợp" },
+      { label: "∩", latex: "\\cap", display: "∩", description: "Giao" },
+      { label: "∅", latex: "\\emptyset", display: "∅", description: "Tập rỗng" },
+      { label: "α", latex: "\\alpha", display: "α", description: "Alpha" },
+      { label: "β", latex: "\\beta", display: "β", description: "Beta" },
+      { label: "θ", latex: "\\theta", display: "θ", description: "Theta" },
     ]
   },
   {
@@ -113,25 +110,25 @@ const SYMBOL_GROUPS: MathSymbolGroup[] = [
     symbols: [
       {
         label: "Hệ 2 PT",
-        latex: "\\\\begin{cases} a_1 x + b_1 y = c_1 \\\\\\\\ a_2 x + b_2 y = c_2 \\\\end{cases}",
+        latex: "\\begin{cases} a_1 x + b_1 y = c_1 \\\\ a_2 x + b_2 y = c_2 \\end{cases}",
         display: "{ 2 PT",
         description: "Hệ 2 phương trình bậc nhất"
       },
       {
         label: "Hệ 3 PT",
-        latex: "\\\\begin{cases} a_1 x + b_1 y + c_1 z = d_1 \\\\\\\\ a_2 x + b_2 y + c_2 z = d_2 \\\\\\\\ a_3 x + b_3 y + c_3 z = d_3 \\\\end{cases}",
+        latex: "\\begin{cases} a_1 x + b_1 y + c_1 z = d_1 \\\\ a_2 x + b_2 y + c_2 z = d_2 \\\\ a_3 x + b_3 y + c_3 z = d_3 \\end{cases}",
         display: "{ 3 PT",
         description: "Hệ 3 phương trình"
       },
       {
         label: "Ma trận 2x2",
-        latex: "\\\\begin{pmatrix} a & b \\\\\\\\ c & d \\\\end{pmatrix}",
+        latex: "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}",
         display: "[2x2]",
         description: "Ma trận vuông cấp 2"
       },
       {
         label: "Ma trận 3x3",
-        latex: "\\\\begin{pmatrix} a_{11} & a_{12} & a_{13} \\\\\\\\ a_{21} & a_{22} & a_{23} \\\\\\\\ a_{31} & a_{32} & a_{33} \\\\end{pmatrix}",
+        latex: "\\begin{pmatrix} a_{11} & a_{12} & a_{13} \\\\ a_{21} & a_{22} & a_{23} \\\\ a_{31} & a_{32} & a_{33} \\end{pmatrix}",
         display: "[3x3]",
         description: "Ma trận vuông cấp 3"
       },
@@ -179,7 +176,7 @@ export default function MathSymbolToolbar({ onInsert, className = "" }: Props) {
             type="button"
             title={`${sym.description || sym.label} - Click để chèn`}
             onClick={() => onInsert(sym.latex)}
-            className="px-2 py-1 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 border border-slate-200 rounded text-slate-800 font-mono text-[11px] shadow-2xs transition-all active:scale-95 flex items-center justify-center min-w-[28px] h-7"
+            className="px-2 py-1 bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 border border-slate-200 rounded text-slate-800 font-mono text-[11px] shadow-2xs transition-all active:scale-95 flex items-center justify-center min-w-[28px] h-7 cursor-pointer"
           >
             {sym.display || sym.label}
           </button>
@@ -191,15 +188,15 @@ export default function MathSymbolToolbar({ onInsert, className = "" }: Props) {
             type="button"
             title="Bọc công thức trong dấu $ $ (Inline Math)"
             onClick={() => onInsert("$x$")}
-            className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[11px] font-medium transition-all shadow-2xs"
+            className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[11px] font-medium transition-all shadow-2xs cursor-pointer"
           >
             $ Inline $
           </button>
           <button
             type="button"
             title="Bọc công thức khối $$ $$ (Block Math)"
-            onClick={() => onInsert("$$\\\\begin{aligned}\\n\\\\end{aligned}$$")}
-            className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded text-[11px] font-medium transition-all shadow-2xs"
+            onClick={() => onInsert("$$\\begin{aligned}\n\\end{aligned}$$")}
+            className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded text-[11px] font-medium transition-all shadow-2xs cursor-pointer"
           >
             $$ Block $$
           </button>
