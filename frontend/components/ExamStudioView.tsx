@@ -1915,6 +1915,27 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 6: Word & Math Expression Counter */}
+                  {(() => {
+                    const textWithoutLatex = rawLatexCode.replace(/\$[^$]*\$/g, " ");
+                    const wordCount = (textWithoutLatex.trim().split(/\s+/).filter(Boolean)).length;
+                    const mathCount = Math.floor((rawLatexCode.match(/\$/g) || []).length / 2);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Mật độ văn bản & Công thức: <span className="font-mono text-indigo-700">~{wordCount} từ</span> | <span className="font-mono text-cyan-700">~{mathCount} biểu thức toán</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            ✓ Thống kê dung lượng ký tự tổng quan giúp kiểm soát độ dài và sự cô đọng của đề thi.
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -1940,7 +1961,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                           return acc + (diff === "EASY" ? 2 : diff === "MEDIUM" ? 4 : diff === "HARD" ? 8 : 15);
                         }, 0)} phút / ${headerConfig.duration_minutes || 150} phút quy định`,
                         `4. Kiểm định cú pháp XeLaTeX: ${dollarCount} ký tự $ (${isMathOk ? "ĐỐI XỨNG HỢP LỆ" : "CẢNH BÁO LỖI BIÊN DỊCH"})`,
-                        `5. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
+                        `5. Dung lượng: ~${(rawLatexCode.replace(/\$[^$]*\$/g, " ").trim().split(/\s+/).filter(Boolean)).length} từ | ~${Math.floor(dollarCount / 2)} công thức toán`,
+                        `6. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "ĐẦY ĐỦ" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

@@ -13,7 +13,8 @@ import {
   QrCode,
   Eye,
   Stamp,
-  BookOpen
+  BookOpen,
+  Sparkles
 } from "lucide-react";
 
 interface QuestionItem {
@@ -58,6 +59,7 @@ export default function A4PaperPreview({
   const [watermarkText, setWatermarkText] = useState<string>("");
   const [showWatermarkInput, setShowWatermarkInput] = useState<boolean>(false);
   const [isBookletMode, setIsBookletMode] = useState<boolean>(false);
+  const [isEcoGrayscale, setIsEcoGrayscale] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -146,6 +148,21 @@ export default function A4PaperPreview({
           >
             <Eye className="w-3.5 h-3.5" />
             <span>{isEyeCarePaper ? "Giấy ngà chống lóa" : "Giấy trắng A4"}</span>
+          </button>
+
+          {/* Toggle Eco-Grayscale In Tiết Kiệm Mực */}
+          <button
+            type="button"
+            onClick={() => setIsEcoGrayscale(!isEcoGrayscale)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isEcoGrayscale
+                ? "bg-slate-800 border-slate-900 text-white font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Chế độ in tiết kiệm mực: Tối ưu cho máy in laser trường học"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{isEcoGrayscale ? "Eco Tiết Kiệm Mực" : "Màu Chuẩn"}</span>
           </button>
 
           {/* Density / Spacing Selector */}
@@ -258,7 +275,11 @@ export default function A4PaperPreview({
             minHeight: isBookletMode ? "210mm" : "297mm",
           }}
           className={`${
-            isEyeCarePaper ? "bg-[#fbf7ee] text-stone-900 border-[#ebdcc4]" : "bg-white text-slate-900"
+            isEcoGrayscale
+              ? "bg-white text-black grayscale print:grayscale border-slate-300"
+              : isEyeCarePaper
+              ? "bg-[#fbf7ee] text-stone-900 border-[#ebdcc4]"
+              : "bg-white text-slate-900"
           } paper-sheet-elevation rounded-sm ${
             isBookletMode ? "p-[12mm]" : "p-[20mm]"
           } font-serif leading-relaxed transition-all duration-200 print:bg-white print:text-black print:shadow-none print:transform-none print:w-full print:p-0 ring-1 ring-slate-900/5 relative overflow-hidden`}
