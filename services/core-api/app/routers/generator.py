@@ -843,3 +843,62 @@ def update_exam_slot(
     db.commit()
     db.refresh(exam)
     return {"status": "success", "exam_id": str(exam.id), "slot_index": slot_index}
+
+
+@router.get("/exams/{exam_id}/matrix-export", status_code=status.HTTP_200_OK)
+def export_exam_matrix_b2b(
+    exam_id: uuid.UUID,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Xuất cấu trúc ma trận khảo thí chuẩn cho đối tác B2B và Tổ chuyên môn trường học.
+    Bảo vệ phân quyền: Yêu cầu vai trò ADMIN, TEACHER hoặc PRO; từ chối người dùng phổ thông.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER", "PRO"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tính năng trích xuất Ma trận Khảo thí B2B chỉ dành cho Quản trị viên (ADMIN), Giáo viên (TEACHER) hoặc Gói đối tác PRO"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi")
+
+    # Kiểm tra quyền truy cập theo trường/tổ bộ môn (Multi-tenant check)
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id and exam.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền trích xuất ma trận đề thi của đơn vị trường học khác"
+            )
+
+    items = db.query(ExamItem).filter(ExamItem.exam_id == exam.id).order_by(ExamItem.order_index).all()
+    matrix_slots = []
+    total_score = 0.0
+
+    for it in items:
+        pts = float(it.max_points or 1.0)
+        total_score += pts
+        snap = it.problem_snapshot or {}
+        matrix_slots.append({
+            "slot_index": it.order_index + 1 if it.order_index is not None else 1,
+            "display_label": it.display_label,
+            "topic": snap.get("topic", "TOAN_THPT"),
+            "difficulty": snap.get("difficulty", "comprehension"),
+            "points": pts,
+            "has_solution": bool(it.rubric_data or snap.get("solution_latex")),
+            "is_ai_variant": it.is_ai_variant
+        })
+
+    return {
+        "status": "success",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "tenant_id": exam.tenant_id,
+        "exported_by": current_user.username,
+        "total_questions": len(matrix_slots),
+        "total_score": total_score,
+        "matrix": matrix_slots,
+        "compliance": "CHUẨN MA TRẬN KHẢO THÍ BỘ GD&ĐT VÀ VINH PHÁT 2026"
+    }
