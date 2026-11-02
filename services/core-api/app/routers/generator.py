@@ -1184,6 +1184,68 @@ def generate_exam_proctor_token(
     }
 
 
+@router.post("/exams/{exam_id}/schedule-window", status_code=status.HTTP_200_OK)
+def configure_exam_schedule_window(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình khung giờ thi và mở phòng khảo sát trực tuyến đồng loạt (Scheduled Exam Window RBAC).
+    Bảo vệ phân quyền:
+    - Chỉ ADMIN hoặc TEACHER thuộc đơn vị trường học sở hữu đề thi mới có quyền lên lịch mở phòng thi.
+    - Chặn hoàn toàn học sinh hoặc người dùng vãng lai với HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách môn thi (TEACHER) mới có quyền cấu hình khung giờ khảo sát"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình khung giờ khảo sát")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền lên lịch thi cho đề thi thuộc đơn vị trường học khác"
+            )
+
+    start_time_iso = payload.get("start_time")
+    end_time_iso = payload.get("end_time")
+    allow_late_entry_minutes = int(payload.get("allow_late_entry_minutes", 15))
+    is_strict_sync = bool(payload.get("is_strict_sync", True))
+
+    schedule_data = {
+        "scheduled_by": current_user.username,
+        "scheduled_at": datetime.now(timezone.utc).isoformat(),
+        "start_time": start_time_iso,
+        "end_time": end_time_iso,
+        "allow_late_entry_minutes": allow_late_entry_minutes,
+        "is_strict_sync": is_strict_sync,
+        "schedule_status": "ACTIVE_SCHEDULED" if start_time_iso and end_time_iso else "UNSCHEDULED"
+    }
+
+    header_cfg = dict(exam.header_config or {})
+    header_cfg["exam_schedule_window"] = schedule_data
+    exam.header_config = header_cfg
+    flag_modified(exam, "header_config")
+
+    db.commit()
+    db.refresh(exam)
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "schedule": schedule_data,
+        "message": f"Đã thiết lập thành công khung giờ thi cho đề thi '{exam.title}'"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

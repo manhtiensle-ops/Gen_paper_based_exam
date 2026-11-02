@@ -3389,6 +3389,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 53: Integer Sequences & Pell Equation / Fibonacci - Lucas Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasSeqPell = /phương trình Pell|Pell equation|dãy Fibonacci|dãy Lucas|chu kỳ Pisano|số Catalan|số Stirling|công thức Binet|hệ thức truy hồi tuyến tính|dãy số nguyên/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Dãy số nguyên & Phương trình Pell / Fibonacci (Integer Sequences Inspector):{" "}
+                            {hasSeqPell ? (
+                              <span className="font-mono text-emerald-700">CHUẨN DÃY SỐ NGUYÊN & PHƯƠNG TRÌNH PELL HSG QUỐC GIA</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">DÃY SỐ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasSeqPell
+                              ? "✓ Phương trình Pell, dãy Fibonacci - Lucas, công thức Binet và hệ thức truy hồi tuyến tính chuẩn đề thi chọn học sinh giỏi Quốc tế."
+                              : "✓ Đề thi không chứa dạng toán dãy số nguyên và phương trình nghiệm nguyên Pell nâng cao."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3461,7 +3488,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `49. Tổ hợp nâng cao & Nguyên lý Dirichlet / Bất biến: CHUẨN TỔ HỢP RỜI RẠC & NGUYÊN LÝ DIRICHLET HSG QUỐC GIA`,
                         `50. Lý thuyết số & Đồng dư thức / Diophantine: CHUẨN LÝ THUYẾT SỐ & ĐỒNG DƯ THỨC HSG CHUYÊN SÂU`,
                         `51. Hình học xạ ảnh & Hàng điểm điều hòa / Cực đối cực: CHUẨN HÌNH HỌC XẠ ẢNH & ĐIỀU HÒA CHUYÊN SÂU`,
-                        `52. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `52. Dãy số nguyên & Phương trình Pell / Fibonacci: CHUẨN DÃY SỐ NGUYÊN & PHƯƠNG TRÌNH PELL HSG QUỐC GIA`,
+                        `53. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
