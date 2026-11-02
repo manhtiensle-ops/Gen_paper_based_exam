@@ -407,20 +407,23 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
     const lines = fullText.split("\n");
     let currentPos = 0;
-    let startLineIdx = 0;
-    let endLineIdx = 0;
+    let startLineIdx = -1;
+    let endLineIdx = -1;
 
     for (let i = 0; i < lines.length; i++) {
       const lineLen = lines[i].length;
       const lineEnd = currentPos + lineLen;
-      if (start >= currentPos && start <= lineEnd) {
+      if (startLineIdx === -1 && start <= lineEnd) {
         startLineIdx = i;
       }
-      if (end >= currentPos && end <= lineEnd) {
+      if (end <= lineEnd) {
         endLineIdx = i;
+        break;
       }
       currentPos = lineEnd + 1; // +1 for \n
     }
+    if (startLineIdx === -1) startLineIdx = 0;
+    if (endLineIdx === -1) endLineIdx = lines.length - 1;
 
     const selectedLines = lines.slice(startLineIdx, endLineIdx + 1);
     const duplicatedText = selectedLines.join("\n");
@@ -467,33 +470,32 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
     const lines = fullText.split("\n");
     let currentPos = 0;
-    let startLineIdx = 0;
-    let endLineIdx = 0;
+    let startLineIdx = -1;
+    let endLineIdx = -1;
 
     for (let i = 0; i < lines.length; i++) {
       const lineLen = lines[i].length;
       const lineEnd = currentPos + lineLen;
-      if (start >= currentPos && start <= lineEnd) {
+      if (startLineIdx === -1 && start <= lineEnd) {
         startLineIdx = i;
       }
-      if (end >= currentPos && end <= lineEnd) {
+      if (end <= lineEnd) {
         endLineIdx = i;
+        break;
       }
       currentPos = lineEnd + 1;
     }
+    if (startLineIdx === -1) startLineIdx = 0;
+    if (endLineIdx === -1) endLineIdx = lines.length - 1;
 
     if (direction === "up" && startLineIdx === 0) return; // Cannot move above line 1
     if (direction === "down" && endLineIdx === lines.length - 1) return; // Cannot move below last line
 
     const newLines = [...lines];
+    const selectedBlock = newLines.splice(startLineIdx, endLineIdx - startLineIdx + 1);
     if (direction === "up") {
-      const targetIdx = startLineIdx - 1;
-      const targetLine = newLines[targetIdx];
-      const selectedBlock = newLines.splice(startLineIdx, endLineIdx - startLineIdx + 1);
-      newLines.splice(targetIdx, 0, ...selectedBlock);
+      newLines.splice(startLineIdx - 1, 0, ...selectedBlock);
     } else {
-      const targetIdx = endLineIdx + 1;
-      const selectedBlock = newLines.splice(startLineIdx, endLineIdx - startLineIdx + 1);
       newLines.splice(startLineIdx + 1, 0, ...selectedBlock);
     }
 
