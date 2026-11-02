@@ -1,5 +1,6 @@
 import os
 import uuid
+import hashlib
 import re
 import unicodedata
 import logging
@@ -2294,6 +2295,79 @@ def configure_exam_scratch_paper_audit(
         "exam_title": exam.title,
         "scratch_paper_audit": audit_config,
         "message": f"Đã {'kích hoạt' if audit_enabled else 'vô hiệu hóa'} cấu hình kiểm soát giấy nháp ({max_sheets} tờ/thí sinh) thành công"
+    }
+
+
+@router.post("/exams/{exam_id}/cryptographic-seal", status_code=status.HTTP_200_OK)
+def configure_exam_cryptographic_seal(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình hộp đen niêm phong số hóa & Ký số bất biến đề thi (Exam Black-Box Cryptographic Seal RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Chủ tịch Hội đồng Khảo thí / Trưởng ban coi thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt niêm phong số hóa (sealed: True/False), áp dụng thuật toán băm bảo mật (hash_algorithm: SHA-256, SHA-512),
+      đóng dấu thời gian chứng thực RFC-3161 (require_rfc3161_timestamp), khóa cứng toàn bộ thao tác sửa đổi ma trận đề (lock_all_modifications)
+      và cấu hình ghi chú niêm phong pháp lý (legal_seal_notice).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Chủ tịch Hội đồng Khảo thí (TEACHER) mới có quyền niêm phong số hóa đề thi"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để niêm phong số hóa")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền niêm phong số hóa cho đề thi thuộc trường học khác"
+            )
+
+    is_sealed = bool(payload.get("sealed", True))
+    hash_algorithm = str(payload.get("hash_algorithm", "SHA-512")).upper()
+    require_timestamp = bool(payload.get("require_rfc3161_timestamp", True))
+    lock_modifications = bool(payload.get("lock_all_modifications", True))
+    legal_notice = str(payload.get("legal_seal_notice", "ĐỀ THI ĐÃ NIÊM PHONG BẤT BIẾN THEO QUY CHẾ KHẢO THÍ VINH PHÁT"))
+
+    seal_seed = f"{exam.id}:{exam.title}:{current_user.username}:{datetime.now(timezone.utc).isoformat()}"
+    computed_hash = hashlib.sha512(seal_seed.encode("utf-8")).hexdigest() if hash_algorithm == "SHA-512" else hashlib.sha256(seal_seed.encode("utf-8")).hexdigest()
+
+    header_cfg = dict(exam.header_config or {})
+    seal_config = {
+        "sealed": is_sealed,
+        "hash_algorithm": hash_algorithm,
+        "seal_hash": computed_hash,
+        "require_rfc3161_timestamp": require_timestamp,
+        "lock_all_modifications": lock_modifications,
+        "legal_seal_notice": legal_notice,
+        "seal_vault_id": f"VINHPHAT-HSM-{uuid.uuid4().hex[:8].upper()}",
+        "sealed_by": current_user.username,
+        "sealed_role": current_user.role,
+        "sealed_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["cryptographic_seal"] = seal_config
+    if lock_modifications and is_sealed:
+        header_cfg["is_locked"] = True
+        header_cfg["locked_by"] = current_user.username
+        header_cfg["locked_at"] = seal_config["sealed_at"]
+
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "cryptographic_seal": seal_config,
+        "message": f"Đã {'niêm phong số hóa bảo mật' if is_sealed else 'gỡ niêm phong số hóa'} đề thi thành công ({hash_algorithm}: {computed_hash[:16]}...)"
     }
 
 

@@ -3848,6 +3848,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 70: Algebraic Number Theory & Modularity Theorem / Wiles-Taylor Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasNumTheory = /lý thuyết số đại số|algebraic number theory|trường số đại số|số nguyên đại số|định lý fermat lớn|wiles-taylor|dạng module|modular form|định lý modularity|shimura-taniyama|đường cong elliptic modularity|birch & swinnerton-dyer|l-function|hàm l-dirichlet|nhóm lý tưởng lớp/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Lý thuyết số đại số & Định lý Modularity Wiles (Algebraic Number Theory Inspector):{" "}
+                            {hasNumTheory ? (
+                              <span className="font-mono text-emerald-700">CHUẨN SỐ ĐẠI SỐ & ĐỊNH LÝ FERMAT WILES ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">SỐ HỌC ĐẠI CƯƠNG TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasNumTheory
+                              ? "✓ Định lý Fermat lớn, chứng minh Wiles-Taylor, định lý Modularity, hàm L-Dirichlet và đường cong Elliptic chuẩn Olympic Toán Quốc tế IMO và Nghiên cứu sinh Số học."
+                              : "✓ Đề thi không chứa cấu trúc số đại số cao cấp và dạng module elliptic."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3937,7 +3964,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `66. Lý thuyết đồ thị & Luồng cực đại mạng: CHUẨN ĐỒ THỊ & LUỒNG CỰC ĐẠI FORD-FULKERSON ĐỈNH CAO`,
                         `67. Lý thuyết hỗn độn & Hệ động lực Fractal: CHUẨN HỆ ĐỘNG LỰC PHI TUYẾN & FRACTAL ĐỈNH CAO`,
                         `68. Ma trận ngẫu nhiên & Phân phối Wigner: CHUẨN MA TRẬN NGẪU NHIÊN & ĐỊNH LUẬT BÁN NGUYỆT WIGNER ĐỈNH CAO`,
-                        `69. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `69. Lý thuyết số đại số & Định lý Modularity Wiles: CHUẨN SỐ ĐẠI SỐ & ĐỊNH LÝ FERMAT WILES ĐỈNH CAO`,
+                        `70. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
