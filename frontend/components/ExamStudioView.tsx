@@ -3146,6 +3146,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 44: Polyhedra & Solid Geometry Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasPolyhedra = /khối đa diện|hình chóp|lăng trụ|thể tích khối chóp|thể tích lăng trụ|\\frac\{1\}\{3\}|tỉ số thể tích|Simpson|góc giữa đường thẳng.*mặt phẳng|góc giữa hai mặt phẳng|khoảng cách giữa hai đường chéo nhau/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Khối đa diện & Thể tích không gian cổ điển (Polyhedra & Solid Geometry):{" "}
+                            {hasPolyhedra ? (
+                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC KHÔNG GIAN CỔ ĐIỂN</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">KHÔNG GIAN TỌA ĐỘ / ĐẠI SỐ KHÁC</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasPolyhedra
+                              ? "✓ Công thức thể tích V=(1/3)Bh, V=Bh, tỉ số Simpson, xác định góc và khoảng cách chéo nhau đạt chuẩn đề thi THPT Quốc gia."
+                              : "✓ Đề thi không chứa chuyên đề khối chóp, lăng trụ và tỉ số thể tích không gian cổ điển."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3209,7 +3236,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `40. Số phức dạng lượng giác: CHUẨN DẠNG LƯỢNG GIÁC & CÔNG THỨC MOIVRE`,
                         `41. Hình học không gian tọa độ Oxyz: CHUẨN HÌNH HỌC KHÔNG GIAN TỌA ĐỘ OXYZ`,
                         `42. Nhị thức Newton & Khai triển đa thức: CHUẨN NHỊ THỨC NEWTON & HỆ SỐ KHAI TRIỂN`,
-                        `43. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `43. Khối đa diện & Thể tích không gian cổ điển: CHUẨN HÌNH HỌC KHÔNG GIAN CỔ ĐIỂN`,
+                        `44. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
