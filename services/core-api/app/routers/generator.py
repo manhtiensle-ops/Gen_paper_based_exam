@@ -1054,6 +1054,70 @@ def update_exam_watermark_policy(
     }
 
 
+@router.get("/exams/{exam_id}/grading-matrix-export", status_code=status.HTTP_200_OK)
+def export_exam_grading_matrix(
+    exam_id: uuid.UUID,
+    format_type: str = "json",
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Trích xuất ma trận chấm điểm và barem phân bổ điểm tự động (Auto-Grading Rubric Matrix RBAC).
+    Bảo vệ phân quyền:
+    - Chỉ ADMIN hoặc TEACHER thuộc đơn vị trường học sở hữu đề thi mới có quyền trích xuất ma trận chấm điểm.
+    - Chặn hoàn toàn học sinh hoặc người dùng vãng lai với HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách môn thi (TEACHER) mới có quyền trích xuất ma trận chấm điểm"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi cần trích xuất ma trận chấm điểm")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền trích xuất ma trận chấm điểm của trường học khác"
+            )
+
+    items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index.asc()).all()
+
+    grading_rows = []
+    total_max_score = 0.0
+
+    for idx, it in enumerate(items, 1):
+        q_score = it.score or 0.25
+        total_max_score += float(q_score)
+        snap = it.question_snapshot or {}
+
+        grading_rows.append({
+            "order": idx,
+            "item_id": str(it.id),
+            "question_type": it.question_type or "multiple_choice",
+            "score_weight": float(q_score),
+            "correct_key": it.correct_answer or snap.get("correct_answer") or snap.get("answer"),
+            "difficulty": it.difficulty or snap.get("difficulty"),
+            "rubric_breakdown": it.rubric_data or snap.get("rubric") or {"note": "Chấm trúng đáp án đạt điểm tối đa"}
+        })
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "format_type": format_type,
+        "total_questions": len(items),
+        "total_max_score": round(total_max_score, 2),
+        "exported_by": current_user.username,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "grading_matrix": grading_rows,
+        "confidentiality": "STRICT_CONFIDENTIAL_GRADING_COMMITTEE_ONLY"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

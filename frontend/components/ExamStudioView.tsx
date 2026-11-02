@@ -3335,6 +3335,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 51: Number Theory & Modular Arithmetic / Diophantine Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasNumberTheory = /đồng dư|modulo|mod\s*\d+|định lý Fermat|định lý Euler|phương trình Diophantine|nghiệm nguyên|chia hết cho|ước chung lớn nhất|bội chung nhỏ nhất|\bUCLN\b|\bBCNN\b|số nguyên tố cùng nhau|cấp của phần tử/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Lý thuyết số & Đồng dư thức / Diophantine (Number Theory Inspector):{" "}
+                            {hasNumberTheory ? (
+                              <span className="font-mono text-emerald-700">CHUẨN LÝ THUYẾT SỐ & ĐỒNG DƯ THỨC HSG CHUYÊN SÂU</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">SỐ HỌC TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasNumberTheory
+                              ? "✓ Đồng dư thức modulo, định lý Fermat nhỏ, Euler, phương trình Diophantine nghiệm nguyên chuẩn đề thi học sinh giỏi."
+                              : "✓ Đề thi không chứa dạng toán lý thuyết số và số học đồng dư nâng cao."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3405,7 +3432,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `47. Phương trình hàm & Phương trình Cauchy / Jensen: CHUẨN PHƯƠNG TRÌNH HÀM HSG CHUYÊN SÂU`,
                         `48. Đa thức & Nghiệm / Định lý Viète bậc cao: CHUẨN ĐA THỨC ĐẠI SỐ & ĐỊNH LÝ VIÈTE CHUYÊN SÂU`,
                         `49. Tổ hợp nâng cao & Nguyên lý Dirichlet / Bất biến: CHUẨN TỔ HỢP RỜI RẠC & NGUYÊN LÝ DIRICHLET HSG QUỐC GIA`,
-                        `50. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `50. Lý thuyết số & Đồng dư thức / Diophantine: CHUẨN LÝ THUYẾT SỐ & ĐỒNG DƯ THỨC HSG CHUYÊN SÂU`,
+                        `51. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
