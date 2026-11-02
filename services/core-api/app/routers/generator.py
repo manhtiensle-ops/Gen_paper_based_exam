@@ -2105,6 +2105,70 @@ def configure_exam_safe_browser_lock(
     }
 
 
+@router.post("/exams/{exam_id}/incident-submission-policy", status_code=status.HTTP_200_OK)
+def configure_exam_incident_submission_policy(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách xử lý sự cố phòng thi và gia hạn nộp bài (Exam Incident Submission Policy RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách phòng thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ xử lý sự cố (enabled), cho phép nộp bù do sự cố kỹ thuật (allow_emergency_grace_period),
+      chỉ định số phút bù tối đa (max_grace_minutes: 5 - 60 phút), yêu cầu nộp kèm nhật ký sự cố / ảnh minh chứng (require_incident_evidence)
+      và phê duyệt danh sách thí sinh được hưởng đặc cách (approved_student_exceptions).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách phòng thi (TEACHER) mới có quyền cấu hình xử lý sự cố nộp bài"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình chính sách xử lý sự cố")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình chính sách sự cố cho đề thi thuộc trường học khác"
+            )
+
+    incident_enabled = bool(payload.get("enabled", True))
+    allow_emergency_grace_period = bool(payload.get("allow_emergency_grace_period", True))
+    max_grace_minutes = int(payload.get("max_grace_minutes", 15))
+    require_incident_evidence = bool(payload.get("require_incident_evidence", True))
+    approved_student_exceptions = list(payload.get("approved_student_exceptions", []))
+
+    header_cfg = dict(exam.header_config or {})
+    incident_config = {
+        "enabled": incident_enabled,
+        "allow_emergency_grace_period": allow_emergency_grace_period,
+        "max_grace_minutes": max_grace_minutes,
+        "require_incident_evidence": require_incident_evidence,
+        "approved_student_exceptions": approved_student_exceptions,
+        "incident_protocol_id": f"VINHPHAT-INCIDENT-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["incident_submission_policy"] = incident_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "incident_submission_policy": incident_config,
+        "message": f"Đã {'kích hoạt' if incident_enabled else 'vô hiệu hóa'} cấu hình xử lý sự cố phòng thi (+{max_grace_minutes} phút bù) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
