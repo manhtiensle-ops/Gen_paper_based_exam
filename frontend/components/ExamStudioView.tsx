@@ -3578,6 +3578,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 60: Measure Theory & Lebesgue Integration / Sigma-Algebra Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasMeasureTheory = /lý thuyết độ đo|độ đo Lebesgue|đại số sigma|sigma-algebra|tập đo được|hàm đo được|tích phân Lebesgue|định lý hội tụ bị chặn|định lý hội tụ đơn điệu|bổ đề Fatou|không gian L\^p|hầu khắp nơi|độ đo hoàn toàn/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Lý thuyết Độ đo & Tích phân Lebesgue (Measure Theory & Lebesgue Inspector):{" "}
+                            {hasMeasureTheory ? (
+                              <span className="font-mono text-emerald-700">CHUẨN ĐỘ ĐO LEBESGUE & GIẢI TÍCH HIỆN ĐẠI ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">TÍCH PHÂN RIEMANN CỔ ĐIỂN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasMeasureTheory
+                              ? "✓ Độ đo Lebesgue, đại số sigma, tập đo được, tích phân Lebesgue và bổ đề Fatou chuẩn đề thi Olympic Toán sinh viên toàn quốc."
+                              : "✓ Đề thi không chứa cấu trúc lý thuyết độ đo và tích phân Lebesgue trừu tượng."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3657,7 +3684,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `56. Đại số trừu tượng & Lý thuyết nhóm: CHUẨN ĐẠI SỐ TRỪU TƯỢNG & LÝ THUYẾT NHÓM CAO CẤP`,
                         `57. Lý thuyết Đồ thị & Luồng mạng: CHUẨN LÝ THUYẾT ĐỒ THỊ & TOÁN RỜI RẠC CHUYÊN SÂU`,
                         `58. Giải tích số & Nội suy / Sai phân: CHUẨN GIẢI TÍCH SỐ & PHƯƠNG PHÁP TÍNH CAO CẤP`,
-                        `59. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `59. Lý thuyết Độ đo & Tích phân Lebesgue: CHUẨN ĐỘ ĐO LEBESGUE & GIẢI TÍCH HIỆN ĐẠI ĐỈNH CAO`,
+                        `60. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

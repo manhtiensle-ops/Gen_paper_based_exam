@@ -1671,6 +1671,67 @@ def configure_exam_print_packaging(
     }
 
 
+@router.post("/exams/{exam_id}/ab-testing-variants", status_code=status.HTTP_200_OK)
+def configure_exam_ab_testing_variants(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình phân nhánh đề thi thử nghiệm A/B Testing & Phân tích độ phân hóa câu hỏi theo lý thuyết khảo thí IRT (Exam AB Testing RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt phân nhánh đề thi, chia tỉ lệ nhóm thí sinh (cohort ratio), gán câu hỏi đối chứng (control questions)
+      và theo dõi độ khó P-value, độ phân hóa D-index.
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền cấu hình đề thi thử nghiệm A/B Testing"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình thử nghiệm A/B Testing")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình A/B Testing cho đề thi thuộc trường học khác"
+            )
+
+    ab_testing_enabled = bool(payload.get("enabled", True))
+    variant_distribution = payload.get("variant_distribution") or {"Variant_A": 50, "Variant_B": 50}
+    irt_tracking_enabled = bool(payload.get("irt_tracking_enabled", True))
+    pilot_sample_size = int(payload.get("pilot_sample_size", 100))
+
+    header_cfg = dict(exam.header_config or {})
+    ab_config = {
+        "enabled": ab_testing_enabled,
+        "variant_distribution": variant_distribution,
+        "irt_tracking_enabled": irt_tracking_enabled,
+        "pilot_sample_size": pilot_sample_size,
+        "active_variants": list(variant_distribution.keys()),
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["ab_testing_variants"] = ab_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "ab_testing_variants": ab_config,
+        "message": f"Đã {'kích hoạt' if ab_testing_enabled else 'vô hiệu hóa'} cấu hình phân nhánh A/B Testing đề thi ({len(variant_distribution)} biến thể) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
