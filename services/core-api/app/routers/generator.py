@@ -3356,6 +3356,72 @@ def configure_exam_zk_whistleblower_vault(
     }
 
 
+@router.post("/exams/{exam_id}/micro-dot-steganography", status_code=status.HTTP_200_OK)
+def configure_exam_micro_dot_steganography(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách Hàng rào chống trộn đề thi in lậu bằng mã nhận diện điểm vi mô vô hình (Micro-Dot Steganography Forensic Watermark RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Nhà in Khảo thí / Trưởng Ban Đề thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt mã hóa điểm vi mô vô hình (enabled),
+      nhúng số seri máy in và địa chỉ MAC phòng in (embed_printer_serial_and_mac),
+      nhúng timestamp và mã phòng thi cấp phát (embed_exam_room_dispatch_code),
+      ấn định mật độ lưới điểm vàng vi mô (dot_matrix_density_level: e.g. LOW, MEDIUM, ULTRA_HIGH),
+      và tự động trích xuất bằng chứng số khi quét ảnh tài liệu bị rò rỉ (auto_forensic_leak_traceback).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Nhà in Khảo thí (TEACHER) mới có quyền cấu hình mã điểm vi mô vô hình"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình mã điểm vi mô vô hình")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình mã điểm vi mô vô hình cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    embed_serial = bool(payload.get("embed_printer_serial_and_mac", True))
+    embed_dispatch = bool(payload.get("embed_exam_room_dispatch_code", True))
+    density = str(payload.get("dot_matrix_density_level", "ULTRA_HIGH"))
+    auto_trace = bool(payload.get("auto_forensic_leak_traceback", True))
+
+    header_cfg = dict(exam.header_config or {})
+    micro_dot_config = {
+        "enabled": is_enabled,
+        "embed_printer_serial_and_mac": embed_serial,
+        "embed_exam_room_dispatch_code": embed_dispatch,
+        "dot_matrix_density_level": density,
+        "auto_forensic_leak_traceback": auto_trace,
+        "stego_policy_id": f"VINHPHAT-STEGO-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["micro_dot_steganography"] = micro_dot_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "micro_dot_steganography": micro_dot_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình điểm vi mô vô hình (Mật độ: {density}, Truy vết số: {'Bật' if auto_trace else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

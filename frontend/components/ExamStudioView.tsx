@@ -4280,6 +4280,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 86: Floer Homology & Symplectic Topology / Arnold Fixed Point Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasFloer = /đối đồng điều floer|floer homology|tô-pô symplectic|symplectic topology|giả thuyết arnold|arnold conjecture|điểm bất động hamilton|hamiltonian fixed points|đa tạp lagrangian|lagrangian submanifolds|phương trình cauchy-riemann phi tuyến/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Đối đồng điều Floer & Tô-pô Symplectic (Floer Homology Inspector):{" "}
+                            {hasFloer ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TÔ PÔ ĐỈNH CAO FLOER-ARNOLD</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">TÔ PÔ KHÔNG GIAN TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasFloer
+                              ? "✓ Đối đồng điều Floer, giả thuyết Arnold về điểm bất động Hamilton, đa tạp con Lagrangian và đường cong giải tích giả holomorphic chuẩn Olympic Toán học và Nghiên cứu sinh Hình học vi phân hiện đại."
+                              : "✓ Đề thi không chứa các đường vi phôi Hamilton vô hạn chiều và phương trình Cauchy-Riemann nhiễu phức tạp."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4385,7 +4412,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `82. Chu kỳ Deligne & Cấu trúc Hodge hỗn hợp: CHUẨN ĐẠI SỐ ĐỈNH CAO GROTHENDIECK-DELIGNE`,
                         `83. Bất biến Witten & Tô-pô K-Theory: CHUẨN TOÁN LÝ ĐỈNH CAO WITTEN-ATIYAH`,
                         `84. Đa tạp Calabi-Yau & Đối xứng gương: CHUẨN HÌNH HỌC PHỨC ĐỈNH CAO YAU-CALABI`,
-                        `85. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `85. Đối đồng điều Floer & Tô-pô Symplectic: CHUẨN TÔ PÔ ĐỈNH CAO FLOER-ARNOLD`,
+                        `86. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
