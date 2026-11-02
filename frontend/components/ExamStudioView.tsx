@@ -107,6 +107,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     selectedChars: 0,
   });
   const [editorSearchTerm, setEditorSearchTerm] = useState<string>("");
+  const [editorSearchCaseSensitive, setEditorSearchCaseSensitive] = useState<boolean>(false);
+  const [editorSearchWholeWord, setEditorSearchWholeWord] = useState<boolean>(false);
+  const [editorSearchRegex, setEditorSearchRegex] = useState<boolean>(false);
   const [editorReplaceTerm, setEditorReplaceTerm] = useState<string>("");
   const [isEditorSearchOpen, setIsEditorSearchOpen] = useState<boolean>(false);
   const [isEditorReplaceMode, setIsEditorReplaceMode] = useState<boolean>(false);
@@ -680,32 +683,69 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     showToast(`Đã di chuyển đến dòng ${lineNum}`, "info");
   };
 
+  // Helper: Build search RegExp based on options
+  const getSearchRegExp = (flags: string = "g") => {
+    if (!editorSearchTerm) return null;
+    try {
+      let pattern = editorSearchTerm;
+      if (!editorSearchRegex) {
+        pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+      if (editorSearchWholeWord) {
+        pattern = `\\b${pattern}\\b`;
+      }
+      const activeFlags = flags.includes("i") && !editorSearchCaseSensitive ? flags : flags.replace("i", "");
+      const finalFlags = editorSearchCaseSensitive ? activeFlags.replace("i", "") : (activeFlags.includes("i") ? activeFlags : activeFlags + "i");
+      return new RegExp(pattern, finalFlags);
+    } catch (_) {
+      return null;
+    }
+  };
+
   // Helper: Find next occurrence of term in editor
   const handleFindNextInEditor = (forward: boolean = true) => {
     if (!editorSearchTerm || !editorTextareaRef.current) return;
     const textarea = editorTextareaRef.current;
     const text = textarea.value;
-    const term = editorSearchTerm.toLowerCase();
-    const curPos = forward ? textarea.selectionEnd : Math.max(0, textarea.selectionStart - 1);
-    
-    let nextIdx = -1;
+
+    const regex = getSearchRegExp("g");
+    if (!regex) {
+      showToast("Cú pháp biểu thức chính quy (Regex) không hợp lệ!", "warning");
+      return;
+    }
+
+    const matches: { index: number; length: number }[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(text)) !== null) {
+      matches.push({ index: m.index, length: m[0].length });
+      if (m.index === regex.lastIndex) regex.lastIndex++;
+    }
+
+    if (matches.length === 0) {
+      showToast("Không tìm thấy kết quả phù hợp!", "warning");
+      return;
+    }
+
+    const curPos = forward ? textarea.selectionEnd : textarea.selectionStart;
+    let targetMatch: { index: number; length: number } | null = null;
+
     if (forward) {
-      nextIdx = text.toLowerCase().indexOf(term, curPos);
-      if (nextIdx === -1) {
-        // wrap around
-        nextIdx = text.toLowerCase().indexOf(term, 0);
-      }
+      targetMatch = matches.find((item) => item.index >= curPos) || matches[0];
     } else {
-      nextIdx = text.toLowerCase().lastIndexOf(term, curPos);
-      if (nextIdx === -1) {
-        // wrap around
-        nextIdx = text.toLowerCase().lastIndexOf(term);
+      for (let i = matches.length - 1; i >= 0; i--) {
+        if (matches[i].index + matches[i].length <= curPos) {
+          targetMatch = matches[i];
+          break;
+        }
+      }
+      if (!targetMatch) {
+        targetMatch = matches[matches.length - 1];
       }
     }
 
-    if (nextIdx !== -1) {
+    if (targetMatch) {
       textarea.focus();
-      textarea.setSelectionRange(nextIdx, nextIdx + term.length);
+      textarea.setSelectionRange(targetMatch.index, targetMatch.index + targetMatch.length);
     }
   };
 
@@ -718,24 +758,24 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     const selEnd = textarea.selectionEnd;
     const selectedText = text.substring(selStart, selEnd);
 
-    // If current selection matches search term, replace it
-    if (selectedText.toLowerCase() === editorSearchTerm.toLowerCase()) {
-      const newText = text.substring(0, selStart) + editorReplaceTerm + text.substring(selEnd);
+    const regex = getSearchRegExp("");
+    if (!regex) {
+      showToast("Cú pháp Regex không hợp lệ!", "warning");
+      return;
+    }
+
+    const isCurrentMatch = regex.test(selectedText) && (selectedText.length > 0 || editorSearchTerm === "");
+    if (isCurrentMatch) {
+      const replacedChunk = selectedText.replace(regex, editorReplaceTerm);
+      const newText = text.substring(0, selStart) + replacedChunk + text.substring(selEnd);
       setRawLatexCode(newText);
       pushToLatexHistory(newText);
       setIsDirty(true);
       showToast("Đã thay thế 1 kết quả!", "info");
       setTimeout(() => {
-        if (editorTextareaRef.current) {
-          const nextIdx = newText.toLowerCase().indexOf(editorSearchTerm.toLowerCase(), selStart + editorReplaceTerm.length);
-          if (nextIdx !== -1) {
-            editorTextareaRef.current.focus();
-            editorTextareaRef.current.setSelectionRange(nextIdx, nextIdx + editorSearchTerm.length);
-          }
-        }
+        handleFindNextInEditor(true);
       }, 50);
     } else {
-      // Find next first
       handleFindNextInEditor(true);
     }
   };
@@ -743,23 +783,20 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   // Helper: Replace all occurrences
   const handleReplaceAllInEditor = () => {
     if (!editorSearchTerm) return;
-    const lowerTerm = editorSearchTerm.toLowerCase();
-    let count = 0;
-    let pos = 0;
-    const lowerText = rawLatexCode.toLowerCase();
-    while ((pos = lowerText.indexOf(lowerTerm, pos)) !== -1) {
-      count++;
-      pos += lowerTerm.length;
+    const regex = getSearchRegExp("g");
+    if (!regex) {
+      showToast("Cú pháp biểu thức chính quy (Regex) không hợp lệ!", "warning");
+      return;
     }
+
+    const matches = rawLatexCode.match(regex);
+    const count = matches ? matches.length : 0;
 
     if (count === 0) {
       showToast("Không tìm thấy kết quả phù hợp để thay thế!", "warning");
       return;
     }
 
-    // Escape regex characters in search term for safe global replace (case-insensitive)
-    const escapedTerm = editorSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(escapedTerm, 'gi');
     const updatedCode = rawLatexCode.replace(regex, editorReplaceTerm);
 
     setRawLatexCode(updatedCode);
@@ -1300,22 +1337,20 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     setIsDirty(true);
   };
 
-  // Recount matches whenever search term or code changes
+  // Recount matches whenever search term, options or code changes
   useEffect(() => {
     if (!editorSearchTerm) {
       setEditorSearchMatches(0);
       return;
     }
-    const lowerText = rawLatexCode.toLowerCase();
-    const lowerTerm = editorSearchTerm.toLowerCase();
-    let count = 0;
-    let pos = 0;
-    while ((pos = lowerText.indexOf(lowerTerm, pos)) !== -1) {
-      count++;
-      pos += lowerTerm.length;
+    const regex = getSearchRegExp("g");
+    if (!regex) {
+      setEditorSearchMatches(0);
+      return;
     }
-    setEditorSearchMatches(count);
-  }, [editorSearchTerm, rawLatexCode]);
+    const matches = rawLatexCode.match(regex);
+    setEditorSearchMatches(matches ? matches.length : 0);
+  }, [editorSearchTerm, editorSearchCaseSensitive, editorSearchWholeWord, editorSearchRegex, rawLatexCode]);
   const [isWordWrap, setIsWordWrap] = useState<boolean>(true);
   const [isAutoClosePairs, setIsAutoClosePairs] = useState<boolean>(true);
   const [copiedTex, setCopiedTex] = useState<boolean>(false);
@@ -3879,6 +3914,45 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                         autoFocus
                         className="px-2 py-0.5 text-xs bg-white border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 w-64 text-slate-800"
                       />
+                      {/* Search Options: Case Sensitive, Whole Word, Regex */}
+                      <div className="flex items-center space-x-1 border border-indigo-200 rounded bg-white px-1 py-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditorSearchCaseSensitive(!editorSearchCaseSensitive)}
+                          className={`px-1.5 py-0.2 rounded text-[10px] font-mono transition-colors ${
+                            editorSearchCaseSensitive
+                              ? "bg-indigo-600 text-white font-bold"
+                              : "text-slate-500 hover:bg-slate-100"
+                          }`}
+                          title="Khớp chữ hoa/chữ thường (Match Case: Aa)"
+                        >
+                          Aa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditorSearchWholeWord(!editorSearchWholeWord)}
+                          className={`px-1.5 py-0.2 rounded text-[10px] font-mono transition-colors ${
+                            editorSearchWholeWord
+                              ? "bg-indigo-600 text-white font-bold"
+                              : "text-slate-500 hover:bg-slate-100"
+                          }`}
+                          title="Khớp toàn bộ từ (Match Whole Word: [ab])"
+                        >
+                          \b
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditorSearchRegex(!editorSearchRegex)}
+                          className={`px-1.5 py-0.2 rounded text-[10px] font-mono transition-colors ${
+                            editorSearchRegex
+                              ? "bg-indigo-600 text-white font-bold"
+                              : "text-slate-500 hover:bg-slate-100"
+                          }`}
+                          title="Biểu thức chính quy (Use Regular Expression: .*)"
+                        >
+                          .*
+                        </button>
+                      </div>
                       <div className="flex items-center space-x-1">
                         <button
                           onClick={() => handleFindNextInEditor(false)}
@@ -5295,11 +5369,11 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + G</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-700 font-medium">Tìm kiếm từ khóa trong mã nguồn LaTeX</span>
+                    <span className="text-slate-700 font-medium">Tìm kiếm nâng cao (Aa, \b, .*)</span>
                     <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + F</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
-                    <span className="text-slate-700 font-medium">Tìm & Thay thế từ khóa trong mã nguồn</span>
+                    <span className="text-slate-700 font-medium">Tìm & Thay thế từ khóa (Replace All)</span>
                     <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + H</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
