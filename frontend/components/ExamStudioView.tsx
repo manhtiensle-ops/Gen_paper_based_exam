@@ -176,6 +176,29 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     showToast(`Đã thay thế toàn bộ ${count} vị trí trong mã nguồn LaTeX!`, "success");
   };
 
+  // Helper: Insert math snippet or symbol into editor at cursor position
+  const handleInsertMathSnippet = (snippet: string, cursorOffset: number = 0) => {
+    if (!editorTextareaRef.current) return;
+    const textarea = editorTextareaRef.current;
+    const text = rawLatexCode;
+    const selStart = textarea.selectionStart;
+    const selEnd = textarea.selectionEnd;
+
+    // Insert text
+    const newText = text.substring(0, selStart) + snippet + text.substring(selEnd);
+    setRawLatexCode(newText);
+    setIsDirty(true);
+
+    // Reset cursor position inside snippet
+    setTimeout(() => {
+      if (editorTextareaRef.current) {
+        editorTextareaRef.current.focus();
+        const newPos = selStart + snippet.length + cursorOffset;
+        editorTextareaRef.current.setSelectionRange(newPos, newPos);
+      }
+    }, 30);
+  };
+
   // Recount matches whenever search term or code changes
   useEffect(() => {
     if (!editorSearchTerm) {
@@ -1649,6 +1672,173 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   )}
                 </div>
               )}
+
+              {/* Fast Math Snippets & Formulas Quick Toolbar */}
+              <div className="bg-slate-100/90 border-b border-slate-200 px-3 py-1.5 flex items-center space-x-1.5 overflow-x-auto text-xs shrink-0 select-none scrollbar-thin">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1 flex items-center space-x-1">
+                  <span>Toán nhanh:</span>
+                </span>
+                
+                {/* Math Formulas Snippets */}
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\dfrac{}{}", -3)}
+                  className="px-2 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-mono text-[11px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn phân số \dfrac{tử}{mẫu}"
+                >
+                  <span className="font-semibold">\dfrac&#123;&#125;&#123;&#125;</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\sqrt{}", -1)}
+                  className="px-2 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-mono text-[11px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn căn bậc hai \sqrt{x}"
+                >
+                  <span className="font-semibold">\sqrt&#123;&#125;</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\int_{}^{} \\, \\mathrm{d}x", -17)}
+                  className="px-2 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-mono text-[11px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn tích phân \int_{a}^{b} f(x) dx"
+                >
+                  <span className="font-semibold">\int</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\lim_{x \\to } ", -1)}
+                  className="px-2 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-mono text-[11px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn giới hạn \lim_{x \to x_0}"
+                >
+                  <span className="font-semibold">\lim</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\sum_{i=1}^{n} ", 0)}
+                  className="px-2 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-mono text-[11px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn tổng xích-ma \sum"
+                >
+                  <span className="font-semibold">\sum</span>
+                </button>
+
+                <div className="h-4 w-px bg-slate-300 mx-1 shrink-0" />
+
+                {/* Common Symbols */}
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\alpha ", 0)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-serif text-[12px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn ký hiệu alpha"
+                >
+                  α
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\beta ", 0)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-serif text-[12px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn ký hiệu beta"
+                >
+                  β
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\pi ", 0)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-serif text-[12px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn ký hiệu số pi"
+                >
+                  π
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\infty ", 0)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-serif text-[12px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn vô cùng \infty"
+                >
+                  ∞
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\in ", 0)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-serif text-[12px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn thuộc \in"
+                >
+                  ∈
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\subset ", 0)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-serif text-[12px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn tập con \subset"
+                >
+                  ⊂
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\le ", 0)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-serif text-[12px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn nhỏ hơn hoặc bằng \le"
+                >
+                  ≤
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\ge ", 0)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-serif text-[12px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn lớn hơn hoặc bằng \ge"
+                >
+                  ≥
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\neq ", 0)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-serif text-[12px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn khác \neq"
+                >
+                  ≠
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\vec{}", -1)}
+                  className="px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-serif text-[12px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn vector \vec{u}"
+                >
+                  vec
+                </button>
+
+                <div className="h-4 w-px bg-slate-300 mx-1 shrink-0" />
+
+                {/* Exam Environment Snippets */}
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("\\begin{cases}\n  \n\\end{cases}", -13)}
+                  className="px-2 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-mono text-[10px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn hệ phương trình hoặc ngoặc nhọn \begin{cases}"
+                >
+                  cases
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleInsertMathSnippet("$$\n  \n$$", -3)}
+                  className="px-2 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded font-mono text-[10px] text-slate-700 hover:text-indigo-600 transition-colors shrink-0 shadow-2xs"
+                  title="Chèn khối công thức hiển thị riêng dòng $$"
+                >
+                  $$...$$
+                </button>
+              </div>
 
               {/* Code Editor Body */}
               <div className="flex-1 flex overflow-hidden">
