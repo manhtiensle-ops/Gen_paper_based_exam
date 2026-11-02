@@ -12,6 +12,7 @@ import {
   RotateCcw,
   QrCode,
   Eye,
+  EyeOff,
   SunMedium,
   GraduationCap,
   MessageSquare,
@@ -117,6 +118,7 @@ export default function A4PaperPreview({
   const [isStudentOathSlipMode, setIsStudentOathSlipMode] = useState<boolean>(false);
   const [isClassificationWatermarkMode, setIsClassificationWatermarkMode] = useState<boolean>(false);
   const [isExamProctorAuditSlipMode, setIsExamProctorAuditSlipMode] = useState<boolean>(false);
+  const [isRedactedQuestionMode, setIsRedactedQuestionMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -596,6 +598,21 @@ export default function A4PaperPreview({
           >
             <UserCheck className="w-3.5 h-3.5" />
             <span>{isExamProctorAuditSlipMode ? "Giám Thị (Bật)" : "Giám Thị"}</span>
+          </button>
+
+          {/* Redacted Sanitized Preview Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsRedactedQuestionMode(!isRedactedQuestionMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isRedactedQuestionMode
+                ? "bg-stone-200 border-stone-400 text-stone-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Che giấu nội dung câu hỏi vận dụng cao khi in thử nghiệm hoặc bàn giao bảo mật"
+          >
+            <EyeOff className="w-3.5 h-3.5" />
+            <span>{isRedactedQuestionMode ? "Bảo Mật VDC (Bật)" : "Bảo Mật VDC"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button

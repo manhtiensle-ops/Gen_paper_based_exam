@@ -437,6 +437,37 @@ def create_exam_folder(
     }
 
 
+@router.delete("/folders/{folder_id}", status_code=status.HTTP_200_OK)
+def delete_exam_folder(
+    folder_id: uuid.UUID,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """Xóa thư mục đề thi với bảo vệ phân quyền sở hữu hoặc Quản trị viên/Tổ trưởng."""
+    folder = db.query(ExamFolder).filter(ExamFolder.id == folder_id).first()
+    if not folder:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thư mục đề thi")
+
+    is_admin = current_user.role == "ADMIN"
+    is_owner = folder.user_id is not None and folder.user_id == current_user.id
+    is_same_tenant_teacher = (
+        current_user.role in ["ADMIN", "TEACHER"] and
+        folder.tenant_id == current_user.tenant_id
+    )
+
+    if not (is_admin or is_owner or is_same_tenant_teacher):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền xóa thư mục đề thi này của tổ bộ môn khác"
+        )
+
+    # Đưa các đề thi trong thư mục này về thư mục gốc (root)
+    db.query(GeneratedExam).filter(GeneratedExam.folder_id == folder_id).update({"folder_id": None})
+    db.delete(folder)
+    db.commit()
+    return {"status": "SUCCESS", "message": "Đã xóa thư mục đề thi thành công"}
+
+
 @router.patch("/exams/{exam_id}/move", status_code=status.HTTP_200_OK)
 def move_exam_to_folder(
     exam_id: uuid.UUID,

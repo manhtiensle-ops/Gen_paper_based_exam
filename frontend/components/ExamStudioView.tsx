@@ -2984,6 +2984,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 38: Arithmetic & Geometric Progressions Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasSequences = /cấp số cộng|cấp số nhân|công sai|công bội|dãy số|u_n|u_\{n\}|u_1|u_\{1\}|S_n|S_\{n\}|công thức số hạng tổng quát/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Cấp số cộng & Cấp số nhân (Sequences & Progressions):{" "}
+                            {hasSequences ? (
+                              <span className="font-mono text-emerald-700">CHUẨN DÃY SỐ VÀ CẤP SỐ ĐẠI SỐ</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÀM SỐ & PHƯƠNG TRÌNH</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasSequences
+                              ? "✓ Số hạng tổng quát u_n = u_1 + (n-1)d, cấp số nhân u_n = u_1·q^(n-1) và tổng S_n thỏa mãn tiêu chuẩn giải tích phổ thông."
+                              : "✓ Đề thi tập trung khảo sát hàm số hoặc hình học, không bao gồm bài toán cấp số."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3041,7 +3068,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `34. Tổ hợp, Xác suất & Không gian mẫu: CHUẨN TIÊN ĐỀ LAPLACE & ĐẠI SỐ TỔ HỢP`,
                         `35. Hình học tọa độ Oxy & Đường Conic: CHUẨN HÌNH HỌC GIẢI TÍCH OXY & CONIC`,
                         `36. Thống kê & Phân tích số liệu thực tế: CHUẨN ĐẠI SỐ THỐNG KÊ THỰC NGHIỆM`,
-                        `37. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `37. Cấp số cộng & Cấp số nhân: CHUẨN DÃY SỐ VÀ CẤP SỐ ĐẠI SỐ`,
+                        `38. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
