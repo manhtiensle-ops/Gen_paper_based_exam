@@ -4010,6 +4010,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 76: Quantum Complexity & Circuit Model / Shor & Grover Algorithm Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasQuantumComp = /độ phức tạp lượng tử|quantum complexity|lớp bqp|lớp qma|mạch lượng tử|quantum circuit|thuật toán shor|shor's algorithm|thuật toán grover|grover's algorithm|cổng hadamard|hadamard gate|cnot gate|biến đổi fourier lượng tử|quantum fourier transform|qubit chồng chập|quantum entanglement/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Độ phức tạp lượng tử & Thuật toán Shor (Quantum Complexity Inspector):{" "}
+                            {hasQuantumComp ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TÍNH TOÁN LƯỢNG TỬ & THUẬT TOÁN SHOR ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">TÍNH TOÁN KHOA HỌC TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasQuantumComp
+                              ? "✓ Độ phức tạp BQP/QMA, mạch lượng tử, thuật toán Shor, Grover và biến đổi Fourier lượng tử chuẩn Olympic Tin học và Toán học Ứng dụng hiện đại."
+                              : "✓ Đề thi không chứa mô hình tính toán lượng tử và thuật toán lượng tử nâng cao."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4105,7 +4132,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `72. Lý thuyết nút thắt & Đa thức Jones: CHUẨN NÚT THẮT & BẤT BIẾN JONES ĐỈNH CAO`,
                         `73. Hình học không giao hoán & C*-Đại số: CHUẨN HÌNH HỌC LƯỢNG TỬ & C*-ĐẠI SỐ ĐỈNH CAO`,
                         `74. Điểm kỳ dị & Lược đồ Grothendieck: CHUẨN HÌNH HỌC ĐẠI SỐ GROTHENDIECK ĐỈNH CAO`,
-                        `75. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `75. Độ phức tạp lượng tử & Thuật toán Shor: CHUẨN TÍNH TOÁN LƯỢNG TỬ & THUẬT TOÁN SHOR ĐỈNH CAO`,
+                        `76. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

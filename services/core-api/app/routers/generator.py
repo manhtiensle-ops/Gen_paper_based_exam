@@ -2693,6 +2693,71 @@ def configure_exam_multi_campus_unified_grading(
     }
 
 
+@router.post("/exams/{exam_id}/anti-substitution-seal", status_code=status.HTTP_200_OK)
+def configure_exam_anti_substitution_seal(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chế độ mã hóa chống tráo bài thi & Mã đối soát phách thí sinh (Exam Anti-Substitution Integrity Seal RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Ban Làm Phách / Khảo thí (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ niêm phong chống tráo bài thi (enabled), áp dụng mã hóa đối soát 2 chiều phách số hóa (dual_hash_verification),
+      bắt buộc dập mã watermark vi mô ẩn trên từng trang bài làm (require_micro_watermark),
+      thuật toán băm đối soát (hash_algorithm: 'SHA-256', 'BLAKE2B')
+      và tự động khóa đóng băng bài thi khi phát hiện sai lệch phách (auto_quarantine_on_mismatch).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Ban Làm Phách / Khảo thí (TEACHER) mới có quyền cấu hình niêm phong chống tráo bài thi"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình niêm phong chống tráo bài thi")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình niêm phong chống tráo bài thi cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    dual_hash = bool(payload.get("dual_hash_verification", True))
+    micro_watermark = bool(payload.get("require_micro_watermark", True))
+    hash_algo = str(payload.get("hash_algorithm", "SHA-256")).upper()
+    auto_quarantine = bool(payload.get("auto_quarantine_on_mismatch", True))
+
+    header_cfg = dict(exam.header_config or {})
+    seal_config = {
+        "enabled": is_enabled,
+        "dual_hash_verification": dual_hash,
+        "require_micro_watermark": micro_watermark,
+        "hash_algorithm": hash_algo,
+        "auto_quarantine_on_mismatch": auto_quarantine,
+        "substitution_seal_id": f"VINHPHAT-ANTISUB-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["anti_substitution_seal"] = seal_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "anti_substitution_seal": seal_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình niêm phong chống tráo bài thi (Đối soát 2 chiều: {'Bật' if dual_hash else 'Tắt'}, Thuật toán {hash_algo}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
