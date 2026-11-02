@@ -2758,6 +2758,72 @@ def configure_exam_anti_substitution_seal(
     }
 
 
+@router.post("/exams/{exam_id}/dispute-evidence-vault", status_code=status.HTTP_200_OK)
+def configure_exam_dispute_evidence_vault(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình hòm thư lưu trữ bằng chứng khiếu nại & phúc khảo bài thi trực tuyến (Exam Dispute Evidence Vault RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Hội đồng phúc khảo / Giáo viên phụ trách (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt kho lưu trữ ảnh quét bài thi đối soát (enabled),
+      ấn định hạn chót nộp minh chứng phúc khảo (evidence_submission_deadline),
+      quy định dung lượng tệp minh chứng tối đa (max_file_size_mb: 5 - 50MB),
+      cho phép thí sinh xem ảnh quét phách của chính mình (allow_student_scan_inspection),
+      và yêu cầu chữ ký số của ít nhất 2 giám khảo phúc khảo độc lập trước khi cập nhật điểm (require_dual_proctor_signoff).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Hội đồng phúc khảo (TEACHER) mới có quyền cấu hình kho lưu trữ bằng chứng khiếu nại"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình kho lưu trữ bằng chứng khiếu nại")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình kho lưu trữ bằng chứng khiếu nại cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    deadline = payload.get("evidence_submission_deadline")
+    max_mb = int(payload.get("max_file_size_mb", 20))
+    allow_inspect = bool(payload.get("allow_student_scan_inspection", True))
+    dual_signoff = bool(payload.get("require_dual_proctor_signoff", True))
+
+    header_cfg = dict(exam.header_config or {})
+    vault_config = {
+        "enabled": is_enabled,
+        "evidence_submission_deadline": deadline,
+        "max_file_size_mb": max_mb,
+        "allow_student_scan_inspection": allow_inspect,
+        "require_dual_proctor_signoff": dual_signoff,
+        "vault_id": f"VINHPHAT-EVAULT-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["dispute_evidence_vault"] = vault_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "dispute_evidence_vault": vault_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} kho lưu trữ bằng chứng phúc khảo (Tối đa {max_mb}MB, Chữ ký đôi: {'Bật' if dual_signoff else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

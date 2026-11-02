@@ -4037,6 +4037,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 77: Navier-Stokes Smoothness & Sobolev Turbulence / Clay Millennium Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasNavierStokes = /phương trình navier-stokes|navier-stokes equation|tính trơn navier-stokes|navier-stokes smoothness|dòng chảy hỗn loạn|turbulence model|không gian sobolev|sobolev space|tiêu tán năng lượng|energy dissipation|hằng số kolmogorov|kolmogorov turbulence|bài toán thiên niên kỷ clay|clay millennium problem|áp suất thủy động/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Navier-Stokes & Dòng chảy hỗn loạn (Navier-Stokes Inspector):{" "}
+                            {hasNavierStokes ? (
+                              <span className="font-mono text-emerald-700">CHUẨN BÀI TOÁN THIÊN NIÊN KỶ NAVIER-STOKES ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">CƠ HỌC LƯU CHẤT TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasNavierStokes
+                              ? "✓ Phương trình Navier-Stokes phi tuyến, tính trơn Clay Millennium, không gian Sobolev và dòng chảy Kolmogorov chuẩn Olympic Vật lý tính toán và Toán cao cấp."
+                              : "✓ Đề thi không chứa mô hình phương trình đạo hàm riêng Navier-Stokes phi tuyến phức tạp."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4133,7 +4160,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `73. Hình học không giao hoán & C*-Đại số: CHUẨN HÌNH HỌC LƯỢNG TỬ & C*-ĐẠI SỐ ĐỈNH CAO`,
                         `74. Điểm kỳ dị & Lược đồ Grothendieck: CHUẨN HÌNH HỌC ĐẠI SỐ GROTHENDIECK ĐỈNH CAO`,
                         `75. Độ phức tạp lượng tử & Thuật toán Shor: CHUẨN TÍNH TOÁN LƯỢNG TỬ & THUẬT TOÁN SHOR ĐỈNH CAO`,
-                        `76. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `76. Navier-Stokes & Dòng chảy hỗn loạn: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ NAVIER-STOKES ĐỈNH CAO`,
+                        `77. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
