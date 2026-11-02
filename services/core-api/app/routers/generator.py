@@ -1547,6 +1547,66 @@ def toggle_exam_anti_cheating_freeze(
     }
 
 
+@router.post("/exams/{exam_id}/seed-protection", status_code=status.HTTP_200_OK)
+def configure_exam_seed_protection(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình hạt giống bảo vệ và mã hóa chống sao chép tài liệu khảo thí (Exam Anti-Plagiarism Seeding RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) cùng tenant_id mới có thẩm quyền
+      thiết lập hạt giống mã hóa (seed), kích hoạt chữ ký số ẩn (digital fingerprinting) và chống sao chép đề thi.
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền cấu hình hạt giống bảo mật"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình hạt giống bảo mật")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền thiết lập hạt giống bảo mật cho đề thi thuộc trường học khác"
+            )
+
+    seed_key = payload.get("seed_key") or secrets.token_hex(8).upper()
+    enable_fingerprint = bool(payload.get("enable_fingerprint", True))
+    anti_tamper_hash = bool(payload.get("anti_tamper_hash", True))
+    zero_width_watermark = bool(payload.get("zero_width_watermark", True))
+
+    header_cfg = dict(exam.header_config or {})
+    seed_config = {
+        "seed_key": seed_key,
+        "enable_fingerprint": enable_fingerprint,
+        "anti_tamper_hash": anti_tamper_hash,
+        "zero_width_watermark": zero_width_watermark,
+        "security_fingerprint": f"VINHPHAT-FP-{secrets.token_urlsafe(8).upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["seed_protection"] = seed_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "seed_protection": seed_config,
+        "message": f"Đã kích hoạt hạt giống bảo mật '{seed_key}' và dấu vân tay chống sao chép tài liệu thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

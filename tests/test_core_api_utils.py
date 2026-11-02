@@ -109,6 +109,7 @@ def test_rbac_authorization_logic():
     assert "export_exam_grade_report" in g_content, "Thiếu endpoint export_exam_grade_report"
     assert "handle_exam_regrade_request" in g_content, "Thiếu endpoint handle_exam_regrade_request"
     assert "toggle_exam_anti_cheating_freeze" in g_content, "Thiếu endpoint toggle_exam_anti_cheating_freeze"
+    assert "configure_exam_seed_protection" in g_content, "Thiếu endpoint configure_exam_seed_protection"
     assert "status.HTTP_403_FORBIDDEN" in g_content, "Thiếu mã lỗi HTTP 403 Forbidden trong generator router"
     assert "export_type.lower() == \"docx\"" in g_content, "Thiếu phân quyền xuất bản Word DOCX"
     assert "download_exam_file" in g_content and "fmt == \"docx\"" in g_content, "Thiếu phân quyền streaming download Word DOCX"

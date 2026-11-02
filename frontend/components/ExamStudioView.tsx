@@ -3524,6 +3524,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 58: Graph Theory & Network Flows / Trees Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasGraphTheory = /lý thuyết đồ thị|đồ thị vô hướng|đồ thị có hướng|bậc của đỉnh|chu trình Euler|đường đi Euler|chu trình Hamilton|cây khung nhỏ nhất|Kruskal|Prim|Dijkstra|luồng cực đại|lát cắt hẹp nhất|Ford-Fulkerson|đồ thị phẳng|định lý Kuratowski|tô màu đồ thị/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Lý thuyết Đồ thị & Luồng mạng (Graph Theory & Trees Inspector):{" "}
+                            {hasGraphTheory ? (
+                              <span className="font-mono text-emerald-700">CHUẨN LÝ THUYẾT ĐỒ THỊ & TOÁN RỜI RẠC CHUYÊN SÂU</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">TOÁN HỌC RỜI RẠC TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasGraphTheory
+                              ? "✓ Đồ thị vô/hướng, chu trình Euler/Hamilton, cây khung, thuật toán Dijkstra và đồ thị phẳng chuẩn đề thi Tin học trẻ và Olympic Toán Tin."
+                              : "✓ Đề thi không chứa cấu trúc lý thuyết đồ thị và luồng mạng nâng cao."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3601,7 +3628,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `54. Đại số tuyến tính & Giá trị riêng / Ma trận: CHUẨN ĐẠI SỐ TUYẾN TÍNH & MA TRẬN OLYMPIC TOÁN`,
                         `55. Tô pô đại cương & Không gian Metric: CHUẨN TÔ PÔ ĐẠI CƯƠNG & METRIC CAO CẤP`,
                         `56. Đại số trừu tượng & Lý thuyết nhóm: CHUẨN ĐẠI SỐ TRỪU TƯỢNG & LÝ THUYẾT NHÓM CAO CẤP`,
-                        `57. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `57. Lý thuyết Đồ thị & Luồng mạng: CHUẨN LÝ THUYẾT ĐỒ THỊ & TOÁN RỜI RẠC CHUYÊN SÂU`,
+                        `58. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
