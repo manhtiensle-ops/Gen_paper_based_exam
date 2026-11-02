@@ -3173,6 +3173,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 45: Revolution Solids Cone Cylinder Sphere Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasRevolutionSolids = /khối tròn xoay|hình nón|hình trụ|mặt cầu|khối cầu|thể tích khối nón|thể tích khối trụ|thể tích khối cầu|diện tích xung quanh|\\pi r\^2 h|\\frac\{4\}\{3\}\\pi R\^3|đường sinh|bán kính đáy/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Khối tròn xoay Nón - Trụ - Cầu (Revolution Solids Cone Cylinder Sphere):{" "}
+                            {hasRevolutionSolids ? (
+                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC KHỐI TRÒN XOAY</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC CỔ ĐIỂN KHÁC</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasRevolutionSolids
+                              ? "✓ Diện tích xung quanh, toàn phần và thể tích khối nón (V=1/3πr²h), khối trụ (V=πr²h), khối cầu (V=4/3πR³) chuẩn kiến thức thi THPT."
+                              : "✓ Đề thi không chứa dạng toán khối nón, trụ hoặc thể tích khối cầu tròn xoay."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3237,7 +3264,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `41. Hình học không gian tọa độ Oxyz: CHUẨN HÌNH HỌC KHÔNG GIAN TỌA ĐỘ OXYZ`,
                         `42. Nhị thức Newton & Khai triển đa thức: CHUẨN NHỊ THỨC NEWTON & HỆ SỐ KHAI TRIỂN`,
                         `43. Khối đa diện & Thể tích không gian cổ điển: CHUẨN HÌNH HỌC KHÔNG GIAN CỔ ĐIỂN`,
-                        `44. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `44. Khối tròn xoay Nón - Trụ - Cầu: CHUẨN HÌNH HỌC KHỐI TRÒN XOAY`,
+                        `45. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

@@ -680,6 +680,60 @@ def generate_shuffled_exam_versions(
     }
 
 
+@router.get("/exams/{exam_id}/scoring-key", status_code=status.HTTP_200_OK)
+def get_exam_scoring_key(
+    exam_id: uuid.UUID,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Trích xuất bảng đáp án bảo mật và barem điểm chấm thi (Scoring Key & Rubric RBAC).
+    Bảo vệ phân quyền: Chỉ ADMIN hoặc TEACHER (Tổ trưởng/Giáo viên) của trường mới có quyền xem bảng đáp án và barem điểm chấm.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) và Giáo viên phụ trách (TEACHER) mới có quyền truy cập bảng đáp án bảo mật"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi cần tra cứu bảng đáp án")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id and exam.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền xem bảng đáp án của đơn vị trường học khác"
+            )
+
+    items = db.query(ExamItem).filter(ExamItem.exam_id == exam.id).order_by(ExamItem.order_index).all()
+    scoring_entries = []
+
+    for it in items:
+        snap = it.question_snapshot or {}
+        correct_answer = snap.get("correct_answer") or snap.get("answer") or "Chưa cấu hình"
+        scoring_entries.append({
+            "slot_index": it.order_index,
+            "section": it.section,
+            "score": it.score,
+            "correct_answer": correct_answer,
+            "difficulty": it.difficulty,
+            "rubric_steps": it.rubric_data or snap.get("solution_latex")
+        })
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "total_items": len(scoring_entries),
+        "scoring_key": scoring_entries,
+        "accessed_by": current_user.username,
+        "accessed_at": datetime.now(timezone.utc).isoformat(),
+        "confidentiality": "STRICT_CONFIDENTIAL_TEACHER_ONLY"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
