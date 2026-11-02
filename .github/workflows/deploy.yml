@@ -26,7 +26,8 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target_ref || github.sha }}
+          ref: ${{ inputs.target_ref || github.ref }}
+          fetch-depth: 0
 
       - name: 🟢 Setup Node.js 20
         uses: actions/setup-node@v4
@@ -63,7 +64,8 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target_ref || github.sha }}
+          ref: ${{ inputs.target_ref || github.ref }}
+          fetch-depth: 0
 
       - name: 🔍 Phát hiện dịch vụ có thay đổi
         id: changes
