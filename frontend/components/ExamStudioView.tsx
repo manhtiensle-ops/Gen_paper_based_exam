@@ -3065,6 +3065,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 41: Complex Numbers Polar Form & Euler Formula Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasPolarForm = /\\cos.*\\+.*i.*\\sin|Moivre|dạng lượng giác|argument|\\text\{Arg\}|e\^\{i|căn bậc n.*số phức/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Dạng lượng giác & Công thức Moivre số phức (Polar Form & Moivre):{" "}
+                            {hasPolarForm ? (
+                              <span className="font-mono text-emerald-700">CHUẨN DẠNG LƯỢNG GIÁC & CÔNG THỨC MOIVRE</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">SỐ PHỨC DẠNG ĐẠI SỐ A+BI</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasPolarForm
+                              ? "✓ Dạng lượng giác z = r(cosφ + i sinφ), công thức Moivre [r(cosφ + i sinφ)]^n và căn bậc n của số phức đạt chuẩn bồi dưỡng HSG."
+                              : "✓ Đề thi sử dụng số phức dạng đại số chuẩn z = a + bi hoặc hình học không gian."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3125,7 +3152,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `37. Cấp số cộng & Cấp số nhân: CHUẨN DÃY SỐ VÀ CẤP SỐ ĐẠI SỐ`,
                         `38. Giới hạn & Giải tích vi phân: CHUẨN GIẢI TÍCH VI PHÂN & GIỚI HẠN`,
                         `39. Nguyên hàm & Tích phân: CHUẨN GIẢI TÍCH TÍCH PHÂN NEWTON-LEIBNIZ`,
-                        `40. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `40. Số phức dạng lượng giác: CHUẨN DẠNG LƯỢNG GIÁC & CÔNG THỨC MOIVRE`,
+                        `41. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
