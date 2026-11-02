@@ -940,6 +940,60 @@ def transfer_exam_ownership(
     }
 
 
+@router.post("/exams/{exam_id}/lock", status_code=status.HTTP_200_OK)
+def toggle_exam_tamper_lock(
+    exam_id: uuid.UUID,
+    lock: bool = True,
+    lock_reason: Optional[str] = None,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Niêm phong & Đóng băng chống sửa đổi đề thi (Exam Tamper-Proof Freeze & Lock RBAC).
+    Bảo vệ phân quyền:
+    - Chỉ ADMIN hoặc TEACHER thuộc đơn vị trường học sở hữu đề thi mới có quyền niêm phong/mở khóa.
+    - Chặn hoàn toàn học sinh hoặc người dùng vãng lai với HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền niêm phong hoặc mở khóa đề thi"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi cần niêm phong")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền niêm phong đề thi thuộc đơn vị trường học khác"
+            )
+
+    header_cfg = dict(exam.header_config or {})
+    header_cfg["is_tamper_locked"] = lock
+    header_cfg["tamper_locked_by"] = current_user.username
+    header_cfg["tamper_locked_at"] = datetime.now(timezone.utc).isoformat()
+    header_cfg["tamper_lock_reason"] = lock_reason if lock else None
+    exam.header_config = header_cfg
+    flag_modified(exam, "header_config")
+
+    db.commit()
+    db.refresh(exam)
+
+    state_desc = "đã được NIÊM PHONG CHỐNG SỬA ĐỔI (Tamper-Proof Locked)" if lock else "đã được MỞ KHÓA NIÊM PHONG để tiếp tục chỉnh sửa"
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "is_tamper_locked": lock,
+        "tamper_locked_by": current_user.username,
+        "tamper_lock_reason": lock_reason if lock else None,
+        "message": f"Đề thi '{exam.title}' {state_desc}"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

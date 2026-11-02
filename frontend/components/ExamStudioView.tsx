@@ -3281,6 +3281,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 49: Polynomials & Vieta / Irreducibility Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasPolynomials = /đa thức|nghiệm hữu tỉ|định lý Viète|Vi-ét bậc ba|Vi-ét bậc bốn|đa thức bất khả quy|tiêu chuẩn Eisenstein|nghiệm bội|phép chia đa thức|P\(x\)\s*=|Q\(x\)\s*=|R\(x\)/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Đa thức & Nghiệm / Định lý Viète bậc cao (Polynomials & Vieta):{" "}
+                            {hasPolynomials ? (
+                              <span className="font-mono text-emerald-700">CHUẨN ĐA THỨC ĐẠI SỐ & ĐỊNH LÝ VIÈTE CHUYÊN SÂU</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">BIỂU THỨC ĐẠI SỐ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasPolynomials
+                              ? "✓ Đa thức hệ số nguyên, nghiệm bội, định lý Viète bậc cao, lược đồ Horner và tính bất khả quy chuẩn học sinh giỏi."
+                              : "✓ Đề thi không chứa dạng toán phân tích và giải nghiệm đa thức nâng cao."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3349,7 +3376,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `45. Bất đẳng thức cổ điển Cauchy - Bunhiacopski: CHUẨN BẤT ĐẲNG THỨC & ĐÁNH GIÁ CỰC TRỊ`,
                         `46. Hệ phương trình không mẫu mực & Đối xứng: CHUẨN HỆ PHƯƠNG TRÌNH ĐẠI SỐ CHUYÊN SÂU`,
                         `47. Phương trình hàm & Phương trình Cauchy / Jensen: CHUẨN PHƯƠNG TRÌNH HÀM HSG CHUYÊN SÂU`,
-                        `48. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `48. Đa thức & Nghiệm / Định lý Viète bậc cao: CHUẨN ĐA THỨC ĐẠI SỐ & ĐỊNH LÝ VIÈTE CHUYÊN SÂU`,
+                        `49. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

@@ -100,6 +100,7 @@ def test_rbac_authorization_logic():
     assert "update_exam_accreditation_and_tags" in g_content, "Thiếu endpoint update_exam_accreditation_and_tags"
     assert "clone_exam_cross_tenant" in g_content, "Thiếu endpoint clone_exam_cross_tenant"
     assert "transfer_exam_ownership" in g_content, "Thiếu endpoint transfer_exam_ownership"
+    assert "toggle_exam_tamper_lock" in g_content, "Thiếu endpoint toggle_exam_tamper_lock"
     assert "status.HTTP_403_FORBIDDEN" in g_content, "Thiếu mã lỗi HTTP 403 Forbidden trong generator router"
     assert "export_type.lower() == \"docx\"" in g_content, "Thiếu phân quyền xuất bản Word DOCX"
     assert "download_exam_file" in g_content and "fmt == \"docx\"" in g_content, "Thiếu phân quyền streaming download Word DOCX"
