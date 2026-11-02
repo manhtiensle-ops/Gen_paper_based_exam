@@ -930,6 +930,9 @@ export default function Dashboard() {
         fetchReviewQuestions();
         fetchPendingCount();
         fetchQuestions();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(`Không thể thay đổi trạng thái phê duyệt: ${err.detail || "Yêu cầu quyền Giáo viên hoặc Quản trị viên (403 Forbidden)"}`);
       }
     } catch (e) {
       console.error(e);
@@ -970,7 +973,7 @@ export default function Dashboard() {
 
     setApprovingAll(true);
     try {
-      await Promise.all(
+      const results = await Promise.all(
         unapproved.map((q) =>
           fetch(`/api/questions/${q.id}/verify`, {
             method: "PATCH",
@@ -979,6 +982,10 @@ export default function Dashboard() {
           })
         )
       );
+      const hasForbidden = results.some((r) => r.status === 403);
+      if (hasForbidden) {
+        alert("Một số hoặc toàn bộ câu hỏi không thể phê duyệt do tài khoản không có thẩm quyền Giáo viên/Quản trị viên (403 Forbidden).");
+      }
       await Promise.all([fetchReviewQuestions(), fetchPendingCount(), fetchQuestions()]);
     } catch (e) {
       console.error("Batch approve failed:", e);

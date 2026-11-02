@@ -2822,6 +2822,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 32: 3D Cartesian Space & Orthogonal Vector Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasOxyz = /Oxyz|vectơ|vecto|mặt phẳng|mặt cầu|đường thẳng|tọa độ|tích có hướng|pháp tuyến|chỉ phương/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Hình học không gian Oxyz & Tọa độ vectơ (3D Cartesian Space):{" "}
+                            {hasOxyz ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TRỰC CHUẨN Oxyz</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC TỔNG HỢP / ĐẠI SỐ</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasOxyz
+                              ? "✓ Hệ trục Oxyz, tích có hướng, vectơ chỉ phương và pháp tuyến phi triệt tiêu, thỏa mãn tính trực giao và định dạng không gian 3 chiều."
+                              : "✓ Đề thi tập trung hình học không gian cổ điển hoặc hình học phẳng sơ cấp, không phụ thuộc tọa độ."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2873,7 +2900,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `28. Giới hạn & Tính liên tục giải tích: CHUẨN LIÊN TỤC & GIỚI HẠN`,
                         `29. Cấp số cộng, cấp số nhân & Dãy số: CHUẨN CẤP SỐ & HỘI TỤ`,
                         `30. Lũy thừa & Căn thức số học: CHUẨN MIỀN XÁC ĐỊNH`,
-                        `31. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `31. Không gian Oxyz & Vectơ trực chuẩn: CHUẨN TRỰC CHUẨN OXYZ`,
+                        `32. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

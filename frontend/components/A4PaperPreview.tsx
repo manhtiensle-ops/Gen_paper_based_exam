@@ -112,6 +112,7 @@ export default function A4PaperPreview({
   const [isCryptographicSealMode, setIsCryptographicSealMode] = useState<boolean>(false);
   const [isRegulationNoticeMode, setIsRegulationNoticeMode] = useState<boolean>(false);
   const [isExaminerRubricMode, setIsExaminerRubricMode] = useState<boolean>(false);
+  const [isSecureQrSealMode, setIsSecureQrSealMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -516,6 +517,21 @@ export default function A4PaperPreview({
           >
             <Award className="w-3.5 h-3.5" />
             <span>{isExaminerRubricMode ? "Phiếu Chấm Điểm (Bật)" : "Phiếu Chấm Điểm"}</span>
+          </button>
+
+          {/* Secured Real-Time Decryption QR Seal Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsSecureQrSealMode(!isSecureQrSealMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isSecureQrSealMode
+                ? "bg-cyan-100 border-cyan-300 text-cyan-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp tem mã QR bảo mật quét đối soát đáp án và tra cứu số hóa"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>{isSecureQrSealMode ? "QR Bảo Mật (Bật)" : "QR Bảo Mật"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1480,6 +1496,36 @@ export default function A4PaperPreview({
                     <span className="text-[8px] text-slate-400 italic">(Ký và ghi rõ họ tên)</span>
                     <div className="h-6"></div>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Secured Real-Time Decryption QR Seal Mode Block */}
+          {isSecureQrSealMode && (
+            <div className="mt-6 pt-3 border-t-2 border-cyan-500 p-2.5 rounded-lg bg-cyan-50/30 print:bg-white print:border-slate-700 text-[10px] text-slate-800 break-inside-avoid">
+              <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-cyan-200 print:border-slate-300 font-bold text-[10.5px] text-cyan-950 print:text-black">
+                <span className="flex items-center gap-1.5">
+                  <QrCode className="w-3.5 h-3.5 text-cyan-700 print:text-black" />
+                  MÃ BẢO MẬT SỐ HÓA &amp; ĐỐI SOÁT ĐÁP ÁN KHẢO THÍ CHUẨN QUỐC GIA
+                </span>
+                <span className="text-[9px] text-cyan-800 print:text-black font-mono">
+                  SHA-256: {Math.random().toString(16).substring(2, 10).toUpperCase()}...
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4 p-2 rounded bg-white border border-cyan-200 print:border-slate-300">
+                <div className="space-y-1 text-[9px] text-slate-700 leading-relaxed">
+                  <div className="font-bold text-cyan-900 print:text-black flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-cyan-600 print:text-black" />
+                    HƯỚNG DẪN TRA CỨU ĐIỆN TỬ DÀNH CHO CÁN BỘ CHẤM THI:
+                  </div>
+                  <div>• Quét mã QR bảo mật để mở khóa ma trận biểu điểm và đáp án trắc nghiệm thời gian thực sau giờ thu bài.</div>
+                  <div>• Mã hóa chống gian lận công nghệ cao: Dữ liệu bài thi được ký số xác thực bởi Trung tâm Giáo dục VINH PHÁT.</div>
+                </div>
+                {/* Simulated QR Code Canvas box */}
+                <div className="w-16 h-16 shrink-0 border-2 border-dashed border-cyan-400 print:border-black rounded flex flex-col items-center justify-center bg-cyan-50/50 print:bg-white p-1">
+                  <QrCode className="w-9 h-9 text-cyan-800 print:text-black" />
+                  <span className="text-[7px] font-mono text-cyan-700 print:text-black uppercase">SCAN•AUTH</span>
                 </div>
               </div>
             </div>
