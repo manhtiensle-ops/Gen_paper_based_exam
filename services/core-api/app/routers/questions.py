@@ -423,3 +423,56 @@ def delete_question(
     db.delete(q)
     db.commit()
     return {"status": "success", "message": f"Question {question_id} deleted successfully"}
+
+
+@router.post("/batch-import", status_code=status.HTTP_201_CREATED)
+def bulk_import_questions(
+    payload: dict,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Nhập danh sách câu hỏi hàng loạt vào Ngân hàng Khảo thí.
+    Ràng buộc phân quyền: Chỉ ADMIN hoặc TEACHER của đơn vị mới có quyền nạp dữ liệu hàng loạt.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Giáo viên (TEACHER) hoặc Quản trị viên (ADMIN) mới có quyền nhập câu hỏi hàng loạt"
+        )
+
+    questions_data = payload.get("questions", [])
+    if not isinstance(questions_data, list) or len(questions_data) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Danh sách câu hỏi 'questions' không được để trống"
+        )
+
+    imported_ids = []
+    for item in questions_data:
+        content_latex = item.get("content_latex", "").strip()
+        if not content_latex:
+            continue
+        new_q = Question(
+            id=uuid.uuid4(),
+            user_id=current_user.id,
+            tenant_id=current_user.tenant_id,
+            topic=item.get("topic", "TOAN_THPT"),
+            difficulty=item.get("difficulty", 2),
+            content_latex=content_latex,
+            solution_latex=item.get("solution_latex"),
+            options=item.get("options"),
+            correct_answer=item.get("correct_answer"),
+            is_verified=(current_user.role == "ADMIN"),
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(new_q)
+        imported_ids.append(str(new_q.id))
+
+    db.commit()
+    return {
+        "status": "success",
+        "imported_count": len(imported_ids),
+        "question_ids": imported_ids,
+        "message": f"Đã nhập thành công {len(imported_ids)} câu hỏi vào ngân hàng khảo thí"
+    }

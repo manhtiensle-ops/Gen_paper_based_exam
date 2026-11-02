@@ -1088,7 +1088,13 @@ export default function A4PaperPreview({
                   <div key={q.id || idx} className="mb-3 break-inside-avoid">
                     <div className="font-medium">
                       <strong className="text-slate-900">Câu {idx + 1}:</strong>{" "}
-                      <MathRenderer content={q.content_latex} />
+                      {isRedactedQuestionMode && (q.difficulty === "high_application" || (q.difficulty as any) === 4 || (q.difficulty as any) === "4") ? (
+                        <span className="inline-block px-2 py-0.5 bg-stone-200 text-stone-700 font-mono text-[10px] rounded border border-stone-300 italic select-none">
+                          [ĐÃ KHÓA NỘI DUNG VDC — CHẾ ĐỘ IN THẨM ĐỊNH BẢO MẬT VINH PHÁT]
+                        </span>
+                      ) : (
+                        <MathRenderer content={q.content_latex} />
+                      )}
                     </div>
                     {/* Bilingual English Prompt Sub-label if enabled */}
                     {isBilingualMode && (

@@ -81,6 +81,7 @@ def test_rbac_authorization_logic():
     q_content = questions_router.read_text(encoding="utf-8")
     assert "current_user: User = Depends(require_teacher_or_admin)" in q_content, "Thiếu bảo vệ phân quyền toggle verify"
     assert "is_vdc = q.difficulty == 4" in q_content, "Thiếu kiểm tra phân quyền chuyên môn câu hỏi VDC"
+    assert "bulk_import_questions" in q_content, "Thiếu endpoint bulk_import_questions"
     assert "status.HTTP_403_FORBIDDEN" in q_content, "Thiếu mã lỗi 403 Forbidden trong questions router"
     
     # Kiểm tra router generator có phân quyền
