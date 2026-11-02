@@ -758,15 +758,34 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     compileLivePreview(items, layoutKnobs, mode);
   };
 
+  const [isExporting, setIsExporting] = useState<"docx" | "pdf" | null>(null);
+
   // Direct Download File (Option B - Native TeX Live PDF)
-  const handleDownload = (fmt: "docx" | "pdf") => {
-    const downloadUrl = `/api/generator/exams/${examId}/download?format=${fmt}&mode=${activeMode}`;
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.setAttribute("download", "");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (fmt: "docx" | "pdf") => {
+    if (isExporting) return;
+    setIsExporting(fmt);
+    try {
+      const downloadUrl = `/api/generator/exams/${examId}/download?format=${fmt}&mode=${activeMode}`;
+      const res = await fetch(downloadUrl);
+      if (!res.ok) {
+        throw new Error(`Tải file thất bại (HTTP ${res.status})`);
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      const extension = fmt === "docx" ? "docx" : "pdf";
+      const cleanTitle = (headerConfig.exam_name || "de_thi").replace(/[/\\?%*:|"<>]/g, "_");
+      link.download = `${cleanTitle}_${activeMode.toLowerCase()}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err: any) {
+      alert(`Không thể tải tệp: ${err.message || "Lỗi hệ thống"}`);
+    } finally {
+      setIsExporting(null);
+    }
   };
 
   const currentTotalScore = items.reduce(
@@ -943,19 +962,29 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           <div className="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
             <button
               onClick={() => handleDownload("docx")}
-              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-indigo-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
+              disabled={isExporting !== null}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center space-x-1 ${
+                isExporting === "docx"
+                  ? "bg-blue-100 text-blue-700 cursor-wait"
+                  : "text-slate-700 hover:bg-white hover:text-indigo-700"
+              }`}
               title="Xuất file Word OMML chuẩn Bộ GD&ĐT (không vỡ bảng, sửa công thức tự nhiên)"
             >
-              <Download className="w-3.5 h-3.5 text-blue-600" />
-              <span>Word</span>
+              <Download className={`w-3.5 h-3.5 text-blue-600 ${isExporting === "docx" ? "animate-bounce" : ""}`} />
+              <span>{isExporting === "docx" ? "Đang xuất..." : "Word"}</span>
             </button>
             <button
               onClick={() => handleDownload("pdf")}
-              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-rose-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
+              disabled={isExporting !== null}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center space-x-1 ${
+                isExporting === "pdf"
+                  ? "bg-rose-100 text-rose-700 cursor-wait"
+                  : "text-slate-700 hover:bg-white hover:text-rose-700"
+              }`}
               title="Tải bản in PDF TeX Live gốc"
             >
-              <Download className="w-3.5 h-3.5 text-rose-600" />
-              <span>PDF In</span>
+              <Download className={`w-3.5 h-3.5 text-rose-600 ${isExporting === "pdf" ? "animate-bounce" : ""}`} />
+              <span>{isExporting === "pdf" ? "Đang tạo..." : "PDF In"}</span>
             </button>
             <button
               onClick={() => window.print()}
