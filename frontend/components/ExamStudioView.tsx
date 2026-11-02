@@ -85,7 +85,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
 
-  // Restore draft from local storage on mount (Disaster Recovery)
+  // Warn user before leaving page if there are unsaved modifications
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "Bạn có thay đổi chưa lưu trên đề thi. Bạn có chắc chắn muốn rời đi?";
+        return e.returnValue;
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
   useEffect(() => {
     if (!examId) return;
     const draft = getExamDraft(examId);
@@ -780,7 +791,15 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         <div className="flex items-center space-x-3">
           {onBack && (
             <button
-              onClick={onBack}
+              onClick={() => {
+                if (isDirty) {
+                  if (window.confirm("Bạn có thay đổi chưa lưu trên đề thi. Bạn có chắc chắn muốn quay lại?")) {
+                    onBack();
+                  }
+                } else {
+                  onBack();
+                }
+              }}
               className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 transition-all flex items-center space-x-1"
             >
               <span>← Trở lại</span>
@@ -792,7 +811,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               <span className="text-slate-300">/</span>
               <span className="text-slate-700 truncate max-w-sm font-medium">{headerConfig.exam_name}</span>
             </h1>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+            {isDirty ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-bold border border-amber-200 flex items-center space-x-1" title="Có thay đổi chưa biên dịch / lưu (Bấm Ctrl+S để lưu)">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                <span>Chưa lưu</span>
+              </span>
+            ) : (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 flex items-center space-x-1" title="Đã đồng bộ và biên dịch hoàn tất">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Đã lưu</span>
+              </span>
+            )}
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold border border-slate-200">
               TeX Live & OMML
             </span>
           </div>
