@@ -3422,6 +3422,72 @@ def configure_exam_micro_dot_steganography(
     }
 
 
+@router.post("/exams/{exam_id}/rfid-smart-seal", status_code=status.HTTP_200_OK)
+def configure_exam_rfid_smart_seal(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách Hàng rào chống đổi bài thi bằng thẻ nhận dạng vô tuyến RFID tích hợp bìa bài thi (RFID Exam Booklet Smart Seal RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Giám sát Khảo thí / Trưởng Ban Coi thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt thẻ RFID thông minh (enabled),
+      ấn định chuẩn thẻ vi sóng vô tuyến (rfid_standard: e.g. EPC_GEN2_UHF, ISO_18000_6C),
+      bắt buộc điểm danh tự động số lượng bài thi nộp lại qua cổng quét RFID (require_rfid_gate_reconciliation),
+      bật còi báo động khẩn cấp nếu phát hiện bài thi bị đưa ra khỏi vùng phòng thi (alarm_on_perimeter_breach),
+      và yêu cầu chữ ký số đồng bộ từ đầu đọc thẻ của giám thị (require_proctor_reader_signature).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Giám sát Khảo thí (TEACHER) mới có quyền cấu hình thẻ RFID thông minh"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình thẻ RFID thông minh")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình thẻ RFID thông minh cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    standard = str(payload.get("rfid_standard", "EPC_GEN2_UHF"))
+    reconcile_gate = bool(payload.get("require_rfid_gate_reconciliation", True))
+    alarm_breach = bool(payload.get("alarm_on_perimeter_breach", True))
+    proctor_sig = bool(payload.get("require_proctor_reader_signature", True))
+
+    header_cfg = dict(exam.header_config or {})
+    rfid_config = {
+        "enabled": is_enabled,
+        "rfid_standard": standard,
+        "require_rfid_gate_reconciliation": reconcile_gate,
+        "alarm_on_perimeter_breach": alarm_breach,
+        "require_proctor_reader_signature": proctor_sig,
+        "rfid_policy_id": f"VINHPHAT-RFID-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["rfid_smart_seal"] = rfid_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "rfid_smart_seal": rfid_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình thẻ RFID thông minh (Chuẩn: {standard}, Cảnh báo vi phạm: {'Bật' if alarm_breach else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

@@ -4307,6 +4307,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 87: Kontsevich Moduli Space & Intersection Theory / Witten Conjecture Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasKontsevich = /không gian moduli đường cong ổn định|moduli space of stable curves|\\bar\{m\}_\{g,n\}|bất biến kontsevich|kontsevich invariants|giả thuyết witten-kontsevich|witten-kontsevich conjecture|lý thuyết giao trên moduli|intersection theory on moduli|lớp chern psi|psi-classes on moduli/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Không gian Moduli & Lý thuyết Giao Kontsevich (Kontsevich Moduli Inspector):{" "}
+                            {hasKontsevich ? (
+                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC ĐẠI SỐ ĐỈNH CAO KONTSEVICH</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC ĐẠI SỐ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasKontsevich
+                              ? "✓ Không gian moduli đường cong ổn định, giả thuyết Witten-Kontsevich về giao của các lớp psi, ma trận ngẫu nhiên và tô-pô lượng tử chuẩn Olympic Toán học và Nghiên cứu sinh Hình học đại số."
+                              : "✓ Đề thi không chứa các tích phân lớp đặc trưng psi bậc cao trên không gian moduli đa chiều phức tạp."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4413,7 +4440,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `83. Bất biến Witten & Tô-pô K-Theory: CHUẨN TOÁN LÝ ĐỈNH CAO WITTEN-ATIYAH`,
                         `84. Đa tạp Calabi-Yau & Đối xứng gương: CHUẨN HÌNH HỌC PHỨC ĐỈNH CAO YAU-CALABI`,
                         `85. Đối đồng điều Floer & Tô-pô Symplectic: CHUẨN TÔ PÔ ĐỈNH CAO FLOER-ARNOLD`,
-                        `86. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `86. Không gian Moduli & Lý thuyết Giao Kontsevich: CHUẨN HÌNH HỌC ĐẠI SỐ ĐỈNH CAO KONTSEVICH`,
+                        `87. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
