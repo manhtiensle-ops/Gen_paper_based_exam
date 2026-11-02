@@ -38,7 +38,8 @@ import {
   Bot,
   ChevronDown,
   Shuffle,
-  Printer
+  Printer,
+  ArrowUpDown
 } from "lucide-react";
 
 import ExamSettingsModal from "./ExamSettingsModal";
@@ -521,6 +522,56 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [sidebarTab, rawLatexCode, activeMode, compiling]);
+
+  // Sắp xếp tự động chuẩn sư phạm (Độ khó tăng dần: NB -> TH -> VD -> VDC hoặc theo Điểm số)
+  const autoReorderPedagogical = async (strategy: "difficulty" | "points") => {
+    if (items.length <= 1) return;
+
+    const diffWeight: Record<string, number> = {
+      NB: 1,
+      TH: 2,
+      VD: 3,
+      VDC: 4,
+    };
+
+    const sorted = [...items].sort((a, b) => {
+      if (strategy === "points") {
+        const ptA = parseFloat(a.max_points) || 0;
+        const ptB = parseFloat(b.max_points) || 0;
+        return ptA - ptB;
+      } else {
+        const snapA = a.problem_snapshot || {};
+        const snapB = b.problem_snapshot || {};
+        const diffA = diffWeight[snapA.cognitive_level || snapA.difficulty] || 2;
+        const diffB = diffWeight[snapB.cognitive_level || snapB.difficulty] || 2;
+        return diffA - diffB;
+      }
+    });
+
+    const payload = sorted.map((it, idx) => ({
+      item_id: it.id,
+      order_index: idx,
+    }));
+
+    const updatedItems = sorted.map((it, idx) => ({
+      ...it,
+      order_index: idx,
+      display_label: `Câu ${idx + 1}`,
+    }));
+
+    setItems(updatedItems);
+    compileLivePreview(updatedItems, layoutKnobs, activeMode, headerConfig);
+
+    try {
+      await fetch(`/api/studio/exams/${examId}/reorder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item_orders: payload }),
+      });
+    } catch (e) {
+      console.error("Auto reorder error:", e);
+    }
+  };
 
   // Reorder Item
   const moveItem = async (index: number, direction: "up" | "down") => {
@@ -1035,6 +1086,32 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           {/* TAB 2: QUESTION ITEMS & REORDER */}
           {sidebarTab === "items" && (
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+              {/* Thanh công cụ Sắp xếp chuẩn Sư phạm */}
+              <div className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200/80 shadow-xs mb-2">
+                <span className="text-[11px] font-bold text-slate-700 flex items-center space-x-1">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Sắp xếp sư phạm:</span>
+                </span>
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    onClick={() => autoReorderPedagogical("difficulty")}
+                    className="px-2 py-1 text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 transition-all flex items-center space-x-1"
+                    title="Tự động xếp theo mức độ nhận thức: Nhận biết -> Thông hiểu -> Vận dụng -> Vận dụng cao"
+                  >
+                    <ArrowUpDown className="w-3 h-3" />
+                    <span>Theo Độ khó</span>
+                  </button>
+                  <button
+                    onClick={() => autoReorderPedagogical("points")}
+                    className="px-2 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 transition-all flex items-center space-x-1"
+                    title="Tự động xếp theo thang điểm tăng dần"
+                  >
+                    <ArrowUpDown className="w-3 h-3" />
+                    <span>Theo Điểm</span>
+                  </button>
+                </div>
+              </div>
+
               {items.map((it, idx) => {
                 const snap = it.problem_snapshot || {};
                 const rubric = it.rubric_data || {};
