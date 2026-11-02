@@ -50,7 +50,8 @@ import {
   Command,
   PieChart,
   Info,
-  Search
+  Search,
+  Replace
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -83,7 +84,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isPreambleFolded, setIsPreambleFolded] = useState<boolean>(true);
   const [editorFontSize, setEditorFontSize] = useState<number>(12); // pt
   const [editorSearchTerm, setEditorSearchTerm] = useState<string>("");
+  const [editorReplaceTerm, setEditorReplaceTerm] = useState<string>("");
   const [isEditorSearchOpen, setIsEditorSearchOpen] = useState<boolean>(false);
+  const [isEditorReplaceMode, setIsEditorReplaceMode] = useState<boolean>(false);
   const [editorSearchMatches, setEditorSearchMatches] = useState<number>(0);
   const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -114,6 +117,63 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       textarea.focus();
       textarea.setSelectionRange(nextIdx, nextIdx + term.length);
     }
+  };
+
+  // Helper: Replace currently selected match or find next and replace
+  const handleReplaceOneInEditor = () => {
+    if (!editorSearchTerm || !editorTextareaRef.current) return;
+    const textarea = editorTextareaRef.current;
+    const text = rawLatexCode;
+    const selStart = textarea.selectionStart;
+    const selEnd = textarea.selectionEnd;
+    const selectedText = text.substring(selStart, selEnd);
+
+    // If current selection matches search term, replace it
+    if (selectedText.toLowerCase() === editorSearchTerm.toLowerCase()) {
+      const newText = text.substring(0, selStart) + editorReplaceTerm + text.substring(selEnd);
+      setRawLatexCode(newText);
+      setIsDirty(true);
+      showToast("Đã thay thế 1 kết quả!", "info");
+      setTimeout(() => {
+        if (editorTextareaRef.current) {
+          const nextIdx = newText.toLowerCase().indexOf(editorSearchTerm.toLowerCase(), selStart + editorReplaceTerm.length);
+          if (nextIdx !== -1) {
+            editorTextareaRef.current.focus();
+            editorTextareaRef.current.setSelectionRange(nextIdx, nextIdx + editorSearchTerm.length);
+          }
+        }
+      }, 50);
+    } else {
+      // Find next first
+      handleFindNextInEditor(true);
+    }
+  };
+
+  // Helper: Replace all occurrences
+  const handleReplaceAllInEditor = () => {
+    if (!editorSearchTerm) return;
+    const lowerTerm = editorSearchTerm.toLowerCase();
+    let count = 0;
+    let pos = 0;
+    const lowerText = rawLatexCode.toLowerCase();
+    while ((pos = lowerText.indexOf(lowerTerm, pos)) !== -1) {
+      count++;
+      pos += lowerTerm.length;
+    }
+
+    if (count === 0) {
+      showToast("Không tìm thấy kết quả phù hợp để thay thế!", "warning");
+      return;
+    }
+
+    // Escape regex characters in search term for safe global replace (case-insensitive)
+    const escapedTerm = editorSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedTerm, 'gi');
+    const updatedCode = rawLatexCode.replace(regex, editorReplaceTerm);
+
+    setRawLatexCode(updatedCode);
+    setIsDirty(true);
+    showToast(`Đã thay thế toàn bộ ${count} vị trí trong mã nguồn LaTeX!`, "success");
   };
 
   // Recount matches whenever search term or code changes
@@ -675,6 +735,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         if (sidebarTab === "editor") {
           e.preventDefault();
           setIsEditorSearchOpen((prev) => !prev);
+        }
+      }
+      // Ctrl + H: Toggle Replace in LaTeX Code Editor (when on editor tab)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "h") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          setIsEditorSearchOpen(true);
+          setIsEditorReplaceMode(true);
         }
       }
       // Ctrl + '+' / '=': Zoom in preview canvas
@@ -1458,62 +1526,127 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
               )}
 
-              {/* In-Editor Search Bar (Ctrl+F) */}
+              {/* In-Editor Search & Replace Bar (Ctrl+F / Ctrl+H) */}
               {isEditorSearchOpen && (
-                <div className="bg-indigo-50/90 border-b border-indigo-200 px-4 py-1.5 flex items-center justify-between text-xs shrink-0 animate-in fade-in duration-150">
-                  <div className="flex items-center space-x-2">
-                    <Search className="w-3.5 h-3.5 text-indigo-600" />
-                    <input
-                      type="text"
-                      value={editorSearchTerm}
-                      onChange={(e) => setEditorSearchTerm(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleFindNextInEditor(!e.shiftKey);
-                        } else if (e.key === "Escape") {
-                          setIsEditorSearchOpen(false);
-                        }
-                      }}
-                      placeholder="Tìm từ khóa LaTeX... (Enter: tiếp, Shift+Enter: trước)"
-                      autoFocus
-                      className="px-2 py-0.5 text-xs bg-white border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 w-64 text-slate-800"
-                    />
-                    <div className="flex items-center space-x-1">
+                <div className="bg-indigo-50/95 border-b border-indigo-200 px-4 py-2 flex flex-col space-y-1.5 text-xs shrink-0 animate-in fade-in duration-150">
+                  {/* Row 1: Search */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => handleFindNextInEditor(false)}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-100 border border-indigo-200 rounded text-slate-700 text-[10px] font-semibold"
-                        title="Tìm mục trước đó (Shift+Enter)"
+                        onClick={() => setIsEditorReplaceMode(!isEditorReplaceMode)}
+                        className={`p-1 rounded hover:bg-indigo-200/60 transition-colors ${
+                          isEditorReplaceMode ? "text-indigo-700 bg-indigo-100 font-bold" : "text-slate-400"
+                        }`}
+                        title="Mở rộng / Thu gọn chế độ Thay thế (Ctrl+H)"
                       >
-                        ▲
+                        <Replace className="w-3.5 h-3.5" />
+                      </button>
+                      <Search className="w-3.5 h-3.5 text-indigo-600" />
+                      <input
+                        type="text"
+                        value={editorSearchTerm}
+                        onChange={(e) => setEditorSearchTerm(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleFindNextInEditor(!e.shiftKey);
+                          } else if (e.key === "Escape") {
+                            setIsEditorSearchOpen(false);
+                          }
+                        }}
+                        placeholder="Tìm từ khóa LaTeX... (Enter: tiếp, Shift+Enter: trước)"
+                        autoFocus
+                        className="px-2 py-0.5 text-xs bg-white border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 w-64 text-slate-800"
+                      />
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => handleFindNextInEditor(false)}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-100 border border-indigo-200 rounded text-slate-700 text-[10px] font-semibold"
+                          title="Tìm mục trước đó (Shift+Enter)"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onClick={() => handleFindNextInEditor(true)}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-100 border border-indigo-200 rounded text-slate-700 text-[10px] font-semibold"
+                          title="Tìm mục tiếp theo (Enter)"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                      <span className="text-[11px] text-indigo-700 font-medium">
+                        {editorSearchTerm ? (
+                          editorSearchMatches > 0 ? (
+                            `${editorSearchMatches} kết quả`
+                          ) : (
+                            <span className="text-rose-600">Không tìm thấy</span>
+                          )
+                        ) : (
+                          "Nhập từ khóa"
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setIsEditorReplaceMode(!isEditorReplaceMode)}
+                        className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
+                          isEditorReplaceMode
+                            ? "bg-indigo-600 text-white border-indigo-600 font-semibold"
+                            : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                        }`}
+                        title="Bật tính năng thay thế (Ctrl+H)"
+                      >
+                        {isEditorReplaceMode ? "Thu gọn Thay thế" : "Thay thế →"}
                       </button>
                       <button
-                        onClick={() => handleFindNextInEditor(true)}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-100 border border-indigo-200 rounded text-slate-700 text-[10px] font-semibold"
-                        title="Tìm mục tiếp theo (Enter)"
+                        onClick={() => setIsEditorSearchOpen(false)}
+                        className="text-slate-400 hover:text-slate-700 font-bold px-1.5 py-0.5 rounded text-xs"
+                        title="Đóng tìm kiếm (Esc)"
                       >
-                        ▼
+                        ✕
                       </button>
                     </div>
-                    <span className="text-[11px] text-indigo-700 font-medium">
-                      {editorSearchTerm ? (
-                        editorSearchMatches > 0 ? (
-                          `${editorSearchMatches} kết quả`
-                        ) : (
-                          <span className="text-rose-600">Không tìm thấy</span>
-                        )
-                      ) : (
-                        "Nhập từ khóa"
-                      )}
-                    </span>
                   </div>
-                  <button
-                    onClick={() => setIsEditorSearchOpen(false)}
-                    className="text-slate-400 hover:text-slate-700 font-bold px-1.5 py-0.5 rounded text-xs"
-                    title="Đóng tìm kiếm (Esc)"
-                  >
-                    ✕
-                  </button>
+
+                  {/* Row 2: Replace controls (when open) */}
+                  {isEditorReplaceMode && (
+                    <div className="flex items-center space-x-2 pt-1 border-t border-indigo-100/70 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <span className="w-4 flex justify-center text-slate-400">↳</span>
+                      <Replace className="w-3.5 h-3.5 text-indigo-600" />
+                      <input
+                        type="text"
+                        value={editorReplaceTerm}
+                        onChange={(e) => setEditorReplaceTerm(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleReplaceOneInEditor();
+                          } else if (e.key === "Escape") {
+                            setIsEditorSearchOpen(false);
+                          }
+                        }}
+                        placeholder="Chuỗi thay thế mới..."
+                        className="px-2 py-0.5 text-xs bg-white border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 w-64 text-slate-800"
+                      />
+                      <button
+                        onClick={handleReplaceOneInEditor}
+                        disabled={!editorSearchTerm || editorSearchMatches === 0}
+                        className="px-2 py-0.5 bg-white hover:bg-indigo-50 disabled:opacity-40 border border-indigo-200 rounded text-indigo-700 text-[11px] font-semibold transition-colors"
+                        title="Thay thế kết quả đang chọn hoặc tiếp theo"
+                      >
+                        Thay thế
+                      </button>
+                      <button
+                        onClick={handleReplaceAllInEditor}
+                        disabled={!editorSearchTerm || editorSearchMatches === 0}
+                        className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded text-[11px] font-semibold transition-colors shadow-xs"
+                        title="Thay thế toàn bộ các kết quả trong mã LaTeX"
+                      >
+                        Thay thế tất cả ({editorSearchMatches})
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2602,6 +2735,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Tìm kiếm từ khóa trong mã nguồn LaTeX</span>
                     <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + F</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Tìm & Thay thế từ khóa trong mã nguồn</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + H</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Mở hộp thoại phím tắt này</span>
