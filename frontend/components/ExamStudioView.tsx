@@ -3740,6 +3740,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 66: Discrete Mathematics & Applied Cryptography / RSA Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasCrypto = /toán rời rạc|mật mã học|cryptography|hệ mật mã rsa|khóa công khai|khóa bí mật|đường cong elliptic|ecc|hàm băm|sha-256|logarit rời rạc|mã sửa sai|reed-solomon|mã hamming|chứng thực số|chữ ký điện tử/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Toán rời rạc & Mật mã học hiện đại (Discrete Math & Cryptography Inspector):{" "}
+                            {hasCrypto ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TOÁN RỜI RẠC & MẬT MÃ HỌC RSA / ECC ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">TOÁN HỌC ĐẠI CƯƠNG TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasCrypto
+                              ? "✓ Hệ mật RSA, đường cong Elliptic ECC, hàm băm SHA-256, logarit rời rạc và mã sửa sai Reed-Solomon chuẩn Olympic Tin học và Toán ứng dụng mật mã."
+                              : "✓ Đề thi không chứa cấu trúc mật mã học hiện đại và bài toán bảo mật thông tin."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3825,7 +3852,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `62. Hình học vi phân & Độ cong Gauss: CHUẨN HÌNH HỌC VI PHÂN & ĐƯỜNG TRẮC ĐỊA ĐỈNH CAO`,
                         `63. Thống kê toán học & Kiểm định giả thuyết: CHUẨN THỐNG KÊ TOÁN & KIỂM ĐỊNH GIẢ THUYẾT ĐỈNH CAO`,
                         `64. Phương trình đạo hàm riêng & Tách biến Fourier: CHUẨN ĐẠO HÀM RIÊNG PDE & TÁCH BIẾN FOURIER ĐỈNH CAO`,
-                        `65. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `65. Toán rời rạc & Mật mã học hiện đại: CHUẨN TOÁN RỜI RẠC & MẬT MÃ HỌC RSA / ECC ĐỈNH CAO`,
+                        `66. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

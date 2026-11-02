@@ -2042,6 +2042,69 @@ def configure_exam_cross_grading_panel(
     }
 
 
+@router.post("/exams/{exam_id}/safe-browser-lock", status_code=status.HTTP_200_OK)
+def configure_exam_safe_browser_lock(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình mã khóa kiểm soát trình duyệt an toàn SEB (Safe Exam Browser Lock RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách môn thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ khóa thi an toàn (enabled), tạo Browser Exam Key (BEK) và Config Key (CK),
+      chặn phím tắt chuyển tab (block_tab_switching), chặn chụp ảnh màn hình (block_screen_capture),
+      chặn máy ảo / Remote Desktop (block_virtual_machine) và thiết lập mật khẩu mở khóa khẩn cấp (quit_password_hash).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền cấu hình khóa trình duyệt an toàn SEB"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình khóa trình duyệt SEB")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình khóa trình duyệt SEB cho đề thi thuộc trường học khác"
+            )
+
+    seb_enabled = bool(payload.get("enabled", True))
+    block_tab_switching = bool(payload.get("block_tab_switching", True))
+    block_screen_capture = bool(payload.get("block_screen_capture", True))
+    block_virtual_machine = bool(payload.get("block_virtual_machine", True))
+
+    header_cfg = dict(exam.header_config or {})
+    seb_config = {
+        "enabled": seb_enabled,
+        "browser_exam_key": f"SEB-BEK-{uuid.uuid4().hex[:16].upper()}",
+        "config_key": f"SEB-CK-{uuid.uuid4().hex[:16].upper()}",
+        "block_tab_switching": block_tab_switching,
+        "block_screen_capture": block_screen_capture,
+        "block_virtual_machine": block_virtual_machine,
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["safe_browser_lock"] = seb_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "safe_browser_lock": seb_config,
+        "message": f"Đã {'kích hoạt' if seb_enabled else 'vô hiệu hóa'} cấu hình khóa trình duyệt an toàn SEB ({seb_config['browser_exam_key']}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
