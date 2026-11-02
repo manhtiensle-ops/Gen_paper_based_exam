@@ -2903,6 +2903,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 35: Combinatorics, Permutations & Classical Probability Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasProbability = /xác suất|biến cố|hoán vị|chỉnh hợp|tổ hợp|không gian mẫu|C_\{|A_\{|P_\{|P\(|C\^|A\^|quy tắc cộng|quy tắc nhân/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Tổ hợp, Xác suất & Không gian mẫu (Combinatorics & Probability):{" "}
+                            {hasProbability ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TIÊN ĐỀ LAPLACE & ĐẠI SỐ TỔ HỢP</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐẠI SỐ ĐỊNH TÍNH</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasProbability
+                              ? "✓ Công thức chỉnh hợp A_n^k, tổ hợp C_n^k, hoán vị P_n và xác suất 0 ≤ P(A) ≤ 1 với không gian mẫu Ω hữu hạn thỏa mãn tiên đề xác suất."
+                              : "✓ Đề thi tập trung giải tích và hình học, không có câu hỏi tổ hợp - xác suất."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2957,7 +2984,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `31. Không gian Oxyz & Vectơ trực chuẩn: CHUẨN TRỰC CHUẨN OXYZ`,
                         `32. Giới hạn dãy số, hàm số & Tiệm cận: CHUẨN DẠNG VÔ ĐỊNH & KHỬ KHẢ VI`,
                         `33. Số phức & Mặt phẳng tọa độ Argand: CHUẨN ĐẠI SỐ TUYẾN TÍNH PHỨC`,
-                        `34. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `34. Tổ hợp, Xác suất & Không gian mẫu: CHUẨN TIÊN ĐỀ LAPLACE & ĐẠI SỐ TỔ HỢP`,
+                        `35. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

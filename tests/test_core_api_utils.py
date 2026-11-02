@@ -80,6 +80,8 @@ def test_rbac_authorization_logic():
     questions_router = CORE_API_DIR / "app" / "routers" / "questions.py"
     q_content = questions_router.read_text(encoding="utf-8")
     assert "current_user: User = Depends(require_teacher_or_admin)" in q_content, "Thiếu bảo vệ phân quyền toggle verify"
+    assert "is_vdc = q.difficulty == 4" in q_content, "Thiếu kiểm tra phân quyền chuyên môn câu hỏi VDC"
+    assert "status.HTTP_403_FORBIDDEN" in q_content, "Thiếu mã lỗi 403 Forbidden trong questions router"
     
     # Kiểm tra router generator có phân quyền
     generator_router = CORE_API_DIR / "app" / "routers" / "generator.py"

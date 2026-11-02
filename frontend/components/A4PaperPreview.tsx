@@ -114,6 +114,7 @@ export default function A4PaperPreview({
   const [isExaminerRubricMode, setIsExaminerRubricMode] = useState<boolean>(false);
   const [isSecureQrSealMode, setIsSecureQrSealMode] = useState<boolean>(false);
   const [isDepartmentAuditMode, setIsDepartmentAuditMode] = useState<boolean>(false);
+  const [isStudentOathSlipMode, setIsStudentOathSlipMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -548,6 +549,21 @@ export default function A4PaperPreview({
           >
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>{isDepartmentAuditMode ? "Phê Duyệt Đề (Bật)" : "Phê Duyệt Đề"}</span>
+          </button>
+
+          {/* Student Integrity Oath Slip Button */}
+          <button
+            type="button"
+            onClick={() => setIsStudentOathSlipMode(!isStudentOathSlipMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isStudentOathSlipMode
+                ? "bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp phiếu cam kết trung thực phòng thi dành cho thí sinh"
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>{isStudentOathSlipMode ? "Cam Kết Thi (Bật)" : "Cam Kết Thi"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1574,6 +1590,30 @@ export default function A4PaperPreview({
                   <span className="font-bold text-slate-800">HIỆU TRƯỞNG / BAN GIÁM HIỆU</span>
                   <span className="text-[8px] text-slate-400 italic">(Phê duyệt in sao &amp; niêm phong)</span>
                   <div className="h-6"></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Student Integrity Oath Slip Block */}
+          {isStudentOathSlipMode && (
+            <div className="mt-6 pt-3 border-t-2 border-amber-500 p-2.5 rounded-lg bg-amber-50/30 print:bg-white print:border-slate-700 text-[10px] text-slate-800 break-inside-avoid">
+              <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-amber-200 print:border-slate-300 font-bold text-[10.5px] text-amber-950 print:text-black">
+                <span className="flex items-center gap-1.5">
+                  <GraduationCap className="w-3.5 h-3.5 text-amber-700 print:text-black" />
+                  PHIẾU CAM KẾT TRUNG THỰC &amp; XÁC NHẬN NỘP BÀI THI CỦA THÍ SINH
+                </span>
+                <span className="text-[9px] text-amber-800 print:text-black font-mono">
+                  SBD: .................... PHÒNG THI: ........
+                </span>
+              </div>
+              <div className="p-2 rounded bg-white border border-amber-200 print:border-slate-300 space-y-1.5 text-[9px] text-slate-700 leading-relaxed">
+                <div>
+                  <span className="font-semibold text-slate-900">Cam kết của thí sinh:</span> Tôi xin cam đoan làm bài độc lập, nghiêm túc chấp hành quy chế phòng thi, không sử dụng tài liệu hay thiết bị thu phát sóng trái phép. Nếu vi phạm, tôi xin hoàn toàn chịu kỷ luật theo quy định khảo thí.
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-dashed border-amber-200 print:border-slate-200">
+                  <span className="italic text-[8.5px] text-slate-500">Số tờ giấy thi đã nộp: ....... tờ | Số câu đã làm: ....... / {questions.length}</span>
+                  <span className="font-bold text-slate-800">Chữ ký thí sinh: .......................................</span>
                 </div>
               </div>
             </div>

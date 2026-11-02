@@ -335,10 +335,23 @@ def toggle_verify_question(
     current_user: User = Depends(require_teacher_or_admin),
     db: Session = Depends(get_db)
 ):
-    """Kiểm duyệt / Xác thực câu hỏi. Chỉ có vai trò TEACHER, PRO, ADMIN mới có thẩm quyền."""
+    """
+    Kiểm duyệt / Xác thực câu hỏi.
+    - Cấp độ Vận dụng cao (VDC - Level 4): Yêu cầu vai trò ADMIN hoặc TEACHER thâm niên / tổ trưởng.
+    - Các cấp độ khác (NB, TH, VD): Mở cho toàn thể TEACHER, PRO, ADMIN.
+    """
     q = db.query(Question).filter(Question.id == question_id).first()
     if not q:
         raise HTTPException(status_code=404, detail="Question not found")
+
+    # Kiểm tra phân quyền chuyên môn sâu: Câu hỏi VDC (difficulty == 4 hoặc contains 'VDC')
+    is_vdc = q.difficulty == 4 or (q.topic and "VDC" in q.topic.upper())
+    if is_vdc and current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Câu hỏi Vận dụng cao (VDC) yêu cầu Quản trị viên hoặc Giáo viên chuyên môn thẩm định"
+        )
+
     q.is_verified = payload.is_verified
     db.commit()
     db.refresh(q)
