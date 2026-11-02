@@ -1607,6 +1607,70 @@ def configure_exam_seed_protection(
     }
 
 
+@router.post("/exams/{exam_id}/print-packaging", status_code=status.HTTP_200_OK)
+def configure_exam_print_packaging(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình quy chuẩn đóng gói in ấn tài liệu khảo thí chuyên nghiệp (Exam Print Packaging RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) cùng tenant_id mới có quyền
+      cấu hình chế độ đóng tập A3 Booklet, căn lề chẵn lẻ đối xứng (gutter/mirror margins),
+      đánh số trang khảo thí nâng cao và đánh dấu xén mép (crop marks).
+    - Thí sinh hoặc người dùng bình thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền cấu hình quy chuẩn in ấn"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình quy chuẩn in ấn")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình in ấn cho đề thi thuộc trường học khác"
+            )
+
+    paper_size = payload.get("paper_size", "A4").upper()
+    booklet_mode = bool(payload.get("booklet_mode", False))
+    mirror_margins = bool(payload.get("mirror_margins", True))
+    gutter_margin_mm = float(payload.get("gutter_margin_mm", 5.0))
+    include_crop_marks = bool(payload.get("include_crop_marks", False))
+    page_numbering_format = payload.get("page_numbering_format", "Trang {page}/{total_pages}")
+
+    header_cfg = dict(exam.header_config or {})
+    packaging_config = {
+        "paper_size": paper_size,
+        "booklet_mode": booklet_mode,
+        "mirror_margins": mirror_margins,
+        "gutter_margin_mm": gutter_margin_mm,
+        "include_crop_marks": include_crop_marks,
+        "page_numbering_format": page_numbering_format,
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["print_packaging"] = packaging_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "print_packaging": packaging_config,
+        "message": f"Đã cấu hình thành công quy chuẩn in ấn '{paper_size}' (Booklet: {booklet_mode}) chuẩn sư phạm"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
