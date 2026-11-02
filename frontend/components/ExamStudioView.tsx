@@ -1280,9 +1280,22 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
                 <div className="flex items-center space-x-2 text-[11px] text-slate-400">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!rawLatexCode) return;
-                      navigator.clipboard.writeText(rawLatexCode);
+                      try {
+                        await navigator.clipboard.writeText(rawLatexCode);
+                      } catch (_) {
+                        // Fallback textarea copy for headless / restricted environments
+                        const ta = document.createElement("textarea");
+                        ta.value = rawLatexCode;
+                        ta.style.position = "fixed";
+                        ta.style.opacity = "0";
+                        document.body.appendChild(ta);
+                        ta.focus();
+                        ta.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(ta);
+                      }
                       setCopiedTex(true);
                       showToast("Đã sao chép toàn bộ mã nguồn LaTeX vào bộ nhớ tạm!", "info");
                       setTimeout(() => setCopiedTex(false), 2000);
@@ -1314,6 +1327,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                       link.click();
                       document.body.removeChild(link);
                       URL.revokeObjectURL(url);
+                      showToast("Đã tải tệp .tex mã nguồn thành công!", "success");
                     }}
                     className="flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
                     title="Tải tập tin nguồn .tex về máy để mở bằng Overleaf / TeXStudio"
