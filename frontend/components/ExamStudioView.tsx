@@ -44,7 +44,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Copy,
-  Check
+  Check,
+  HelpCircle,
+  Command
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -62,6 +64,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   // Draggable Split Pane State
   const [splitRatio, setSplitRatio] = useState<number>(50); // percentage for left pane
   const [isEditorCollapsed, setIsEditorCollapsed] = useState<boolean>(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const activePointerIdRef = useRef<number | null>(null);
@@ -526,6 +529,20 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         e.preventDefault();
         setAiDrawerOpen((prev) => !prev);
       }
+      if (e.key === "Escape") {
+        setShowShortcutsModal(false);
+        setIsSettingsOpen(false);
+        setSwappingItemId(null);
+      }
+      if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Chỉ kích hoạt khi không gõ trong input/textarea
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+          return;
+        }
+        e.preventDefault();
+        setShowShortcutsModal((prev) => !prev);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -857,6 +874,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             >
               <Printer className="w-3.5 h-3.5 text-emerald-600" />
               <span>In Ngay</span>
+            </button>
+            <button
+              onClick={() => setShowShortcutsModal(true)}
+              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200"
+              title="Hướng dẫn phím tắt bàn phím (Bấm ?)"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -2027,6 +2051,73 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Keyboard Shortcuts Cheat-sheet Modal */}
+      {showShortcutsModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-gradient-to-r from-indigo-700 to-indigo-900 px-6 py-4 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Command className="w-5 h-5 text-indigo-300" />
+                <h3 className="font-bold text-base tracking-wide">Bảng Phím Tắt Khảo Thí VINH PHÁT</h3>
+              </div>
+              <button
+                onClick={() => setShowShortcutsModal(false)}
+                className="text-indigo-200 hover:text-white p-1 rounded-lg hover:bg-white/10 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Thao Tác Soạn Thảo & Biên Dịch</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Biên dịch tức thì (Preview / TeX)</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + S</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Bật / Tắt Trợ lý AI Khảo thí</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + K</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Mở hộp thoại phím tắt này</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">?</kbd>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Xuất Bản & In Ấn A4</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">In Ngay ra máy in / Xuất PDF trình duyệt</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + P</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Đóng cửa sổ / Hộp thoại đang mở</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Esc</kbd>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-900 leading-relaxed">
+                💡 <span className="font-semibold">Mẹo sư phạm:</span> Bạn có thể thu gọn thanh soạn thảo bằng nút <strong>Thu gọn</strong> để đọc toàn màn hình trước khi nhấn <strong>In Ngay</strong>.
+              </div>
+            </div>
+
+            <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setShowShortcutsModal(false)}
+                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
+              >
+                Đã hiểu
+              </button>
             </div>
           </div>
         </div>
