@@ -5,6 +5,7 @@ import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
 import ExamStudioView from "@/components/ExamStudioView";
 import BlueprintBuilderModal from "@/components/BlueprintBuilderModal";
+import ExamMatrixHeatmap from "@/components/ExamMatrixHeatmap";
 import CreativeEmptyState from "@/components/CreativeEmptyState";
 import ExamWorkspaceRail from "@/components/ExamWorkspaceRail";
 import {
@@ -92,6 +93,11 @@ export default function Dashboard() {
     setActiveTab(tab);
     const examId = generatedExam?.id;
     saveWorkspaceSession(tab, examId, generatedExam);
+
+    if (examId && (tab === "generator" || tab === "studio")) {
+      // Làm mới dữ liệu từ server để đồng bộ 2 chiều Generator <-> Exam Studio
+      fetchExamById(examId, tab);
+    }
 
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -975,6 +981,12 @@ export default function Dashboard() {
                     <Sliders className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Xem & Sửa chi tiết ma trận</span>
                   </button>
+                  {/* Heatmap Preview of selected Blueprint */}
+                  {selectedBlueprintId && (
+                    <ExamMatrixHeatmap
+                      blueprint={blueprints.find((b) => b.id === selectedBlueprintId) || null}
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-2">

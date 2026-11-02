@@ -39,6 +39,8 @@ import {
   ChevronDown
 } from "lucide-react";
 
+import ExamSettingsModal from "./ExamSettingsModal";
+
 interface Props {
   examId: string;
   onBack?: () => void;
@@ -156,7 +158,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [activePage, setActivePage] = useState<number>(0);
   const [zoomScale, setZoomScale] = useState<number>(100);
   const [canvasKey, setCanvasKey] = useState<number>(Date.now());
-  const [viewerMode, setViewerMode] = useState<"scroll" | "pdf">("scroll");
+  const [viewerMode, setViewerMode] = useState<"scroll" | "pdf" | "html">("scroll");
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const canvasScrollRef = useRef<HTMLDivElement>(null);
 
   // AI Multimodal Drawer State
@@ -339,7 +343,11 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     mode = activeMode
   ) => {
     setCompiling(true);
+    setPreviewError(null);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
       const res = await fetch(`/api/studio/exams/${examId}/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -348,7 +356,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           header_config: headerConfig,
           mode: mode,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         const data = await res.json();
         setPreviewData(data);
@@ -356,9 +367,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         if (data.latex_source) {
           setRawLatexCode(data.latex_source);
         }
+      } else {
+        const errText = await res.text();
+        console.warn("Preview API error, fallback to HTML DOM mode:", errText);
+        setPreviewError("Máy chủ TeX đang tải. Hệ thống tự động chuyển sang bản xem trước DOM A4 trực quan.");
       }
-    } catch (e) {
-      console.error("Compile preview error:", e);
+    } catch (e: any) {
+      console.warn("Compile preview exception, fallback to HTML DOM mode:", e);
+      setPreviewError("Không thể kết nối máy chủ TeX. Đang hiển thị bản xem trước DOM A4.");
     } finally {
       setCompiling(false);
     }
@@ -611,6 +627,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
         {/* Right: Actions, AI Drawer Toggle & Exports */}
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition flex items-center space-x-1.5 cursor-pointer shadow-xs"
+            title="Cài đặt tiêu đề trường học và căn lề A4 chuẩn sư phạm"
+          >
+            <Settings className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Cài Đặt Đề</span>
+          </button>
           {/* AI Drawer Button */}
           <button
             onClick={() => setAiDrawerOpen((prev) => !prev)}
@@ -1223,6 +1247,12 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <span>Đang dựng bản in TeX Live...</span>
                 </span>
               )}
+              {previewError && (
+                <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center space-x-1 font-medium ml-2">
+                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                  <span className="truncate max-w-[280px]" title={previewError}>{previewError}</span>
+                </span>
+              )}
             </div>
 
             {/* Viewer Mode & Zoom Controls */}
@@ -1252,6 +1282,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 >
                   <Eye className="w-3.5 h-3.5" />
                   <span>PDF Native</span>
+                </button>
+                <button
+                  onClick={() => setViewerMode("html")}
+                  className={`px-2.5 py-1 rounded-lg font-bold flex items-center space-x-1 transition-all ${
+                    viewerMode === "html"
+                      ? "bg-white text-emerald-700 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                  title="Chế độ DOM Sư phạm (Client Fallback an toàn, MathJax sắc nét)"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Xem DOM A4</span>
                 </button>
               </div>
 
@@ -1285,7 +1327,74 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           </div>
 
           {/* Canvas Viewer Area with Smooth Continuous Scroll */}
-          {viewerMode === "pdf" && previewData?.pdf_key ? (
+          {viewerMode === "html" || (!previewData?.pdf_key && !previewData?.page_keys && !compiling) ? (
+            <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center bg-slate-200/70">
+              <div
+                style={{
+                  width: `${(595 * zoomScale) / 100}px`,
+                  minHeight: "842px",
+                  padding: `${layoutKnobs.margin_top_cm || 1.8}cm ${layoutKnobs.margin_right_cm || 1.8}cm ${layoutKnobs.margin_bottom_cm || 1.8}cm ${layoutKnobs.margin_left_cm || 2.0}cm`,
+                  fontSize: `${layoutKnobs.font_size_pt || 12}pt`,
+                  lineHeight: layoutKnobs.line_spread || 1.15,
+                }}
+                className="bg-white rounded-[2px] shadow-2xl border border-slate-300 text-slate-900 font-serif"
+              >
+                {/* Header Form */}
+                <div className="border-b-2 border-slate-800 pb-3 text-center space-y-1 mb-6">
+                  <div className="flex justify-between items-start text-[11px] font-bold uppercase tracking-wider text-slate-800">
+                    <div className="text-left">
+                      <p>{headerConfig.governing_body || "SỞ GIÁO DỤC VÀ ĐÀO TẠO"}</p>
+                      <p className="font-extrabold text-indigo-900">{headerConfig.department_or_school || "TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN"}</p>
+                      <p className="text-[10px] text-slate-400 font-normal">-----------------</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-red-700">{headerConfig.exam_code || "ĐỀ CHÍNH THỨC"}</p>
+                      <p>{headerConfig.academic_year || "NĂM HỌC 2026 - 2027"}</p>
+                      <p className="text-[10px] text-slate-500 font-normal">Thời gian: {headerConfig.duration_minutes || 120} phút</p>
+                    </div>
+                  </div>
+                  <h1 className="text-sm font-black text-slate-900 tracking-tight pt-1">
+                    {(headerConfig.exam_name || "KỲ THI CHỌN HỌC SINH GIỎI").toUpperCase()}
+                  </h1>
+                  <p className="text-[11px] font-bold text-slate-700">MÔN THI: {headerConfig.subject_title || "TOÁN 9"}</p>
+                  {activeMode === "EXAM" && headerConfig.show_sbd_box && (
+                    <div className="mt-2 p-1.5 border border-dashed border-slate-300 rounded flex justify-between text-[10px] text-slate-600 font-medium">
+                      <span>Họ và tên thí sinh: ................................................................</span>
+                      <span>Số báo danh: ........................</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Question List */}
+                <div className="space-y-4">
+                  {items.map((it, idx) => {
+                    const snap = it.problem_snapshot || {};
+                    const rubric = it.rubric_data || {};
+                    return (
+                      <div key={it.id || idx} className="space-y-1 text-xs">
+                        <p className="font-bold text-slate-900">
+                          Câu {idx + 1}. ({it.max_points || 2.0} điểm)
+                        </p>
+                        <div className="pl-3 leading-relaxed text-slate-800">
+                          <MathRenderer
+                            content={
+                              activeMode === "RUBRIC"
+                                ? (rubric.pedagogical_analysis || it.solution_latex || snap.content_latex || "")
+                                : (snap.content_latex || it.content_latex || "")
+                            }
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-8 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400">
+                  -- HẾT -- (Bản xem trước A4 trực quan VINH PHÁT Platform)
+                </div>
+              </div>
+            </div>
+          ) : viewerMode === "pdf" && previewData?.pdf_key ? (
             <div className="flex-1 w-full h-full bg-slate-100 overflow-hidden relative">
               <iframe
                 src={`/api/assets/${previewData.pdf_key}?t=${canvasKey}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
@@ -1490,6 +1599,34 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         onClose={() => setEditingQuestion(null)}
         onSaveSuccess={(updatedQ) => {
           loadExamItems();
+        }}
+      />
+
+      {/* Settings Modal */}
+      <ExamSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        headerConfig={headerConfig}
+        setHeaderConfig={setHeaderConfig}
+        layoutKnobs={layoutKnobs}
+        setLayoutKnobs={setLayoutKnobs}
+        onSaveAndApply={(h, k) => {
+          compileLivePreview(items, k, activeMode);
+        }}
+        applyPresetHeader={(key) => {
+          if (key === "vinhphat") {
+            setHeaderConfig((prev: any) => ({
+              ...prev,
+              governing_body: "TRUNG TÂM GIÁO DỤC VINH PHÁT",
+              department_or_school: "BAN CHUYÊN MÔN TOÁN KHẢO THÍ",
+              exam_name: "KỲ THI CHỌN HỌC SINH GIỎI TOÁN THCS CẤP TỈNH",
+              subject_title: "Môn thi: TOÁN HỌC",
+              academic_year: "Năm học: 2026 - 2027",
+              duration_minutes: 150,
+              exam_code: "ĐỀ CHÍNH THỨC - MÃ 101",
+              show_sbd_box: true,
+            }));
+          }
         }}
       />
     </div>
