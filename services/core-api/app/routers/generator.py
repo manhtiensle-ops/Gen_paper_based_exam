@@ -3488,6 +3488,72 @@ def configure_exam_rfid_smart_seal(
     }
 
 
+@router.post("/exams/{exam_id}/fluorescent-ink-security", status_code=status.HTTP_200_OK)
+def configure_exam_fluorescent_ink_security(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách Hàng rào chống sao chép bằng mực quang học huỳnh quang tàng hình (Fluorescent Security Ink Micro-Pattern RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Trưởng Ban In Sao Đề Thi / Cán bộ Nhà in Khảo thí (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt hoa văn huỳnh quang vô hình (enabled),
+      ấn định bước sóng kích hoạt huỳnh quang (uv_wavelength_nm: e.g. 365, 254),
+      chọn phổ màu phát xạ quang học (luminescence_emission_color: e.g. NEON_GREEN, CYAN_GLOW, CRIMSON_RED),
+      kích hoạt hoa văn vi mô chống máy photocopy quét lóa (anti_copy_micro_guilloche),
+      và yêu cầu đèn kiểm tra UV cầm tay cho giám thị hành lang (require_uv_handheld_inspection).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Nhà in Khảo thí (TEACHER) mới có quyền cấu hình mực huỳnh quang vô hình"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình mực huỳnh quang vô hình")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình mực huỳnh quang vô hình cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    wavelength = int(payload.get("uv_wavelength_nm", 365))
+    emission_color = str(payload.get("luminescence_emission_color", "NEON_GREEN"))
+    guilloche = bool(payload.get("anti_copy_micro_guilloche", True))
+    uv_inspection = bool(payload.get("require_uv_handheld_inspection", True))
+
+    header_cfg = dict(exam.header_config or {})
+    uv_config = {
+        "enabled": is_enabled,
+        "uv_wavelength_nm": wavelength,
+        "luminescence_emission_color": emission_color,
+        "anti_copy_micro_guilloche": guilloche,
+        "require_uv_handheld_inspection": uv_inspection,
+        "uv_policy_id": f"VINHPHAT-UVINK-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["fluorescent_ink_security"] = uv_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "fluorescent_ink_security": uv_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình mực huỳnh quang vô hình ({wavelength}nm, Màu: {emission_color}, Guilloche: {'Bật' if guilloche else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
