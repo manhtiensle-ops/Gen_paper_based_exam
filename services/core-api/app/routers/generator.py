@@ -874,6 +874,72 @@ def clone_exam_cross_tenant(
     }
 
 
+@router.post("/exams/{exam_id}/transfer-ownership", status_code=status.HTTP_200_OK)
+def transfer_exam_ownership(
+    exam_id: uuid.UUID,
+    new_owner_user_id: uuid.UUID,
+    transfer_note: Optional[str] = None,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Bàn giao quyền quản lý và sở hữu đề thi (Exam Ownership Transfer RBAC).
+    Bảo vệ phân quyền:
+    - Chỉ ADMIN hoặc chính Giáo viên tác giả tạo đề (user_id == current_user.id) mới có quyền bàn giao.
+    - Người nhận mới phải là tài khoản hợp lệ trong hệ thống.
+    """
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi cần bàn giao quyền sở hữu")
+
+    if current_user.role != "ADMIN" and exam.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc chính tác giả tạo đề mới có quyền bàn giao quyền sở hữu đề thi này"
+        )
+
+    target_user = db.query(User).filter(User.id == new_owner_user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản người nhận bàn giao trong hệ thống")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and target_user.tenant_id:
+        if exam.tenant_id != target_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Không thể bàn giao đề thi cho giáo viên thuộc đơn vị trường học khác (trừ quản trị viên)"
+            )
+
+    old_owner_id = str(exam.user_id) if exam.user_id else "Chưa xác định"
+    exam.user_id = target_user.id
+
+    header_cfg = dict(exam.header_config or {})
+    header_cfg["ownership_transfer_history"] = header_cfg.get("ownership_transfer_history", [])
+    header_cfg["ownership_transfer_history"].append({
+        "from_user_id": old_owner_id,
+        "to_user_id": str(target_user.id),
+        "to_username": target_user.username,
+        "transferred_by": current_user.username,
+        "transferred_at": datetime.now(timezone.utc).isoformat(),
+        "note": transfer_note
+    })
+    exam.header_config = header_cfg
+    flag_modified(exam, "header_config")
+
+    db.commit()
+    db.refresh(exam)
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "previous_owner_id": old_owner_id,
+        "new_owner_id": str(target_user.id),
+        "new_owner_username": target_user.username,
+        "transferred_by": current_user.username,
+        "message": f"Đã bàn giao quyền sở hữu đề thi '{exam.title}' thành công cho giáo viên {target_user.username}"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

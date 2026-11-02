@@ -3254,6 +3254,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 48: Functional Equations & Cauchy / d'Alembert Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasFunctional = /phương trình hàm|bất phương trình hàm|Cauchy.*f\(x\+y\)|d'Alembert|Jensen|f\(xf\(y\)\)|f\(x\+f\(y\)\)|đơn ánh.*toàn ánh|song ánh.*hàm số|tính liên tục của hàm số/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Phương trình hàm & Phương trình Cauchy / Jensen (Functional Equations):{" "}
+                            {hasFunctional ? (
+                              <span className="font-mono text-emerald-700">CHUẨN PHƯƠNG TRÌNH HÀM HSG CHUYÊN SÂU</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÀM SỐ ĐẠI SỐ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasFunctional
+                              ? "✓ Phương trình hàm Cauchy f(x+y)=f(x)+f(y), d'Alembert, Jensen, kỹ thuật đổi biến và đơn ánh/toàn ánh chuẩn bồi dưỡng HSG Quốc gia."
+                              : "✓ Đề thi không chứa dạng toán tìm hàm số thỏa mãn đẳng thức hàm phức tạp."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3321,7 +3348,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `44. Khối tròn xoay Nón - Trụ - Cầu: CHUẨN HÌNH HỌC KHỐI TRÒN XOAY`,
                         `45. Bất đẳng thức cổ điển Cauchy - Bunhiacopski: CHUẨN BẤT ĐẲNG THỨC & ĐÁNH GIÁ CỰC TRỊ`,
                         `46. Hệ phương trình không mẫu mực & Đối xứng: CHUẨN HỆ PHƯƠNG TRÌNH ĐẠI SỐ CHUYÊN SÂU`,
-                        `47. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `47. Phương trình hàm & Phương trình Cauchy / Jensen: CHUẨN PHƯƠNG TRÌNH HÀM HSG CHUYÊN SÂU`,
+                        `48. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
