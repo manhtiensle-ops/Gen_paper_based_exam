@@ -3119,6 +3119,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 43: Binomial Theorem & Polynomial Expansions Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasBinomial = /nhị thức newton|Newton|khai triển.*nhị thức|số hạng tổng quát.*khai triển|hệ số của.*x\^|C_\{?n\}?\^\{?k\}?|tam giác pascal|Pascal/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Nhị thức Newton & Khai triển đa thức (Binomial Theorem):{" "}
+                            {hasBinomial ? (
+                              <span className="font-mono text-emerald-700">CHUẨN NHỊ THỨC NEWTON & HỆ SỐ KHAI TRIỂN</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐẠI SỐ TỔ HỢP CƠ BẢN KHÁC</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasBinomial
+                              ? "✓ Khai triển (a+b)ⁿ, công thức số hạng tổng quát T_{k+1}=C_n^k a^{n-k} b^k và tìm hệ số lũy thừa đạt chuẩn thi tốt nghiệp & chọn HSG."
+                              : "✓ Đề thi không chứa dạng toán khai triển nhị thức Newton và tìm hệ số đa thức."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3181,7 +3208,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `39. Nguyên hàm & Tích phân: CHUẨN GIẢI TÍCH TÍCH PHÂN NEWTON-LEIBNIZ`,
                         `40. Số phức dạng lượng giác: CHUẨN DẠNG LƯỢNG GIÁC & CÔNG THỨC MOIVRE`,
                         `41. Hình học không gian tọa độ Oxyz: CHUẨN HÌNH HỌC KHÔNG GIAN TỌA ĐỘ OXYZ`,
-                        `42. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `42. Nhị thức Newton & Khai triển đa thức: CHUẨN NHỊ THỨC NEWTON & HỆ SỐ KHAI TRIỂN`,
+                        `43. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

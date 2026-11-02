@@ -566,6 +566,53 @@ def toggle_exam_archive_status(
     }
 
 
+@router.post("/exams/{exam_id}/publish", status_code=status.HTTP_200_OK)
+def toggle_exam_public_publish(
+    exam_id: uuid.UUID,
+    publish: bool = True,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Công bố đề thi ra bảng tin thi thử mở (Public Mock Exam Publishing RBAC).
+    Bảo vệ phân quyền: Chỉ ADMIN hoặc TEACHER (Tổ trưởng/Giáo viên) của trường mới có quyền phát hành công khai.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) và Giáo viên phụ trách (TEACHER) mới có quyền phát hành đề thi công khai"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi cần công bố")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id and exam.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền công bố đề thi thuộc đơn vị trường học khác"
+            )
+
+    header_cfg = dict(exam.header_config or {})
+    header_cfg["is_public_published"] = publish
+    header_cfg["published_by"] = current_user.username
+    header_cfg["published_at"] = datetime.now(timezone.utc).isoformat() if publish else None
+    exam.header_config = header_cfg
+    flag_modified(exam, "header_config")
+    db.commit()
+    db.refresh(exam)
+
+    action_desc = "đã phát hành công khai phục vụ thi thử" if publish else "đã hủy công khai (chuyển về nội bộ)"
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "is_public_published": publish,
+        "published_by": current_user.username,
+        "message": f"Đề thi '{exam.title}' {action_desc}"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
