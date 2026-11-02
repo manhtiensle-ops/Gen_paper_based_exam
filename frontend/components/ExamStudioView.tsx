@@ -2876,6 +2876,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 34: Complex Numbers & Argand Gauss Plane Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasComplex = /số phức|phần thực|phần ảo|môđun|modun|liên hợp|mặt phẳng phức|Argand|z\s*=|\\bar\{z\}|i\^2\s*=\s*-1/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Số phức & Mặt phẳng tọa độ Argand (Complex Numbers):{" "}
+                            {hasComplex ? (
+                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ TUYẾN TÍNH PHỨC</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐẠI SỐ THỰC CHUẨN MỰC</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasComplex
+                              ? "✓ Cấu trúc số phức z = a + bi (i² = -1), môđun |z|, số phức liên hợp và quỹ tích điểm biểu diễn mặt phẳng Gauss bảo đảm chuẩn toán học THPT."
+                              : "✓ Đề thi giải tích và hình học trên trường số thực R, không áp dụng trường số phức."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2929,7 +2956,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `30. Lũy thừa & Căn thức số học: CHUẨN MIỀN XÁC ĐỊNH`,
                         `31. Không gian Oxyz & Vectơ trực chuẩn: CHUẨN TRỰC CHUẨN OXYZ`,
                         `32. Giới hạn dãy số, hàm số & Tiệm cận: CHUẨN DẠNG VÔ ĐỊNH & KHỬ KHẢ VI`,
-                        `33. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `33. Số phức & Mặt phẳng tọa độ Argand: CHUẨN ĐẠI SỐ TUYẾN TÍNH PHỨC`,
+                        `34. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

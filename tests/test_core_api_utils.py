@@ -85,6 +85,9 @@ def test_rbac_authorization_logic():
     generator_router = CORE_API_DIR / "app" / "routers" / "generator.py"
     g_content = generator_router.read_text(encoding="utf-8")
     assert "current_user: User = Depends(require_admin)" in g_content, "Thiếu bảo vệ phân quyền delete blueprint"
+    assert "def delete_generated_exam(" in g_content, "Thiếu endpoint delete_generated_exam"
+    assert "def move_exam_to_folder(" in g_content, "Thiếu endpoint move_exam_to_folder"
+    assert "status.HTTP_403_FORBIDDEN" in g_content, "Thiếu mã lỗi HTTP 403 Forbidden trong generator router"
     
     # Kiểm tra router auth có phân quyền admin cập nhật role
     auth_router = CORE_API_DIR / "app" / "routers" / "auth.py"

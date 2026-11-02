@@ -113,6 +113,7 @@ export default function A4PaperPreview({
   const [isRegulationNoticeMode, setIsRegulationNoticeMode] = useState<boolean>(false);
   const [isExaminerRubricMode, setIsExaminerRubricMode] = useState<boolean>(false);
   const [isSecureQrSealMode, setIsSecureQrSealMode] = useState<boolean>(false);
+  const [isDepartmentAuditMode, setIsDepartmentAuditMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -532,6 +533,21 @@ export default function A4PaperPreview({
           >
             <QrCode className="w-3.5 h-3.5" />
             <span>{isSecureQrSealMode ? "QR Bảo Mật (Bật)" : "QR Bảo Mật"}</span>
+          </button>
+
+          {/* Department Academic Audit & Signature Slip Button */}
+          <button
+            type="button"
+            onClick={() => setIsDepartmentAuditMode(!isDepartmentAuditMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isDepartmentAuditMode
+                ? "bg-purple-100 border-purple-300 text-purple-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp phiếu duyệt đề thi của Tổ trưởng Chuyên môn & Ban Giám hiệu"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>{isDepartmentAuditMode ? "Phê Duyệt Đề (Bật)" : "Phê Duyệt Đề"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1526,6 +1542,38 @@ export default function A4PaperPreview({
                 <div className="w-16 h-16 shrink-0 border-2 border-dashed border-cyan-400 print:border-black rounded flex flex-col items-center justify-center bg-cyan-50/50 print:bg-white p-1">
                   <QrCode className="w-9 h-9 text-cyan-800 print:text-black" />
                   <span className="text-[7px] font-mono text-cyan-700 print:text-black uppercase">SCAN•AUTH</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Department Academic Audit & Signature Slip Block */}
+          {isDepartmentAuditMode && (
+            <div className="mt-6 pt-3 border-t-2 border-purple-500 p-2.5 rounded-lg bg-purple-50/30 print:bg-white print:border-slate-800 text-[10px] text-slate-800 break-inside-avoid">
+              <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-purple-200 print:border-slate-400 font-bold text-[10.5px] text-purple-950 print:text-black">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-700 print:text-black" />
+                  PHIẾU THẨM ĐỊNH CHUYÊN MÔN &amp; PHÊ DUYỆT ĐỀ THI LƯU TRỮ
+                </span>
+                <span className="text-[9px] text-purple-800 print:text-black font-mono">
+                  TRƯỜNG/TỔ: {schoolName || "TRUNG TÂM GIÁO DỤC VINH PHÁT"}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-[9px] text-center border border-purple-200 print:border-slate-400 rounded p-2 bg-white">
+                <div className="border-r border-dashed border-purple-200 print:border-slate-300 pr-1 flex flex-col justify-between h-20">
+                  <span className="font-bold text-slate-800">GIÁO VIÊN RA ĐỀ</span>
+                  <span className="text-[8px] text-slate-400 italic">(Ký, ghi rõ họ tên)</span>
+                  <div className="h-6"></div>
+                </div>
+                <div className="border-r border-dashed border-purple-200 print:border-slate-300 pr-1 flex flex-col justify-between h-20">
+                  <span className="font-bold text-slate-800">TỔ TRƯỞNG CHUYÊN MÔN</span>
+                  <span className="text-[8px] text-slate-400 italic">(Duyệt ma trận &amp; nội dung)</span>
+                  <div className="h-6"></div>
+                </div>
+                <div className="flex flex-col justify-between h-20 pl-1">
+                  <span className="font-bold text-slate-800">HIỆU TRƯỞNG / BAN GIÁM HIỆU</span>
+                  <span className="text-[8px] text-slate-400 italic">(Phê duyệt in sao &amp; niêm phong)</span>
+                  <div className="h-6"></div>
                 </div>
               </div>
             </div>

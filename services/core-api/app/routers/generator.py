@@ -441,16 +441,54 @@ def create_exam_folder(
 def move_exam_to_folder(
     exam_id: uuid.UUID,
     payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
-    """Di chuyển đề thi vào thư mục tương ứng."""
+    """Di chuyển đề thi vào thư mục tương ứng có kiểm soát phân quyền tác giả hoặc tổ bộ môn."""
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
     if not exam:
         raise HTTPException(404, "Không tìm thấy đề thi")
+
+    # Kiểm tra quyền: Admin, chính tác giả hoặc cùng trường/tổ bộ môn (tenant_id)
+    is_admin = current_user.role == "ADMIN"
+    is_owner = exam.user_id is not None and exam.user_id == current_user.id
+    is_same_tenant = exam.tenant_id == current_user.tenant_id
+
+    if not (is_admin or is_owner or is_same_tenant):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền thay đổi vị trí thư mục của đề thi này"
+        )
+
     folder_id = payload.get("folder_id")
     exam.folder_id = uuid.UUID(folder_id) if folder_id else None
     db.commit()
     return {"status": "SUCCESS", "exam_id": str(exam.id), "folder_id": folder_id}
+
+@router.delete("/exams/{exam_id}", status_code=status.HTTP_200_OK)
+def delete_generated_exam(
+    exam_id: uuid.UUID,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """Xóa đề thi đã tạo: Chỉ cho phép ADMIN, tác giả khởi tạo, hoặc giáo viên cùng tổ bộ môn."""
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(404, "Không tìm thấy đề thi cần xóa")
+
+    is_admin = current_user.role == "ADMIN"
+    is_owner = exam.user_id is not None and exam.user_id == current_user.id
+    is_same_tenant = exam.tenant_id == current_user.tenant_id
+
+    if not (is_admin or (is_owner and is_same_tenant)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền xóa đề thi này (chỉ ADMIN hoặc chính tác giả tạo đề mới được xóa)"
+        )
+
+    db.delete(exam)
+    db.commit()
+    return {"status": "SUCCESS", "message": f"Đã xóa đề thi {exam_id} thành công"}
 
 
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
