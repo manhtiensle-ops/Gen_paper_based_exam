@@ -36,7 +36,8 @@ import {
   Code2,
   Play,
   Bot,
-  ChevronDown
+  ChevronDown,
+  Shuffle
 } from "lucide-react";
 
 import ExamSettingsModal from "./ExamSettingsModal";
@@ -179,6 +180,74 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
   // Question editing modal
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
+
+  // Quick Question Swap in Studio
+  const [swappingItemId, setSwappingItemId] = useState<string | null>(null);
+  const [swapCandidates, setSwapCandidates] = useState<any[]>([]);
+  const [loadingSwap, setLoadingSwap] = useState<boolean>(false);
+  const [swapSearchQuery, setSwapSearchQuery] = useState<string>("");
+
+  const handleOpenStudioSwap = async (item: any) => {
+    setSwappingItemId(item.id);
+    setLoadingSwap(true);
+    setSwapCandidates([]);
+    const snap = item.problem_snapshot || {};
+    try {
+      const payload: any = {
+        page: 1,
+        page_size: 10,
+        current_question_id: snap.id || undefined,
+        main_topic: snap.main_topic || undefined,
+        difficulty: snap.difficulty || undefined
+      };
+      const res = await fetch("/api/generator/swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSwapCandidates(data);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải câu hỏi thay thế:", err);
+    } finally {
+      setLoadingSwap(false);
+    }
+  };
+
+  const handleSelectStudioReplacement = async (candidate: any) => {
+    if (!swappingItemId) return;
+    try {
+      const updatedSnapshot = {
+        id: candidate.id,
+        content_latex: candidate.content_latex,
+        solution_latex: candidate.solution_latex,
+        final_answer: candidate.final_answer,
+        sub_questions: candidate.sub_questions,
+        has_figure: candidate.has_figure,
+        figures_meta: candidate.figures_meta,
+        main_topic: candidate.main_topic,
+        difficulty: candidate.difficulty
+      };
+      const res = await fetch(`/api/studio/items/${swappingItemId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ problem_snapshot: updatedSnapshot })
+      });
+      if (res.ok) {
+        setItems(prev => prev.map(it => it.id === swappingItemId ? { ...it, problem_snapshot: updatedSnapshot } : it));
+        setSwappingItemId(null);
+        compileLivePreview(
+          items.map(it => it.id === swappingItemId ? { ...it, problem_snapshot: updatedSnapshot } : it),
+          layoutKnobs,
+          activeMode
+        );
+      }
+    } catch (e) {
+      console.error("Lỗi thay thế câu hỏi trong Studio:", e);
+    }
+  };
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -980,6 +1049,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
                       <div className="flex items-center space-x-1">
                         <button
+                          onClick={() => handleOpenStudioSwap(it)}
+                          className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                          title="Đổi câu hỏi tương đương từ ngân hàng"
+                        >
+                          <Shuffle className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => setEditingQuestion(snap)}
                           className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all"
                           title="Sửa nội dung câu hỏi"
@@ -1601,6 +1677,78 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           loadExamItems();
         }}
       />
+
+      {/* QUESTION SWAP MODAL IN STUDIO */}
+      {swappingItemId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+                  <Shuffle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Đổi câu hỏi tương đương từ Ngân hàng</h3>
+                  <p className="text-[11px] text-slate-300">
+                    Chọn câu hỏi cùng chủ đề & độ khó để thay thế trực tiếp vào đề thi
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSwappingItemId(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Candidates List */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              {loadingSwap ? (
+                <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                  <RefreshCw className="w-6 h-6 animate-spin text-indigo-600" />
+                  <p className="text-xs text-slate-500 font-medium">Đang tìm kiếm câu hỏi phù hợp từ kho 1,900+ câu...</p>
+                </div>
+              ) : swapCandidates.length === 0 ? (
+                <div className="py-12 text-center text-slate-500 text-xs">
+                  Không tìm thấy câu hỏi tương đương khả dụng trong ngân hàng.
+                </div>
+              ) : (
+                swapCandidates.map((cand: any, idx: number) => (
+                  <div
+                    key={cand.id || idx}
+                    className="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all bg-white flex flex-col space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-bold text-slate-700">Mã #{cand.id?.slice(0, 8)}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 font-semibold text-slate-600">
+                          {TOPIC_VI_MAP[cand.main_topic] || cand.main_topic || "Chủ đề"}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold border border-amber-200">
+                          {cand.difficulty || "Thông hiểu"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleSelectStudioReplacement(cand)}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs flex items-center space-x-1"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        <span>Chọn câu này</span>
+                      </button>
+                    </div>
+
+                    <div className="text-slate-800 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100 font-serif leading-relaxed">
+                      <MathRenderer content={cand.content_latex || "..."} />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Settings Modal */}
       <ExamSettingsModal
