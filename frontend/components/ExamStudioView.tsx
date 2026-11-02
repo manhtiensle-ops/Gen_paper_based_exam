@@ -43,7 +43,7 @@ import {
   CheckSquare
 } from "lucide-react";
 
-import ExamSettingsModal from "./ExamSettingsModal";
+import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
 
 interface Props {
   examId: string;
@@ -146,8 +146,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   };
 
   // Layout Knobs
-  const [layoutKnobs, setLayoutKnobs] = useState({
+  const [layoutKnobs, setLayoutKnobs] = useState<LayoutKnobs>({
     font_size_pt: 12,
+    font_family: "times",
     margin_top_cm: 1.8,
     margin_bottom_cm: 1.8,
     margin_left_cm: 2.0,
@@ -1252,6 +1253,35 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
                 <div>
                   <div className="flex justify-between text-slate-600 mb-1">
+                    <span>Phông chữ đề thi:</span>
+                    <span className="font-bold text-slate-900">{layoutKnobs.font_family === "sans" ? "Arial / Helvetica" : "Times New Roman"}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {[
+                      { id: "times", label: "Times New Roman (Truyền thống)" },
+                      { id: "sans", label: "Arial / Sans (Hiện đại)" },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => {
+                          const updated = { ...layoutKnobs, font_family: f.id as "times" | "sans" };
+                          setLayoutKnobs(updated);
+                          compileLivePreview(items, updated, activeMode);
+                        }}
+                        className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[11px] border transition-all ${
+                          layoutKnobs.font_family === f.id
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                            : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-600 mb-1">
                     <span>Cỡ chữ tài liệu:</span>
                     <span className="font-bold text-slate-900">{layoutKnobs.font_size_pt}pt</span>
                   </div>
@@ -1517,7 +1547,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   fontSize: `${layoutKnobs.font_size_pt || 12}pt`,
                   lineHeight: layoutKnobs.line_spread || 1.15,
                 }}
-                className="bg-white rounded-[2px] shadow-2xl border border-slate-300 text-slate-900 font-serif relative overflow-hidden a4-print-target"
+                className={`bg-white rounded-[2px] shadow-2xl border border-slate-300 text-slate-900 relative overflow-hidden a4-print-target ${
+                  layoutKnobs.font_family === "sans" ? "font-sans" : "font-serif"
+                }`}
               >
                 {/* Watermark Overlay in DOM Mode */}
                 {headerConfig.watermark_text && headerConfig.watermark_text.trim() && (

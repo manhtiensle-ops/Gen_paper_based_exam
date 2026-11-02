@@ -77,6 +77,13 @@ def generate_latex_source(
     tex.append("\\usepackage[utf8]{inputenc}")
     tex.append("\\usepackage[T5]{fontenc}")
     tex.append("\\usepackage[vietnamese]{babel}")
+    
+    font_family = layout_knobs.get("font_family", "times")
+    if font_family == "sans":
+        tex.append("\\usepackage{helvet}")
+        tex.append("\\renewcommand{\\familydefault}{\\sfdefault}")
+    else:
+        tex.append("\\usepackage{mathptmx}")
     tex.append("\\usepackage{amsmath,amssymb,amsfonts}")
     tex.append("\\usepackage{geometry}")
     tex.append("\\usepackage{graphicx}")

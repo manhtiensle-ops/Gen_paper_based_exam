@@ -28,6 +28,7 @@ export interface HeaderConfig {
 
 export interface LayoutKnobs {
   font_size_pt: number;
+  font_family?: "times" | "sans";
   margin_top_cm: number;
   margin_bottom_cm: number;
   margin_left_cm: number;
