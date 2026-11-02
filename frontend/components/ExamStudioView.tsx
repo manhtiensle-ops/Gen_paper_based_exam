@@ -709,6 +709,104 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     showToast(`Đã thay thế toàn bộ ${count} vị trí trong mã nguồn LaTeX!`, "success");
   };
 
+  // Helper: Handle smart auto-pairing, auto-wrap & backspace removal in editor
+  const handleEditorKeyDownAutoPair = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!isAutoClosePairs) return;
+    const ta = editorTextareaRef.current;
+    if (!ta) return;
+
+    const pairs: Record<string, string> = {
+      "{": "}",
+      "[": "]",
+      "(": ")",
+      "$": "$",
+      '"': '"',
+    };
+
+    const key = e.key;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const text = ta.value;
+
+    // 1. If key is an opening pair character
+    if (pairs[key]) {
+      const closeChar = pairs[key];
+      // Case A: User has selected text -> Wrap selection with the pair!
+      if (start !== end) {
+        e.preventDefault();
+        const selected = text.substring(start, end);
+        const wrapped = `${key}${selected}${closeChar}`;
+        const newText = text.substring(0, start) + wrapped + text.substring(end);
+        setRawLatexCode(newText);
+        pushToLatexHistory(newText, true);
+        setIsDirty(true);
+        setTimeout(() => {
+          if (editorTextareaRef.current) {
+            editorTextareaRef.current.selectionStart = start + 1;
+            editorTextareaRef.current.selectionEnd = end + 1;
+            updateCursorStats();
+          }
+        }, 10);
+        return;
+      }
+
+      // Case B: Key is '$' and next char is already '$' -> skip closing (overtype)
+      if (key === "$" && text[start] === "$") {
+        e.preventDefault();
+        ta.selectionStart = start + 1;
+        ta.selectionEnd = start + 1;
+        updateCursorStats();
+        return;
+      }
+
+      // Case C: Insert both and put cursor inside
+      e.preventDefault();
+      const newText = text.substring(0, start) + key + closeChar + text.substring(end);
+      setRawLatexCode(newText);
+      pushToLatexHistory(newText, true);
+      setIsDirty(true);
+      setTimeout(() => {
+        if (editorTextareaRef.current) {
+          ta.selectionStart = start + 1;
+          ta.selectionEnd = start + 1;
+          updateCursorStats();
+        }
+      }, 10);
+      return;
+    }
+
+    // 2. Overtyping closing character: }, ], ), $
+    const closePairs = ["}", "]", ")", "$", '"'];
+    if (closePairs.includes(key) && start === end && text[start] === key) {
+      e.preventDefault();
+      ta.selectionStart = start + 1;
+      ta.selectionEnd = start + 1;
+      updateCursorStats();
+      return;
+    }
+
+    // 3. Smart backspace: if backspacing inside empty pair like {} or [] or () or $$, delete both!
+    if (key === "Backspace" && start === end && start > 0) {
+      const prevChar = text[start - 1];
+      const nextChar = text[start];
+      if (pairs[prevChar] && pairs[prevChar] === nextChar) {
+        e.preventDefault();
+        const newText = text.substring(0, start - 1) + text.substring(start + 1);
+        setRawLatexCode(newText);
+        pushToLatexHistory(newText, true);
+        setIsDirty(true);
+        setTimeout(() => {
+          if (editorTextareaRef.current) {
+            ta.selectionStart = start - 1;
+            ta.selectionEnd = start - 1;
+            updateCursorStats();
+          }
+        }, 10);
+        return;
+      }
+    }
+  };
+
   // Helper: Insert math snippet or symbol into editor at cursor position
   const handleInsertMathSnippet = (snippet: string, cursorOffset: number = 0) => {
     setRawLatexCode((prevText) => {
@@ -751,6 +849,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     setEditorSearchMatches(count);
   }, [editorSearchTerm, rawLatexCode]);
   const [isWordWrap, setIsWordWrap] = useState<boolean>(true);
+  const [isAutoClosePairs, setIsAutoClosePairs] = useState<boolean>(true);
   const [copiedTex, setCopiedTex] = useState<boolean>(false);
   const [isDirty, setIsDirty] = useState<boolean>(false);
 
@@ -2327,6 +2426,22 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     {isWordWrap ? "Wrap: Bật" : "Wrap: Tắt"}
                   </button>
 
+                  {/* Auto Close Bracket Pairs toggle */}
+                  <button
+                    onClick={() => {
+                      setIsAutoClosePairs(!isAutoClosePairs);
+                      showToast(!isAutoClosePairs ? "Đã bật tự động đóng ngoặc và bọc cặp ký tự" : "Đã tắt tự động đóng ngoặc", "info");
+                    }}
+                    className={`px-2 py-0.5 rounded border transition-colors text-[10px] font-medium ${
+                      isAutoClosePairs
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700 font-semibold"
+                        : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+                    }`}
+                    title="Tự động đóng cặp ngoặc {}, [], (), $$, và bọc khối chọn khi gõ ký tự mở"
+                  >
+                    {isAutoClosePairs ? "Tự đóng ngoặc: Bật" : "Tự đóng ngoặc: Tắt"}
+                  </button>
+
                   <span className="text-slate-300">|</span>
 
                   {/* Undo / Redo Buttons */}
@@ -2895,6 +3010,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     setIsDirty(true);
                     updateCursorStats();
                   }}
+                  onKeyDown={handleEditorKeyDownAutoPair}
                   onKeyUp={updateCursorStats}
                   onClick={updateCursorStats}
                   onSelect={updateCursorStats}
@@ -3981,6 +4097,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Bật / Tắt chú thích dòng % (Toggle Comment)</span>
                     <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + /</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Tự động đóng cặp ngoặc & bọc chọn</span>
+                    <span className="text-[11px] font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{}, [], (), $$, ""</span>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Mục lục cấu trúc đề thi (Outline Tree Navigator)</span>
