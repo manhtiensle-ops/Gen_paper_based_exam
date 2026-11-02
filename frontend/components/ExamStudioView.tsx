@@ -51,7 +51,9 @@ import {
   PieChart,
   Info,
   Search,
-  Replace
+  Replace,
+  Undo2,
+  Redo2
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -132,6 +134,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     if (selectedText.toLowerCase() === editorSearchTerm.toLowerCase()) {
       const newText = text.substring(0, selStart) + editorReplaceTerm + text.substring(selEnd);
       setRawLatexCode(newText);
+      pushToLatexHistory(newText);
       setIsDirty(true);
       showToast("Đã thay thế 1 kết quả!", "info");
       setTimeout(() => {
@@ -172,6 +175,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     const updatedCode = rawLatexCode.replace(regex, editorReplaceTerm);
 
     setRawLatexCode(updatedCode);
+    pushToLatexHistory(updatedCode);
     setIsDirty(true);
     showToast(`Đã thay thế toàn bộ ${count} vị trí trong mã nguồn LaTeX!`, "success");
   };
@@ -194,6 +198,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         }
       }, 30);
 
+      pushToLatexHistory(newText);
       return newText;
     });
     setIsDirty(true);
@@ -218,6 +223,69 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isWordWrap, setIsWordWrap] = useState<boolean>(true);
   const [copiedTex, setCopiedTex] = useState<boolean>(false);
   const [isDirty, setIsDirty] = useState<boolean>(false);
+
+  // In-Editor Undo / Redo History Stack
+  const [latexHistory, setLatexHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const isHistoryActionRef = useRef<boolean>(false);
+  const historyDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Push new state to history when rawLatexCode changes (debounced or on user action)
+  const pushToLatexHistory = (newCode: string, debounce: boolean = false) => {
+    if (isHistoryActionRef.current) {
+      isHistoryActionRef.current = false;
+      return;
+    }
+
+    const doPush = (code: string) => {
+      setLatexHistory((prev) => {
+        const currentHistory = historyIndex >= 0 ? prev.slice(0, historyIndex + 1) : prev;
+        if (currentHistory.length > 0 && currentHistory[currentHistory.length - 1] === code) {
+          return currentHistory;
+        }
+        const updated = [...currentHistory, code];
+        if (updated.length > 50) updated.shift();
+        return updated;
+      });
+      setHistoryIndex((prev) => {
+        const nextIndex = historyIndex >= 0 ? Math.min(historyIndex + 1, 49) : 0;
+        return nextIndex;
+      });
+    };
+
+    if (debounce) {
+      if (historyDebounceTimerRef.current) clearTimeout(historyDebounceTimerRef.current);
+      historyDebounceTimerRef.current = setTimeout(() => {
+        doPush(newCode);
+      }, 600);
+    } else {
+      doPush(newCode);
+    }
+  };
+
+  const handleEditorUndo = () => {
+    if (historyIndex > 0) {
+      isHistoryActionRef.current = true;
+      const targetIndex = historyIndex - 1;
+      const targetCode = latexHistory[targetIndex];
+      setHistoryIndex(targetIndex);
+      setRawLatexCode(targetCode);
+      setIsDirty(true);
+      showToast("Đã hoàn tác thao tác (Undo)", "info");
+    }
+  };
+
+  const handleEditorRedo = () => {
+    if (historyIndex < latexHistory.length - 1) {
+      isHistoryActionRef.current = true;
+      const targetIndex = historyIndex + 1;
+      const targetCode = latexHistory[targetIndex];
+      setHistoryIndex(targetIndex);
+      setRawLatexCode(targetCode);
+      setIsDirty(true);
+      showToast("Đã làm lại thao tác (Redo)", "info");
+    }
+  };
   const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{
     id: number;
@@ -258,6 +326,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       if (draft.active_sidebar_tab) setSidebarTab(draft.active_sidebar_tab as any);
       if (draft.unsaved_latex && draft.is_dirty) {
         setRawLatexCode(draft.unsaved_latex);
+        pushToLatexHistory(draft.unsaved_latex);
         setIsDirty(true);
         const timeStr = new Date(draft.last_modified_timestamp).toLocaleTimeString("vi-VN", {
           hour: "2-digit",
@@ -635,6 +704,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         setLastCompileStats({ durationMs: duration, timeStr: timeNow });
         if (data.latex_source) {
           setRawLatexCode(data.latex_source);
+          pushToLatexHistory(data.latex_source);
         }
       } else {
         const errText = await res.text();
@@ -766,6 +836,23 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           e.preventDefault();
           setIsEditorSearchOpen(true);
           setIsEditorReplaceMode(true);
+        }
+      }
+      // Ctrl + Z: Undo in LaTeX Code Editor (when on editor tab)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          handleEditorUndo();
+        }
+      }
+      // Ctrl + Y or Ctrl + Shift + Z: Redo in LaTeX Code Editor (when on editor tab)
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "z")
+      ) {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          handleEditorRedo();
         }
       }
       // Ctrl + '+' / '=': Zoom in preview canvas
@@ -1530,6 +1617,39 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   >
                     {isWordWrap ? "Wrap: Bật" : "Wrap: Tắt"}
                   </button>
+
+                  <span className="text-slate-300">|</span>
+
+                  {/* Undo / Redo Buttons */}
+                  <div className="flex items-center space-x-1">
+                    <button
+                      type="button"
+                      onClick={handleEditorUndo}
+                      disabled={historyIndex <= 0}
+                      className={`p-1 rounded border transition-colors ${
+                        historyIndex > 0
+                          ? "bg-white hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-indigo-600 shadow-2xs"
+                          : "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
+                      }`}
+                      title="Hoàn tác (Ctrl+Z)"
+                    >
+                      <Undo2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleEditorRedo}
+                      disabled={historyIndex >= latexHistory.length - 1}
+                      className={`p-1 rounded border transition-colors ${
+                        historyIndex < latexHistory.length - 1
+                          ? "bg-white hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-indigo-600 shadow-2xs"
+                          : "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
+                      }`}
+                      title="Làm lại (Ctrl+Y / Ctrl+Shift+Z)"
+                    >
+                      <Redo2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
                   <span className="text-slate-300">|</span>
                   <span>Nhấn <kbd className="bg-slate-200 text-slate-700 px-1 py-0.5 rounded font-mono">Ctrl+S</kbd> để biên dịch</span>
                 </div>
@@ -1846,7 +1966,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   ref={editorTextareaRef}
                   value={rawLatexCode}
                   onChange={(e) => {
-                    setRawLatexCode(e.target.value);
+                    const newVal = e.target.value;
+                    setRawLatexCode(newVal);
+                    pushToLatexHistory(newVal, true);
                     setIsDirty(true);
                   }}
                   placeholder="% Mã nguồn LaTeX của đề thi... Thầy cô có thể click sửa trực tiếp bất kỳ công thức toán hay câu từ nào và nhấn Ctrl+S để biên dịch!"
@@ -2929,6 +3051,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Tìm & Thay thế từ khóa trong mã nguồn</span>
                     <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + H</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Hoàn tác thao tác soạn thảo (Undo)</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + Z</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Làm lại thao tác soạn thảo (Redo)</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + Y / Ctrl+Shift+Z</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Mở hộp thoại phím tắt này</span>
