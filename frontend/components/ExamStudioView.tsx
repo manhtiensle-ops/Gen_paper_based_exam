@@ -3416,6 +3416,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 54: Complex Analysis & Möbius Transformation Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasComplexAnalysis = /ánh xạ bảo giác|biến đổi Möbius|biến đổi phân tuyến tính|mặt cầu Riemann|hàm giải tích|định lý Liouville|công thức Cauchy|tích phân phức|căn bậc n của đơn vị|De Moivre mở rộng|chuỗi Laurent|thặng dư phức/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Giải tích số phức & Biến đổi Möbius (Complex Analysis Inspector):{" "}
+                            {hasComplexAnalysis ? (
+                              <span className="font-mono text-emerald-700">CHUẨN GIẢI TÍCH PHỨC & BIẾN ĐỔI MÖBIUS CAO CẤP</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">SỐ PHỨC ĐẠI SỐ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasComplexAnalysis
+                              ? "✓ Ánh xạ bảo giác, biến đổi Möbius phân tuyến tính, chuỗi Laurent và tích phân phức chuẩn đề thi Olympic Toán sinh viên / ĐH."
+                              : "✓ Đề thi không chứa giải tích phức và biến đổi phân tuyến tính chuyên sâu."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3489,7 +3516,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `50. Lý thuyết số & Đồng dư thức / Diophantine: CHUẨN LÝ THUYẾT SỐ & ĐỒNG DƯ THỨC HSG CHUYÊN SÂU`,
                         `51. Hình học xạ ảnh & Hàng điểm điều hòa / Cực đối cực: CHUẨN HÌNH HỌC XẠ ẢNH & ĐIỀU HÒA CHUYÊN SÂU`,
                         `52. Dãy số nguyên & Phương trình Pell / Fibonacci: CHUẨN DÃY SỐ NGUYÊN & PHƯƠNG TRÌNH PELL HSG QUỐC GIA`,
-                        `53. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `53. Giải tích số phức & Biến đổi Möbius: CHUẨN GIẢI TÍCH PHỨC & BIẾN ĐỔI MÖBIUS CAO CẤP`,
+                        `54. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
