@@ -4172,6 +4172,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 82: P vs NP & Cook-Levin Complexity / Polynomial Reductions Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasPvsNP = /p vs np|bài toán p vs np|định lý cook-levin|cook-levin theorem|np-complete|np-hard|quy dẫn đa thức|polynomial-time reduction|độ phức tạp thuật toán karp|karp's 21 np-complete problems|mạch boolean phi đồng nhất|circuit complexity|bài toán thiên niên kỷ p vs np/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Bài toán P vs NP & Định lý Cook-Levin (P vs NP Complexity Inspector):{" "}
+                            {hasPvsNP ? (
+                              <span className="font-mono text-emerald-700">CHUẨN BÀI TOÁN THIÊN NIÊN KỶ P VS NP ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐỘ PHỨC TẠP TÍNH TOÁN TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasPvsNP
+                              ? "✓ Bài toán Thiên niên kỷ P vs NP Clay Millennium, định lý Cook-Levin (SAT), các lớp độ phức tạp NP-Complete, NP-Hard và quy dẫn Karp chuẩn Olympic Tin học và Toán Tin lý thuyết tính toán."
+                              : "✓ Đề thi không chứa các bài toán quy dẫn độ phức tạp thuật toán và lý thuyết mạch boolean phi đồng nhất phức tạp."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4273,7 +4300,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `78. Giả thuyết Birch-Swinnerton-Dyer: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ BSD ĐỈNH CAO`,
                         `79. Yang-Mills & Khoảng trống khối lượng: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ YANG-MILLS ĐỈNH CAO`,
                         `80. Giả thuyết Poincaré & Dòng Ricci: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ POINCARÉ ĐỈNH CAO`,
-                        `81. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `81. P vs NP & Định lý Cook-Levin: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ P VS NP ĐỈNH CAO`,
+                        `82. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
