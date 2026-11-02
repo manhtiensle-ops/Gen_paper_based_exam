@@ -2371,6 +2371,70 @@ def configure_exam_cryptographic_seal(
     }
 
 
+@router.post("/exams/{exam_id}/hot-standby-recovery", status_code=status.HTTP_200_OK)
+def configure_exam_hot_standby_recovery(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình bộ đề thi dự phòng nóng & Kế hoạch phục hồi thảm họa khảo thí (Exam Disaster Recovery Hot-Standby RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Thường trực Hội đồng Khảo thí (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ đề dự bị khẩn cấp (enabled), chỉ định mã đề dự phòng sẵn sàng thay thế (standby_exam_id),
+      ấn định cơ chế chuyển đổi tự động khi có lệnh khẩn cấp (auto_failover_enabled), thời gian chuyển đổi tối đa cho phép (failover_timeout_seconds: 10 - 300)
+      và lý do kích hoạt dự phòng (incident_trigger_reason).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Thường trực Hội đồng Thi (TEACHER) mới có quyền cấu hình đề thi dự phòng nóng"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình dự phòng nóng")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình đề thi dự phòng cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    standby_exam_id = str(payload.get("standby_exam_id", ""))
+    auto_failover = bool(payload.get("auto_failover_enabled", True))
+    failover_timeout = int(payload.get("failover_timeout_seconds", 60))
+    trigger_reason = str(payload.get("incident_trigger_reason", "KẾ HOẠCH DỰ PHÒNG KHẢO THÍ ĐỀ PHÒNG SỰ CỐ RÒ RỈ HOẶC ĐÌNH CHỈ"))
+
+    header_cfg = dict(exam.header_config or {})
+    recovery_config = {
+        "enabled": is_enabled,
+        "standby_exam_id": standby_exam_id,
+        "auto_failover_enabled": auto_failover,
+        "failover_timeout_seconds": failover_timeout,
+        "incident_trigger_reason": trigger_reason,
+        "standby_cluster_id": f"VINHPHAT-STANDBY-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["hot_standby_recovery"] = recovery_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "hot_standby_recovery": recovery_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình đề thi dự phòng nóng (Failover: {failover_timeout}s) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

@@ -122,6 +122,7 @@ def test_rbac_authorization_logic():
     assert "configure_exam_peripheral_device_guard" in g_content, "Thiếu endpoint configure_exam_peripheral_device_guard"
     assert "configure_exam_scratch_paper_audit" in g_content, "Thiếu endpoint configure_exam_scratch_paper_audit"
     assert "configure_exam_cryptographic_seal" in g_content, "Thiếu endpoint configure_exam_cryptographic_seal"
+    assert "configure_exam_hot_standby_recovery" in g_content, "Thiếu endpoint configure_exam_hot_standby_recovery"
     assert "status.HTTP_403_FORBIDDEN" in g_content, "Thiếu mã lỗi HTTP 403 Forbidden trong generator router"
     assert "export_type.lower() == \"docx\"" in g_content, "Thiếu phân quyền xuất bản Word DOCX"
     assert "download_exam_file" in g_content and "fmt == \"docx\"" in g_content, "Thiếu phân quyền streaming download Word DOCX"

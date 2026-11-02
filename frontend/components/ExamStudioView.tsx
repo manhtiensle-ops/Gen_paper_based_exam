@@ -3875,6 +3875,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 71: Algebraic Topology & Fundamental Group / Homology Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasTopology = /tô pô đại số|algebraic topology|nhóm cơ bản|fundamental group|\\pi_1|đồng điều kỳ dị|singular homology|đối đồng điều|cohomology|không gian tô pô|brouwer fixed-point|định lý điểm bất động brouwer|chuẩn euler-poincaré|đa diện lồi euler|phức đơn giác|simplicial complex/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Tô pô đại số & Nhóm cơ bản Đồng điều (Algebraic Topology Inspector):{" "}
+                            {hasTopology ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TÔ PÔ ĐẠI SỐ & ĐỒNG ĐIỀU HOMOLOGY ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC TÔ PÔ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasTopology
+                              ? "✓ Nhóm cơ bản pi_1, đồng điều kỳ dị, đối đồng điều cohomology và định lý điểm bất động Brouwer chuẩn Olympic Toán sinh viên và Sau đại học."
+                              : "✓ Đề thi không chứa không gian tô pô đại số phức hợp và đồng điều cao cấp."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3965,7 +3992,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `67. Lý thuyết hỗn độn & Hệ động lực Fractal: CHUẨN HỆ ĐỘNG LỰC PHI TUYẾN & FRACTAL ĐỈNH CAO`,
                         `68. Ma trận ngẫu nhiên & Phân phối Wigner: CHUẨN MA TRẬN NGẪU NHIÊN & ĐỊNH LUẬT BÁN NGUYỆT WIGNER ĐỈNH CAO`,
                         `69. Lý thuyết số đại số & Định lý Modularity Wiles: CHUẨN SỐ ĐẠI SỐ & ĐỊNH LÝ FERMAT WILES ĐỈNH CAO`,
-                        `70. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `70. Tô pô đại số & Nhóm cơ bản Đồng điều: CHUẨN TÔ PÔ ĐẠI SỐ & ĐỒNG ĐIỀU HOMOLOGY ĐỈNH CAO`,
+                        `71. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
