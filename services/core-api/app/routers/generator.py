@@ -3024,6 +3024,74 @@ def configure_exam_iot_vault_lock(
     }
 
 
+@router.post("/exams/{exam_id}/rf-jammer-policy", status_code=status.HTTP_200_OK)
+def configure_exam_rf_jammer_policy(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách kiểm soát dải tần sóng và phát hiện thiết bị thu phát gian lận phòng thi (RF Jammer Spectrum Guard Policy RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Giám sát An ninh Khảo thí / Giáo viên coi thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ kiểm soát phổ sóng vô tuyến phòng thi (enabled),
+      quy định các dải tần giám sát chống gian lận (monitored_frequency_bands: 2G/3G/4G/5G, Bluetooth BLE, WiFi 2.4/5GHz, Radio FM/UHF),
+      bật cảm biến phát hiện sóng micro/tai nghe siêu nhỏ giấu kín (enable_covert_earpiece_detector),
+      ấn định ngưỡng công suất phát sóng khả nghi tính bằng dBm (suspicious_rf_threshold_dbm),
+      và tự động kích hoạt chế độ ghi vết phổ tần số làm bằng chứng khảo thí (auto_log_spectrum_anomalies).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Giám sát An ninh Khảo thí (TEACHER) mới có quyền cấu hình kiểm soát sóng vô tuyến phòng thi"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình kiểm soát sóng vô tuyến phòng thi")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình kiểm soát sóng vô tuyến cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    monitored_bands = payload.get("monitored_frequency_bands", ["Cellular_4G_5G", "Bluetooth_BLE", "WiFi_2.4GHz", "UHF_Covert"])
+    if not isinstance(monitored_bands, list):
+        monitored_bands = [str(monitored_bands)] if monitored_bands else []
+    enable_covert = bool(payload.get("enable_covert_earpiece_detector", True))
+    threshold_dbm = float(payload.get("suspicious_rf_threshold_dbm", -65.0))
+    auto_log = bool(payload.get("auto_log_spectrum_anomalies", True))
+
+    header_cfg = dict(exam.header_config or {})
+    rf_policy_config = {
+        "enabled": is_enabled,
+        "monitored_frequency_bands": monitored_bands,
+        "enable_covert_earpiece_detector": enable_covert,
+        "suspicious_rf_threshold_dbm": threshold_dbm,
+        "auto_log_spectrum_anomalies": auto_log,
+        "rf_policy_id": f"VINHPHAT-RFGUARD-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["rf_jammer_policy"] = rf_policy_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "rf_jammer_policy": rf_policy_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình kiểm soát sóng vô tuyến phòng thi ({len(monitored_bands)} dải tần, Ngưỡng: {threshold_dbm} dBm) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
