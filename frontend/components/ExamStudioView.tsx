@@ -178,25 +178,25 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
   // Helper: Insert math snippet or symbol into editor at cursor position
   const handleInsertMathSnippet = (snippet: string, cursorOffset: number = 0) => {
-    if (!editorTextareaRef.current) return;
-    const textarea = editorTextareaRef.current;
-    const text = rawLatexCode;
-    const selStart = textarea.selectionStart;
-    const selEnd = textarea.selectionEnd;
+    setRawLatexCode((prevText) => {
+      const textarea = editorTextareaRef.current;
+      const selStart = textarea ? textarea.selectionStart : prevText.length;
+      const selEnd = textarea ? textarea.selectionEnd : prevText.length;
 
-    // Insert text
-    const newText = text.substring(0, selStart) + snippet + text.substring(selEnd);
-    setRawLatexCode(newText);
+      const newText = prevText.substring(0, selStart) + snippet + prevText.substring(selEnd);
+
+      // Reset cursor position inside snippet
+      setTimeout(() => {
+        if (editorTextareaRef.current) {
+          editorTextareaRef.current.focus();
+          const newPos = selStart + snippet.length + cursorOffset;
+          editorTextareaRef.current.setSelectionRange(newPos, newPos);
+        }
+      }, 30);
+
+      return newText;
+    });
     setIsDirty(true);
-
-    // Reset cursor position inside snippet
-    setTimeout(() => {
-      if (editorTextareaRef.current) {
-        editorTextareaRef.current.focus();
-        const newPos = selStart + snippet.length + cursorOffset;
-        editorTextareaRef.current.setSelectionRange(newPos, newPos);
-      }
-    }, 30);
   };
 
   // Recount matches whenever search term or code changes
