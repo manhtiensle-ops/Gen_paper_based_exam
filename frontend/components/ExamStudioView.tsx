@@ -61,7 +61,8 @@ import {
   GitCompare,
   FileCheck2,
   ListTree,
-  Bookmark
+  Bookmark,
+  CopyPlus
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -393,6 +394,134 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       areAllCommented ? "Đã gỡ chú thích (Uncomment)" : "Đã bật chú thích dòng (Comment)",
       "info"
     );
+  };
+
+  // Helper: Duplicate current line or selected lines up/down
+  const handleDuplicateLinesInEditor = (direction: "down" | "up" = "down") => {
+    const ta = editorTextareaRef.current;
+    if (!ta) return;
+
+    const fullText = ta.value;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+
+    const lines = fullText.split("\n");
+    let currentPos = 0;
+    let startLineIdx = 0;
+    let endLineIdx = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const lineLen = lines[i].length;
+      const lineEnd = currentPos + lineLen;
+      if (start >= currentPos && start <= lineEnd) {
+        startLineIdx = i;
+      }
+      if (end >= currentPos && end <= lineEnd) {
+        endLineIdx = i;
+      }
+      currentPos = lineEnd + 1; // +1 for \n
+    }
+
+    const selectedLines = lines.slice(startLineIdx, endLineIdx + 1);
+    const duplicatedText = selectedLines.join("\n");
+
+    const newLines = [...lines];
+    if (direction === "down") {
+      newLines.splice(endLineIdx + 1, 0, ...selectedLines);
+    } else {
+      newLines.splice(startLineIdx, 0, ...selectedLines);
+    }
+
+    const newCode = newLines.join("\n");
+    setRawLatexCode(newCode);
+    pushToLatexHistory(newCode);
+    setIsDirty(true);
+
+    setTimeout(() => {
+      if (editorTextareaRef.current) {
+        const textarea = editorTextareaRef.current;
+        textarea.focus();
+        // Calculate new selection
+        let newStartChar = 0;
+        const targetStartLine = direction === "down" ? endLineIdx + 1 : startLineIdx;
+        for (let i = 0; i < targetStartLine; i++) {
+          newStartChar += newLines[i].length + 1;
+        }
+        const newEndChar = newStartChar + duplicatedText.length;
+        textarea.setSelectionRange(newStartChar, newEndChar);
+        updateCursorStats();
+      }
+    }, 20);
+
+    showToast(`Đã nhân đôi dòng (Duplicate line ${direction})`, "info");
+  };
+
+  // Helper: Move current line or selected lines up/down (Alt + ArrowUp / Alt + ArrowDown)
+  const handleMoveLinesInEditor = (direction: "up" | "down") => {
+    const ta = editorTextareaRef.current;
+    if (!ta) return;
+
+    const fullText = ta.value;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+
+    const lines = fullText.split("\n");
+    let currentPos = 0;
+    let startLineIdx = 0;
+    let endLineIdx = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const lineLen = lines[i].length;
+      const lineEnd = currentPos + lineLen;
+      if (start >= currentPos && start <= lineEnd) {
+        startLineIdx = i;
+      }
+      if (end >= currentPos && end <= lineEnd) {
+        endLineIdx = i;
+      }
+      currentPos = lineEnd + 1;
+    }
+
+    if (direction === "up" && startLineIdx === 0) return; // Cannot move above line 1
+    if (direction === "down" && endLineIdx === lines.length - 1) return; // Cannot move below last line
+
+    const newLines = [...lines];
+    if (direction === "up") {
+      const targetIdx = startLineIdx - 1;
+      const targetLine = newLines[targetIdx];
+      const selectedBlock = newLines.splice(startLineIdx, endLineIdx - startLineIdx + 1);
+      newLines.splice(targetIdx, 0, ...selectedBlock);
+    } else {
+      const targetIdx = endLineIdx + 1;
+      const selectedBlock = newLines.splice(startLineIdx, endLineIdx - startLineIdx + 1);
+      newLines.splice(startLineIdx + 1, 0, ...selectedBlock);
+    }
+
+    const newCode = newLines.join("\n");
+    setRawLatexCode(newCode);
+    pushToLatexHistory(newCode);
+    setIsDirty(true);
+
+    setTimeout(() => {
+      if (editorTextareaRef.current) {
+        const textarea = editorTextareaRef.current;
+        textarea.focus();
+        let newStartChar = 0;
+        const newStartLine = direction === "up" ? startLineIdx - 1 : startLineIdx + 1;
+        for (let i = 0; i < newStartLine; i++) {
+          newStartChar += newLines[i].length + 1;
+        }
+        let blockLen = 0;
+        const blockCount = endLineIdx - startLineIdx + 1;
+        for (let i = 0; i < blockCount; i++) {
+          blockLen += newLines[newStartLine + i].length + (i < blockCount - 1 ? 1 : 0);
+        }
+        textarea.setSelectionRange(newStartChar, newStartChar + blockLen);
+        updateCursorStats();
+      }
+    }, 20);
+
+    showToast(`Đã dịch chuyển dòng sang vị trí ${direction === "up" ? "lên" : "xuống"}`, "info");
   };
 
   // Helper: Format & Beautify LaTeX source code with intelligent indentation and line clean-up
@@ -1272,6 +1401,34 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           setIsEditorOutlineOpen((prev) => !prev);
         }
       }
+      // Shift + Alt + Down: Duplicate Lines Down in Editor (when on editor tab)
+      if (e.shiftKey && e.altKey && e.key === "ArrowDown") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          handleDuplicateLinesInEditor("down");
+        }
+      }
+      // Shift + Alt + Up: Duplicate Lines Up in Editor (when on editor tab)
+      if (e.shiftKey && e.altKey && e.key === "ArrowUp") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          handleDuplicateLinesInEditor("up");
+        }
+      }
+      // Alt + ArrowUp: Move Lines Up (when on editor tab)
+      if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && e.key === "ArrowUp") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          handleMoveLinesInEditor("up");
+        }
+      }
+      // Alt + ArrowDown: Move Lines Down (when on editor tab)
+      if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && e.key === "ArrowDown") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          handleMoveLinesInEditor("down");
+        }
+      }
       // Ctrl + Alt + F / Shift + Alt + F: Format LaTeX Code (when on editor tab)
       if ((e.ctrlKey || e.metaKey || e.shiftKey) && e.altKey && e.key.toLowerCase() === "f") {
         if (sidebarTab === "editor") {
@@ -2019,6 +2176,34 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     <Sparkles className="w-3 h-3 text-amber-500" />
                     <span>Định dạng</span>
                   </button>
+
+                  {/* Duplicate Line Down */}
+                  <button
+                    onClick={() => handleDuplicateLinesInEditor("down")}
+                    className="flex items-center space-x-1 px-2 py-0.5 rounded border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                    title="Nhân đôi dòng hiện tại hoặc khối đang chọn xuống dưới (Shift+Alt+Down)"
+                  >
+                    <CopyPlus className="w-3 h-3 text-purple-600" />
+                    <span>Nhân đôi</span>
+                  </button>
+
+                  {/* Move Line Up / Down */}
+                  <div className="flex items-center space-x-0.5 bg-slate-100 rounded border border-slate-200 p-0.5">
+                    <button
+                      onClick={() => handleMoveLinesInEditor("up")}
+                      className="p-0.5 hover:bg-white rounded text-slate-700 transition-colors"
+                      title="Dịch dòng lên trên (Alt+Up)"
+                    >
+                      <ArrowUp className="w-3 h-3 text-slate-600" />
+                    </button>
+                    <button
+                      onClick={() => handleMoveLinesInEditor("down")}
+                      className="p-0.5 hover:bg-white rounded text-slate-700 transition-colors"
+                      title="Dịch dòng xuống dưới (Alt+Down)"
+                    >
+                      <ArrowDown className="w-3 h-3 text-slate-600" />
+                    </button>
+                  </div>
 
                   {/* Go to Line Toggle */}
                   <button
@@ -3798,6 +3983,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Mục lục cấu trúc đề thi (Outline Tree Navigator)</span>
                     <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + O</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Nhân đôi dòng hiện tại / khối chọn (Duplicate Line)</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Shift + Alt + ↓ / ↑</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Di chuyển dòng lên / xuống (Move Line Up / Down)</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Alt + ↑ / ↓</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">So sánh thay đổi mã nguồn LaTeX (Diff Inspector)</span>
