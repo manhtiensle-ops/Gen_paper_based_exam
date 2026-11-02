@@ -994,6 +994,66 @@ def toggle_exam_tamper_lock(
     }
 
 
+@router.post("/exams/{exam_id}/watermark-policy", status_code=status.HTTP_200_OK)
+def update_exam_watermark_policy(
+    exam_id: uuid.UUID,
+    enable_watermark: bool = True,
+    watermark_text: Optional[str] = "TRUNG TÂM GIÁO DỤC VINH PHÁT - BẢO MẬT KHẢO THÍ",
+    watermark_opacity: Optional[float] = 0.15,
+    watermark_rotation: Optional[int] = -45,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách đóng dấu bản quyền Watermark chống quay chụp phòng thi (Digital Watermark Policy RBAC).
+    Bảo vệ phân quyền:
+    - Chỉ ADMIN hoặc TEACHER thuộc đơn vị trường học sở hữu đề thi mới có quyền cấu hình Watermark bảo mật.
+    - Chặn hoàn toàn học sinh hoặc người dùng vãng lai với HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền cấu hình đóng dấu bản quyền Watermark"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình Watermark")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình Watermark đề thi thuộc đơn vị trường học khác"
+            )
+
+    header_cfg = dict(exam.header_config or {})
+    header_cfg["security_watermark"] = {
+        "enabled": enable_watermark,
+        "text": watermark_text,
+        "opacity": max(0.05, min(0.5, watermark_opacity or 0.15)),
+        "rotation": watermark_rotation or -45,
+        "configured_by": current_user.username,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    exam.header_config = header_cfg
+    flag_modified(exam, "header_config")
+
+    db.commit()
+    db.refresh(exam)
+
+    state_desc = f"đã BẬT đóng dấu bản quyền Watermark '{watermark_text}'" if enable_watermark else "đã TẮT đóng dấu bản quyền Watermark"
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "watermark_enabled": enable_watermark,
+        "watermark_text": watermark_text,
+        "configured_by": current_user.username,
+        "message": f"Đề thi '{exam.title}' {state_desc}"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
