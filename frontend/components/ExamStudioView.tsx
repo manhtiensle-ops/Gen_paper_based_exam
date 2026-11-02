@@ -3713,6 +3713,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 65: Partial Differential Equations / Fourier Separation of Variables Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasPDE = /phương trình đạo hàm riêng|pde|phương trình truyền nhiệt|heat equation|phương trình sóng|wave equation|phương trình laplace|phương trình poisson|hàm điều hòa|harmonic function|tách biến fourier|chuỗi fourier|điều kiện dirichlet|điều kiện neumann|toán tử d'alembert/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Phương trình đạo hàm riêng & Tách biến Fourier (PDE & Fourier Inspector):{" "}
+                            {hasPDE ? (
+                              <span className="font-mono text-emerald-700">CHUẨN ĐẠO HÀM RIÊNG PDE & TÁCH BIẾN FOURIER ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">GIẢI TÍCH VI PHÂN TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasPDE
+                              ? "✓ Phương trình truyền nhiệt, truyền sóng, Laplace/Poisson, điều kiện biên Dirichlet/Neumann và tách biến Fourier chuẩn Olympic Toán giải tích."
+                              : "✓ Đề thi không chứa phương trình đạo hàm riêng và bài toán biên phức tạp."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3797,7 +3824,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `61. Giải tích biến phân & Điều khiển tối ưu: CHUẨN BIẾN PHÂN EULER-LAGRANGE & TỐI ƯU ĐỈNH CAO`,
                         `62. Hình học vi phân & Độ cong Gauss: CHUẨN HÌNH HỌC VI PHÂN & ĐƯỜNG TRẮC ĐỊA ĐỈNH CAO`,
                         `63. Thống kê toán học & Kiểm định giả thuyết: CHUẨN THỐNG KÊ TOÁN & KIỂM ĐỊNH GIẢ THUYẾT ĐỈNH CAO`,
-                        `64. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `64. Phương trình đạo hàm riêng & Tách biến Fourier: CHUẨN ĐẠO HÀM RIÊNG PDE & TÁCH BIẾN FOURIER ĐỈNH CAO`,
+                        `65. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

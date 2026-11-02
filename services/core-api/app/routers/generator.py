@@ -1981,6 +1981,67 @@ def configure_exam_score_normalization(
     }
 
 
+@router.post("/exams/{exam_id}/cross-grading-panel", status_code=status.HTTP_200_OK)
+def configure_exam_cross_grading_panel(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình hội đồng chấm chéo độc lập 2 vòng và ngưỡng đối chất vòng 3 (Exam Cross-Grading Panel RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Trưởng hội đồng thi / Giáo viên phụ trách môn thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt quy chuẩn chấm chéo 2 vòng độc lập (enabled), cấu hình độ lệch điểm tối đa cho phép (max_score_discrepancy: 0.5 - 2.0 điểm),
+      kích hoạt phân xử vòng 3 khi vượt ngưỡng lệch (auto_escalate_third_judge) và chỉ định chế độ ẩn danh người chấm (blind_evaluator_identity).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền cấu hình hội đồng chấm chéo"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình hội đồng chấm chéo")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình hội đồng chấm chéo cho đề thi thuộc trường học khác"
+            )
+
+    cross_enabled = bool(payload.get("enabled", True))
+    max_discrepancy = float(payload.get("max_score_discrepancy", 1.0))
+    auto_escalate_third_judge = bool(payload.get("auto_escalate_third_judge", True))
+    blind_evaluator_identity = bool(payload.get("blind_evaluator_identity", True))
+
+    header_cfg = dict(exam.header_config or {})
+    panel_config = {
+        "enabled": cross_enabled,
+        "max_score_discrepancy": max_discrepancy,
+        "auto_escalate_third_judge": auto_escalate_third_judge,
+        "blind_evaluator_identity": blind_evaluator_identity,
+        "panel_session_id": f"VINHPHAT-PANEL-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["cross_grading_panel"] = panel_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "cross_grading_panel": panel_config,
+        "message": f"Đã {'kích hoạt' if cross_enabled else 'vô hiệu hóa'} cấu hình hội đồng chấm chéo độc lập (độ lệch cho phép: {max_discrepancy}đ) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
