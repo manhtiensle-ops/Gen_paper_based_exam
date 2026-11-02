@@ -62,7 +62,9 @@ import {
   FileCheck2,
   ListTree,
   Bookmark,
-  CopyPlus
+  CopyPlus,
+  LayoutTemplate,
+  Plus
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -107,6 +109,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [gotoLineInput, setGotoLineInput] = useState<string>("");
   const [isEditorDiffOpen, setIsEditorDiffOpen] = useState<boolean>(false);
   const [isEditorOutlineOpen, setIsEditorOutlineOpen] = useState<boolean>(false);
+  const [isEditorSnippetsOpen, setIsEditorSnippetsOpen] = useState<boolean>(false);
   const [lastSavedLatexSnapshot, setLastSavedLatexSnapshot] = useState<string>("");
   const [editorSearchMatches, setEditorSearchMatches] = useState<number>(0);
   const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -708,6 +711,106 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     setIsDirty(true);
     showToast(`Đã thay thế toàn bộ ${count} vị trí trong mã nguồn LaTeX!`, "success");
   };
+
+  // Pedagogical exam snippet templates for rapid question creation
+  const PEDAGOGICAL_SNIPPET_TEMPLATES = [
+    {
+      id: "part_single_choice",
+      title: "PHẦN I: Trắc nghiệm 4 phương án (ABCD)",
+      category: "Cấu trúc đề",
+      desc: "Mẫu chuẩn BGD cho câu hỏi trắc nghiệm nhiều lựa chọn",
+      snippet: `\\section*{PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn}
+\\textit{Thí sinh trả lời từ câu 1 đến câu 12. Mỗi câu hỏi thí sinh chỉ chọn một phương án.}
+
+\\begin{ex}
+  Cho hàm số $y = f(x)$ liên tục trên $\\mathbb{R}$ và có bảng biến thiên như hình vẽ. Khẳng định nào sau đây đúng?
+  \\choice
+  {Hàm số đồng biến trên khoảng $(-\\infty; 0)$}
+  {\\True Hàm số nghịch biến trên khoảng $(0; 2)$}
+  {Hàm số đạt cực đại tại $x = 2$}
+  {Giá trị nhỏ nhất của hàm số bằng $-1$}
+\\end{ex}
+`,
+    },
+    {
+      id: "part_true_false",
+      title: "PHẦN II: Trắc nghiệm Đúng/Sai (4 ý a,b,c,d)",
+      category: "Cấu trúc đề",
+      desc: "Mẫu chuẩn trắc nghiệm Đúng/Sai quy định mới của BGD",
+      snippet: `\\section*{PHẦN II. Câu trắc nghiệm đúng sai}
+\\textit{Thí sinh trả lời từ câu 1 đến câu 4. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.}
+
+\\begin{ex}
+  Cho hàm số bậc ba $y = f(x) = ax^3 + bx^2 + cx + d$ có đồ thị là đường cong trong hình bên.
+  \\choiceTF
+  {\\True Hàm số đồng biến trên khoảng $(-1; 1)$}
+  {Hàm số đạt cực trị tại $x = 0$}
+  {\\True Giá trị cực đại của hàm số bằng $2$}
+  {Phương trình $f(x) = 0$ có đúng $3$ nghiệm thực phân biệt}
+\\end{ex}
+`,
+    },
+    {
+      id: "part_short_answer",
+      title: "PHẦN III: Câu trắc nghiệm trả lời ngắn",
+      category: "Cấu trúc đề",
+      desc: "Mẫu điền số/kết quả chuẩn form chấm thi máy tính",
+      snippet: `\\section*{PHẦN III. Câu trắc nghiệm trả lời ngắn}
+\\textit{Thí sinh trả lời từ câu 1 đến câu 6.}
+
+\\begin{ex}
+  Một chất điểm chuyển động theo quy luật $s(t) = -t^3 + 6t^2 + 10$ với $t$ tính bằng giây, $s$ tính bằng mét. Vận tốc tức thời lớn nhất của chất điểm trong khoảng thời gian từ $t = 0$ đến $t = 5$ bằng bao nhiêu $\\text{m/s}$?
+  \\loigiai{
+    Ta có $v(t) = s'(t) = -3t^2 + 12t = -3(t - 2)^2 + 12 \\le 12$. Đạt được khi $t = 2$.
+    Đáp số: $12$.
+  }
+\\end{ex}
+`,
+    },
+    {
+      id: "question_table_var",
+      title: "Bảng biến thiên hàm số (tkz-tab)",
+      category: "Đồ thị & Bảng biểu",
+      desc: "Khối tạo bảng biến thiên 3 dòng x, y', y chuẩn sư phạm",
+      snippet: `\\begin{center}
+\\begin{tikzpicture}
+  \\tkzTabInit[lgt=1.5,espcl=2.5]{$x$/1, $y'$/1, $y$/2}{$-\\infty$, $-1$, $1$, $+\\infty$}
+  \\tkzTabLine{, +, 0, -, 0, +, }
+  \\tkzTabVar{-/ $-\\infty$, +/ $3$, -/ $-1$, +/ $+\\infty$}
+\\end{tikzpicture}
+\\end{center}
+`,
+    },
+    {
+      id: "question_figure_grid",
+      title: "Khung hình vẽ TikZ 2D Hệ tọa độ Oxy",
+      category: "Đồ thị & Bảng biểu",
+      desc: "Hệ trục Oxy với lưới kẻ tọa độ sắc nét",
+      snippet: `\\begin{center}
+\\begin{tikzpicture}[scale=0.8,>=stealth]
+  \\draw[->] (-3,0) -- (3,0) node[below] {$x$};
+  \\draw[->] (0,-3) -- (0,3) node[left] {$y$};
+  \\draw (0,0) node[below left] {$O$};
+  \\draw[domain=-2.2:2.2,smooth,variable=\\x,blue,thick] plot ({\\x},{\\x*\\x - 2});
+\\end{tikzpicture}
+\\end{center}
+`,
+    },
+    {
+      id: "matrix_system",
+      title: "Hệ phương trình toán học & Ma trận",
+      category: "Công thức toán",
+      desc: "Hệ phương trình nhiều ẩn hoặc ma trận số học",
+      snippet: `\\left\\{
+\\begin{aligned}
+  2x + y - z &= 3 \\\\
+  x - 2y + 3z &= -1 \\\\
+  3x + 2y - z &= 4
+\\end{aligned}
+\\right.
+`,
+    },
+  ];
 
   // Helper: Handle smart auto-pairing, auto-wrap & backspace removal in editor
   const handleEditorKeyDownAutoPair = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1495,6 +1598,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           setIsEditorDiffOpen((prev) => !prev);
         }
       }
+      // Ctrl + M / Cmd + M: Toggle Pedagogical Exam Snippets & Templates Drawer (when on editor tab)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          setIsEditorSnippetsOpen((prev) => !prev);
+          if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
+        }
+      }
       // Ctrl + O / Cmd + O: Toggle LaTeX Outline Tree Navigator (when on editor tab)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
         if (sidebarTab === "editor") {
@@ -1589,6 +1700,8 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         setShowShortcutsModal(false);
         setIsSettingsOpen(false);
         setSwappingItemId(null);
+        setIsEditorSnippetsOpen(false);
+        setIsEditorOutlineOpen(false);
       }
       if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         // Chỉ kích hoạt khi không gõ trong input/textarea
@@ -2230,6 +2343,23 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
 
                 <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+                  {/* Exam Snippets & Template Blocks Drawer Button */}
+                  <button
+                    onClick={() => {
+                      setIsEditorSnippetsOpen((prev) => !prev);
+                      if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
+                    }}
+                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
+                      isEditorSnippetsOpen
+                        ? "border-amber-300 bg-amber-50 text-amber-800 font-semibold"
+                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                    title="Mở thư viện mẫu đề thi khảo thí & khối LaTeX sư phạm (Ctrl+M / Cmd+M)"
+                  >
+                    <LayoutTemplate className="w-3 h-3 text-amber-600" />
+                    <span>Mẫu đề ({PEDAGOGICAL_SNIPPET_TEMPLATES.length})</span>
+                  </button>
+
                   {/* Outline Tree Navigator */}
                   <button
                     onClick={() => setIsEditorOutlineOpen((prev) => !prev)}
@@ -2490,6 +2620,67 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     <span>% [Cấu hình hệ thống TeX Live & Tiêu chuẩn Bộ GD&ĐT (đã thu gọn) — Bấm để mở rộng]</span>
                   </span>
                   <span className="text-[10px] text-indigo-600 font-semibold">Xem mã preamble →</span>
+                </div>
+              )}
+
+              {/* Pedagogical Exam Snippets & Template Blocks Drawer */}
+              {isEditorSnippetsOpen && (
+                <div className="bg-amber-50/90 border-b border-amber-200 p-2 text-xs shrink-0 animate-in fade-in duration-150 shadow-inner max-h-60 flex flex-col">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-amber-200 mb-1.5 px-1">
+                    <div className="flex items-center space-x-1.5">
+                      <LayoutTemplate className="w-3.5 h-3.5 text-amber-700" />
+                      <span className="font-semibold text-amber-950">
+                        Thư viện mẫu đề thi & Khối câu hỏi chuẩn BGD (Exam Snippets)
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-200 text-amber-800">
+                        {PEDAGOGICAL_SNIPPET_TEMPLATES.length} mẫu
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setIsEditorSnippetsOpen(false)}
+                      className="text-amber-700 hover:text-amber-900 px-1.5 py-0.5 rounded hover:bg-amber-100 font-bold"
+                      title="Đóng thư viện mẫu (Esc)"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-2 pr-1 font-sans">
+                    {PEDAGOGICAL_SNIPPET_TEMPLATES.map((tmpl) => (
+                      <div
+                        key={tmpl.id}
+                        className="bg-white/85 hover:bg-white border border-amber-200/80 hover:border-amber-400 rounded-md p-2 transition-all shadow-xs flex flex-col justify-between space-y-1.5 group"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="font-semibold text-slate-800 text-xs group-hover:text-amber-900 transition-colors">
+                              {tmpl.title}
+                            </span>
+                            <span className="text-[9px] uppercase px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded font-mono font-medium">
+                              {tmpl.category}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 line-clamp-1">{tmpl.desc}</p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-amber-100/60">
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {tmpl.snippet.trim().split("\n").length} dòng mã
+                          </span>
+                          <button
+                            onClick={() => {
+                              handleInsertMathSnippet(tmpl.snippet);
+                              showToast(`Đã chèn khối "${tmpl.title}" vào vị trí con trỏ!`, "success");
+                            }}
+                            className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-[11px] font-medium shadow-xs transition-colors flex items-center space-x-1"
+                          >
+                            <span>Chèn mẫu</span>
+                            <Plus className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -4101,6 +4292,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Tự động đóng cặp ngoặc & bọc chọn</span>
                     <span className="text-[11px] font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{}, [], (), $$, ""</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Thư viện mẫu đề thi BGD & Snippets</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + M</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Mục lục cấu trúc đề thi (Outline Tree Navigator)</span>
