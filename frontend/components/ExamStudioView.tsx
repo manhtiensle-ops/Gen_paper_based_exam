@@ -128,6 +128,12 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isEditorPreflightOpen, setIsEditorPreflightOpen] = useState<boolean>(false);
   const [isEditorHistoryDrawerOpen, setIsEditorHistoryDrawerOpen] = useState<boolean>(false);
   const [isEditorWrapEnvOpen, setIsEditorWrapEnvOpen] = useState<boolean>(false);
+  const [isVariantsModalOpen, setIsVariantsModalOpen] = useState<boolean>(false);
+  const [variantCount, setVariantCount] = useState<number>(4);
+  const [variantPrefix, setVariantPrefix] = useState<string>("101");
+  const [isGeneratingVariants, setIsGeneratingVariants] = useState<boolean>(false);
+  const [generatedVariants, setGeneratedVariants] = useState<Array<{ code: string; questionsCount: number; latex: string }>>([]);
+  const [selectedVariantPreview, setSelectedVariantPreview] = useState<number | null>(null);
   const [lastSavedLatexSnapshot, setLastSavedLatexSnapshot] = useState<string>("");
   const [editorSearchMatches, setEditorSearchMatches] = useState<number>(0);
   const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1348,6 +1354,85 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         }, 10);
         return;
       }
+    }
+  };
+
+  // Helper: Generate multiple shuffled exam variants with customized exam codes
+  const handleGenerateExamVariants = () => {
+    setIsGeneratingVariants(true);
+    try {
+      // 1. Parse all items/questions from rawLatexCode
+      const rawText = rawLatexCode || "";
+      const exRegex = /\\begin\{ex\}([\s\S]*?)\\end\{ex\}/g;
+      const questionBlocks: string[] = [];
+      let match;
+      while ((match = exRegex.exec(rawText)) !== null) {
+        questionBlocks.push(match[0]);
+      }
+
+      if (questionBlocks.length === 0) {
+        showToast("Không tìm thấy câu hỏi \\begin{ex}...\\end{ex} nào trong mã đề để hoán vị!", "warning");
+        setIsGeneratingVariants(false);
+        return;
+      }
+
+      // Find the range of questions in rawText to replace
+      const firstIndex = rawText.indexOf(questionBlocks[0]);
+      const lastIndex = rawText.lastIndexOf(questionBlocks[questionBlocks.length - 1]) + questionBlocks[questionBlocks.length - 1].length;
+      const prefixHeader = rawText.substring(0, firstIndex);
+      const suffixFooter = rawText.substring(lastIndex);
+
+      const count = Math.min(Math.max(1, variantCount), 10);
+      const startBase = parseInt(variantPrefix, 10) || 101;
+      const variants: Array<{ code: string; questionsCount: number; latex: string }> = [];
+
+      // Pseudo-random seeded shuffle helper (Fisher-Yates)
+      const shuffleArray = <T,>(arr: T[], seed: number): T[] => {
+        const copy = [...arr];
+        let m = copy.length, t, i;
+        let s = seed;
+        const random = () => {
+          s = (s * 9301 + 49297) % 233280;
+          return s / 233280;
+        };
+        while (m) {
+          i = Math.floor(random() * m--);
+          t = copy[m];
+          copy[m] = copy[i];
+          copy[i] = t;
+        }
+        return copy;
+      };
+
+      for (let idx = 0; idx < count; idx++) {
+        const currentCode = (startBase + idx).toString();
+        // If first variant and startBase matches default, keep original order, else shuffle
+        const shuffledQuestions = idx === 0 ? [...questionBlocks] : shuffleArray(questionBlocks, startBase * 73 + idx * 1337);
+        
+        // Update exam_code in header if present
+        let variantHeader = prefixHeader;
+        if (/Mã đề:\s*\d+/i.test(variantHeader)) {
+          variantHeader = variantHeader.replace(/Mã đề:\s*\d+/gi, `Mã đề: ${currentCode}`);
+        } else if (/Mã đề/i.test(variantHeader)) {
+          variantHeader = variantHeader.replace(/Mã đề[^\n\r\\}]*/gi, `Mã đề: ${currentCode}`);
+        }
+
+        const variantFullLatex = `${variantHeader}${shuffledQuestions.join("\n\n")}${suffixFooter}`;
+        variants.push({
+          code: currentCode,
+          questionsCount: shuffledQuestions.length,
+          latex: variantFullLatex
+        });
+      }
+
+      setGeneratedVariants(variants);
+      setSelectedVariantPreview(0);
+      showToast(`Đã tạo thành công ${variants.length} mã đề thi hoán vị!`, "success");
+    } catch (err: any) {
+      console.error("Variant generation error:", err);
+      showToast("Có lỗi xảy ra khi tạo mã đề hoán vị: " + (err.message || String(err)), "warning");
+    } finally {
+      setIsGeneratingVariants(false);
     }
   };
 
@@ -2659,6 +2744,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
           {/* Export Buttons */}
           <div className="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+            <button
+              onClick={() => setIsVariantsModalOpen(true)}
+              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-purple-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
+              title="Tạo nhiều mã đề thi hoán vị câu hỏi & đáp án (101, 102, 103, 104...)"
+            >
+              <Shuffle className="w-3.5 h-3.5 text-purple-600" />
+              <span>Trộn Đề</span>
+            </button>
             <button
               onClick={() => handleDownload("docx")}
               disabled={isExporting !== null}
@@ -5760,6 +5853,203 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
               >
                 Đã hiểu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-version Exam Variants Shuffle Modal */}
+      {isVariantsModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="p-4 bg-gradient-to-r from-purple-700 via-indigo-700 to-indigo-800 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 bg-white/10 rounded-lg backdrop-blur-md">
+                  <Shuffle className="w-5 h-5 text-purple-200" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm tracking-wide">
+                    Tạo Nhiều Mã Đề Thi Hoán Vị (Exam Variants Generator)
+                  </h3>
+                  <p className="text-xs text-purple-200">
+                    Xáo trộn ngẫu nhiên thứ tự câu hỏi và tự động gán mã đề khảo thí chuẩn sư phạm
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsVariantsModalOpen(false)}
+                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
+                title="Đóng modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 overflow-y-auto space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-purple-50/70 p-3 rounded-xl border border-purple-200 text-xs">
+                <div>
+                  <label className="block font-semibold text-purple-950 mb-1">
+                    Số lượng mã đề cần tạo:
+                  </label>
+                  <select
+                    value={variantCount}
+                    onChange={(e) => setVariantCount(Number(e.target.value))}
+                    className="w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    {[2, 3, 4, 6, 8, 10].map((num) => (
+                      <option key={num} value={num}>
+                        {num} mã đề thi
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-purple-950 mb-1">
+                    Mã đề bắt đầu (ví dụ: 101, 201, 357...):
+                  </label>
+                  <input
+                    type="text"
+                    value={variantPrefix}
+                    onChange={(e) => setVariantPrefix(e.target.value)}
+                    placeholder="101"
+                    className="w-full bg-white border border-purple-300 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-purple-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-slate-500">
+                  Phát hiện câu hỏi: <span className="font-mono font-bold text-slate-800">{(rawLatexCode?.match(/\\begin\{ex\}/g) || []).length}</span> câu trong đề gốc
+                </div>
+                <button
+                  onClick={handleGenerateExamVariants}
+                  disabled={isGeneratingVariants}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5 disabled:opacity-50"
+                >
+                  <Shuffle className="w-4 h-4" />
+                  <span>{isGeneratingVariants ? "Đang xáo đề..." : "Tiến Hành Trộn Đề"}</span>
+                </button>
+              </div>
+
+              {/* Generated Variants List */}
+              {generatedVariants.length > 0 && (
+                <div className="space-y-3 pt-2 border-t border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-800">
+                      Danh sách các mã đề đã tạo ({generatedVariants.length}):
+                    </span>
+                    <button
+                      onClick={() => {
+                        // Download all variants as zip or individual tex
+                        generatedVariants.forEach((v) => {
+                          const blob = new Blob([v.latex], { type: "text/plain;charset=utf-8" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `${(headerConfig?.exam_name || "de_thi").replace(/[/\\?%*:|"<>]/g, "_")}_Ma_${v.code}.tex`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        });
+                        showToast(`Đã xuất ${generatedVariants.length} file .tex cho toàn bộ mã đề!`, "success");
+                      }}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Tải về tất cả ({generatedVariants.length} file .tex)</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {generatedVariants.map((v, i) => (
+                      <div
+                        key={v.code}
+                        onClick={() => setSelectedVariantPreview(i)}
+                        className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
+                          selectedVariantPreview === i
+                            ? "border-purple-600 bg-purple-50 shadow-sm ring-2 ring-purple-400"
+                            : "border-slate-200 bg-slate-50 hover:bg-white hover:border-purple-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-mono font-bold text-purple-900 text-sm">
+                            Mã {v.code}
+                          </span>
+                          {i === 0 && (
+                            <span className="text-[10px] bg-slate-200 text-slate-700 px-1 py-0.5 rounded font-medium">
+                              Gốc
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {v.questionsCount} câu hỏi
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Selected Variant Detail Actions */}
+                  {selectedVariantPreview !== null && generatedVariants[selectedVariantPreview] && (
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-xs text-slate-800">
+                          Đang chọn xem: <span className="font-mono text-purple-700 font-bold">Mã đề {generatedVariants[selectedVariantPreview].code}</span>
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              const targetLatex = generatedVariants[selectedVariantPreview].latex;
+                              pushToLatexHistory(targetLatex);
+                              setRawLatexCode(targetLatex);
+                              setIsDirty(true);
+                              setHeaderConfig((prev: any) => ({
+                                ...prev,
+                                exam_code: `Mã đề: ${generatedVariants[selectedVariantPreview].code}`
+                              }));
+                              setIsVariantsModalOpen(false);
+                              showToast(`Đã nạp mã đề ${generatedVariants[selectedVariantPreview].code} vào Studio Editor!`, "success");
+                            }}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+                          >
+                            Nạp vào Editor để xuất bản
+                          </button>
+                          <button
+                            onClick={() => {
+                              const v = generatedVariants[selectedVariantPreview];
+                              const blob = new Blob([v.latex], { type: "text/plain;charset=utf-8" });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `De_thi_Ma_${v.code}.tex`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                            className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition-all flex items-center space-x-1"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Tải .tex mã này</span>
+                          </button>
+                        </div>
+                      </div>
+                      <pre className="text-[10px] font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-600 max-h-32 overflow-y-auto whitespace-pre-wrap">
+                        {generatedVariants[selectedVariantPreview].latex.substring(0, 500)}...
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-slate-100 border-t border-slate-200 flex items-center justify-end">
+              <button
+                onClick={() => setIsVariantsModalOpen(false)}
+                className="px-4 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl shadow-sm transition-all"
+              >
+                Đóng
               </button>
             </div>
           </div>
