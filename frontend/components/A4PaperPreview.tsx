@@ -116,6 +116,7 @@ export default function A4PaperPreview({
   const [isDepartmentAuditMode, setIsDepartmentAuditMode] = useState<boolean>(false);
   const [isStudentOathSlipMode, setIsStudentOathSlipMode] = useState<boolean>(false);
   const [isClassificationWatermarkMode, setIsClassificationWatermarkMode] = useState<boolean>(false);
+  const [isExamProctorAuditSlipMode, setIsExamProctorAuditSlipMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -580,6 +581,21 @@ export default function A4PaperPreview({
           >
             <Bookmark className="w-3.5 h-3.5" />
             <span>{isClassificationWatermarkMode ? "Mật Lệnh Thi (Bật)" : "Mật Lệnh Thi"}</span>
+          </button>
+
+          {/* Exam Proctoring & Room Audit Slip Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsExamProctorAuditSlipMode(!isExamProctorAuditSlipMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isExamProctorAuditSlipMode
+                ? "bg-emerald-100 border-emerald-300 text-emerald-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp biên bản bàn giao phòng thi và xác nhận của Giám thị 1, Giám thị 2"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>{isExamProctorAuditSlipMode ? "Giám Thị (Bật)" : "Giám Thị"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1644,6 +1660,35 @@ export default function A4PaperPreview({
               </div>
               <div className="font-mono text-[8.5px] text-rose-800 print:text-black">
                 MÃ BẢO VỆ: CONFIDENTIAL-{new Date().getFullYear()}-VP-SECURE
+              </div>
+            </div>
+          )}
+
+          {/* Exam Proctoring & Room Audit Slip Block */}
+          {isExamProctorAuditSlipMode && (
+            <div className="mt-6 pt-3 border-t-2 border-emerald-600 p-2.5 rounded-lg bg-emerald-50/30 print:bg-white print:border-slate-700 text-[10px] text-slate-800 break-inside-avoid">
+              <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-emerald-200 print:border-slate-300 font-bold text-[10.5px] text-emerald-950 print:text-black">
+                <span className="flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-700 print:text-black" />
+                  BIÊN BẢN BÀN GIAO &amp; GIÁM SÁT PHÒNG THI (HỘI ĐỒNG COI THI VINH PHÁT)
+                </span>
+                <span className="text-[9px] text-emerald-800 print:text-black font-mono">
+                  MÃ ĐỀ: {isShufflePackageActive ? selectedVariantCode : (examCode || "101")}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-[9px] text-slate-700 leading-relaxed">
+                <div className="p-2 rounded bg-white border border-emerald-200 print:border-slate-300 space-y-1">
+                  <div className="font-bold text-slate-900 uppercase">GIÁM THỊ 1 (XÁC NHẬN PHÁT ĐỀ)</div>
+                  <div>- Họ và tên: ............................................................</div>
+                  <div>- Số lượng đề phát ra: ....... bản | Tình trạng: Nguyên niêm phong</div>
+                  <div className="pt-1 italic text-slate-500">Chữ ký Giám thị 1: ............................................</div>
+                </div>
+                <div className="p-2 rounded bg-white border border-emerald-200 print:border-slate-300 space-y-1">
+                  <div className="font-bold text-slate-900 uppercase">GIÁM THỊ 2 (XÁC NHẬN THU BÀI)</div>
+                  <div>- Họ và tên: ............................................................</div>
+                  <div>- Số bài thi thu đủ: ....... bài | Số tờ giấy thi: ....... tờ</div>
+                  <div className="pt-1 italic text-slate-500">Chữ ký Giám thị 2: ............................................</div>
+                </div>
               </div>
             </div>
           )}

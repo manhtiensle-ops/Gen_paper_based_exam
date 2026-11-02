@@ -2957,6 +2957,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 37: Statistics & Empirical Data Analysis Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasStatistics = /thống kê|trung vị|tứ phân vị|phương sai|độ lệch chuẩn|mẫu số liệu|bảng tần số|tần suất|khoảng biến thiên|khoảng tứ phân vị|Q_1|Q_2|Q_3|\\bar\{x\}/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Thống kê & Phân tích số liệu thực tế (Statistics & Data Analysis):{" "}
+                            {hasStatistics ? (
+                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ THỐNG KÊ THỰC NGHIỆM</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">TOÁN HỌC THUẦN TÚY</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasStatistics
+                              ? "✓ Mẫu số liệu ghép nhóm, số trung bình x̄, trung vị Me, tứ phân vị Q1, Q2, Q3 và phương sai s² tuân thủ chương trình GDPT mới."
+                              : "✓ Đề thi giải tích và đại số lý thuyết, không bao gồm mẫu số liệu thống kê."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3013,7 +3040,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `33. Số phức & Mặt phẳng tọa độ Argand: CHUẨN ĐẠI SỐ TUYẾN TÍNH PHỨC`,
                         `34. Tổ hợp, Xác suất & Không gian mẫu: CHUẨN TIÊN ĐỀ LAPLACE & ĐẠI SỐ TỔ HỢP`,
                         `35. Hình học tọa độ Oxy & Đường Conic: CHUẨN HÌNH HỌC GIẢI TÍCH OXY & CONIC`,
-                        `36. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `36. Thống kê & Phân tích số liệu thực tế: CHUẨN ĐẠI SỐ THỐNG KÊ THỰC NGHIỆM`,
+                        `37. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

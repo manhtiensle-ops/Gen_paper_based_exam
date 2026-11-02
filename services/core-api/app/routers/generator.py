@@ -553,8 +553,21 @@ def download_exam_file(
     exam_id: uuid.UUID,
     format: str = "docx",
     mode: str = "EXAM",
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
+    fmt = format.lower()
+    if fmt not in ["docx", "pdf"]:
+        fmt = "docx"
+
+    # Kiểm tra phân quyền cấp phép xuất bản file Word DOCX Native OMML
+    if fmt == "docx":
+        if not current_user or current_user.role not in ["ADMIN", "TEACHER", "PRO"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tải tệp Word (.docx) chuẩn OMML không vỡ font yêu cầu đăng nhập tài khoản Giáo viên (TEACHER) hoặc gói PRO/ADMIN"
+            )
+
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Không tìm thấy đề thi")
