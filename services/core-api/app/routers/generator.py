@@ -1857,6 +1857,67 @@ def configure_exam_omr_sheet_template(
     }
 
 
+@router.post("/exams/{exam_id}/blind-grading", status_code=status.HTTP_200_OK)
+def configure_exam_blind_grading(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình quy chuẩn rọc phách ẩn danh và mã phách bảo mật bài thi (Exam Anonymous Blind Grading RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Trưởng ban chấm thi / Giáo viên phụ trách (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt quy chuẩn rọc phách (enabled), sinh tiền tố mã phách bảo mật (secret_key_prefix),
+      tách rời định danh học sinh khỏi bài làm (detach_student_pii) và niêm phong hòm phách (lock_blind_keys).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền cấu hình rọc phách ẩn danh bài thi"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình rọc phách ẩn danh")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình rọc phách cho đề thi thuộc trường học khác"
+            )
+
+    blind_enabled = bool(payload.get("enabled", True))
+    detach_student_pii = bool(payload.get("detach_student_pii", True))
+    lock_blind_keys = bool(payload.get("lock_blind_keys", False))
+    secret_key_prefix = payload.get("secret_key_prefix", f"PHACH-{datetime.now(timezone.utc).strftime('%Y%m%d')}")
+
+    header_cfg = dict(exam.header_config or {})
+    blind_config = {
+        "enabled": blind_enabled,
+        "detach_student_pii": detach_student_pii,
+        "lock_blind_keys": lock_blind_keys,
+        "secret_key_prefix": secret_key_prefix,
+        "blind_vault_id": f"VINHPHAT-VAULT-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["blind_grading"] = blind_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "blind_grading": blind_config,
+        "message": f"Đã {'kích hoạt' if blind_enabled else 'vô hiệu hóa'} cấu hình rọc phách ẩn danh bài thi ({blind_config['blind_vault_id']}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
