@@ -77,6 +77,8 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   // Raw LaTeX Code State for Live Editor
   const [rawLatexCode, setRawLatexCode] = useState<string>("");
   const [isPreambleFolded, setIsPreambleFolded] = useState<boolean>(true);
+  const [editorFontSize, setEditorFontSize] = useState<number>(12); // pt
+  const [isWordWrap, setIsWordWrap] = useState<boolean>(true);
   const [copiedTex, setCopiedTex] = useState<boolean>(false);
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
@@ -1158,6 +1160,38 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     <Download className="w-3 h-3 text-slate-500" />
                     <span>Tải .tex</span>
                   </button>
+
+                  <span className="text-slate-300">|</span>
+
+                  {/* Font size adjustments */}
+                  <div className="flex items-center bg-slate-100 border border-slate-200 rounded px-1 space-x-1" title="Cỡ chữ soạn thảo LaTeX">
+                    <button
+                      onClick={() => setEditorFontSize((prev) => Math.max(10, prev - 1))}
+                      className="px-1 text-slate-600 hover:text-slate-900 font-bold hover:bg-white rounded"
+                    >
+                      -
+                    </button>
+                    <span className="font-mono text-[10px] text-slate-700 font-bold min-w-[24px] text-center">{editorFontSize}pt</span>
+                    <button
+                      onClick={() => setEditorFontSize((prev) => Math.min(20, prev + 1))}
+                      className="px-1 text-slate-600 hover:text-slate-900 font-bold hover:bg-white rounded"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {/* Word wrap toggle */}
+                  <button
+                    onClick={() => setIsWordWrap(!isWordWrap)}
+                    className={`px-2 py-0.5 rounded border transition-colors text-[10px] font-medium ${
+                      isWordWrap
+                        ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-semibold"
+                        : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+                    }`}
+                    title="Bật/Tắt ngắt dòng tự động (Word Wrap)"
+                  >
+                    {isWordWrap ? "Wrap: Bật" : "Wrap: Tắt"}
+                  </button>
                   <span className="text-slate-300">|</span>
                   <span>Nhấn <kbd className="bg-slate-200 text-slate-700 px-1 py-0.5 rounded font-mono">Ctrl+S</kbd> để biên dịch</span>
                 </div>
@@ -1187,13 +1221,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   }}
                   placeholder="% Mã nguồn LaTeX của đề thi... Thầy cô có thể click sửa trực tiếp bất kỳ công thức toán hay câu từ nào và nhấn Ctrl+S để biên dịch!"
                   spellCheck={false}
-                  className="flex-1 h-full bg-white text-slate-900 p-4 font-mono text-xs leading-relaxed resize-none focus:outline-none border-none selection:bg-indigo-100 selection:text-indigo-900 overflow-y-auto"
+                  style={{
+                    fontSize: `${editorFontSize}pt`,
+                    whiteSpace: isWordWrap ? "pre-wrap" : "pre",
+                    wordBreak: isWordWrap ? "break-word" : "normal",
+                  }}
+                  className="flex-1 h-full bg-white text-slate-900 p-4 font-mono leading-relaxed resize-none focus:outline-none border-none selection:bg-indigo-100 selection:text-indigo-900 overflow-y-auto"
                 />
               </div>
 
               {/* Footer status */}
               <div className="h-7 bg-slate-50 border-t border-slate-200 px-4 flex items-center justify-between text-[10px] text-slate-500 shrink-0">
-                <span>LaTeX 2e • UTF-8 • pdfTeX Engine</span>
+                <span>LaTeX 2e • UTF-8 • pdfTeX Engine • {rawLatexCode.split("\n").length} dòng • {rawLatexCode.length} ký tự</span>
                 <span className="text-emerald-600 font-semibold flex items-center space-x-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Sẵn sàng chỉnh sửa trực tiếp (Ctrl+S)</span>
