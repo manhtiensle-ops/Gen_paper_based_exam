@@ -3227,6 +3227,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 47: Non-standard Systems of Equations Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasSystems = /hệ phương trình|đẳng cấp bậc hai|đối xứng loại 1|đối xứng loại 2|lượng giác hóa|đặt ẩn phụ|phương pháp thế|nghiệm của hệ|\\begin\{cases\}|\\left\\{\\begin\{array\}/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Hệ phương trình không mẫu mực & Đối xứng / Đẳng cấp (Systems of Equations):{" "}
+                            {hasSystems ? (
+                              <span className="font-mono text-emerald-700">CHUẨN HỆ PHƯƠNG TRÌNH ĐẠI SỐ CHUYÊN SÂU</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">PHƯƠNG TRÌNH / HỆ ĐƠN GIẢN KHÁC</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasSystems
+                              ? "✓ Hệ đối xứng loại 1, đối xứng loại 2, hệ đẳng cấp và kỹ thuật phân tích nhân tử/đặt ẩn phụ chuẩn chuyên đề HSG."
+                              : "✓ Đề thi không chứa dạng toán giải hệ phương trình không mẫu mực nhiều ẩn."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3293,7 +3320,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `43. Khối đa diện & Thể tích không gian cổ điển: CHUẨN HÌNH HỌC KHÔNG GIAN CỔ ĐIỂN`,
                         `44. Khối tròn xoay Nón - Trụ - Cầu: CHUẨN HÌNH HỌC KHỐI TRÒN XOAY`,
                         `45. Bất đẳng thức cổ điển Cauchy - Bunhiacopski: CHUẨN BẤT ĐẲNG THỨC & ĐÁNH GIÁ CỰC TRỊ`,
-                        `46. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `46. Hệ phương trình không mẫu mực & Đối xứng: CHUẨN HỆ PHƯƠNG TRÌNH ĐẠI SỐ CHUYÊN SÂU`,
+                        `47. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

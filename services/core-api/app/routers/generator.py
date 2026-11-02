@@ -787,6 +787,93 @@ def update_exam_accreditation_and_tags(
     }
 
 
+@router.post("/exams/{exam_id}/clone-cross-tenant", status_code=status.HTTP_201_CREATED)
+def clone_exam_cross_tenant(
+    exam_id: uuid.UUID,
+    target_tenant_id: str,
+    target_school_name: Optional[str] = None,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Nhân bản đề thi liên trường / tổ chức (Cross-Tenant Exam Clone / Fork RBAC).
+    Bảo vệ phân quyền:
+    - Chỉ ADMIN hoặc TEACHER có vai trò PRO mới được cấp phép nhân bản đề thi sang đơn vị trường học khác.
+    - Chặn hoàn toàn học sinh hoặc tài khoản thông thường.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER", "PRO"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) và Giáo viên có bản quyền nâng cao (TEACHER/PRO) mới có quyền nhân bản đề thi liên trường"
+        )
+
+    source_exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not source_exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi nguồn để nhân bản")
+
+    if current_user.role != "ADMIN" and source_exam.tenant_id and current_user.tenant_id:
+        if source_exam.tenant_id != current_user.tenant_id and source_exam.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền truy cập đề thi nguồn của đơn vị trường học khác"
+            )
+
+    cloned_header = dict(source_exam.header_config or {})
+    cloned_header["cloned_from_exam_id"] = str(source_exam.id)
+    cloned_header["cloned_by"] = current_user.username
+    cloned_header["cloned_at"] = datetime.now(timezone.utc).isoformat()
+    if target_school_name:
+        cloned_header["department_or_school"] = target_school_name
+
+    new_exam = GeneratedExam(
+        id=uuid.uuid4(),
+        blueprint_id=source_exam.blueprint_id,
+        user_id=current_user.id,
+        tenant_id=target_tenant_id,
+        title=f"[Bản sao B2B] {source_exam.title}",
+        total_questions=source_exam.total_questions,
+        total_score=source_exam.total_score,
+        duration_minutes=source_exam.duration_minutes,
+        folder_id=None,
+        header_config=cloned_header,
+        raw_latex_content=source_exam.raw_latex_content,
+        created_at=datetime.now(timezone.utc)
+    )
+    db.add(new_exam)
+    db.flush()
+
+    source_items = db.query(ExamItem).filter(ExamItem.exam_id == source_exam.id).all()
+    for s_it in source_items:
+        new_item = ExamItem(
+            id=uuid.uuid4(),
+            exam_id=new_exam.id,
+            question_id=s_it.question_id,
+            order_index=s_it.order_index,
+            section=s_it.section,
+            score=s_it.score,
+            content_latex=s_it.content_latex,
+            question_snapshot=dict(s_it.question_snapshot or {}),
+            rubric_data=dict(s_it.rubric_data or {}) if s_it.rubric_data else None,
+            difficulty=s_it.difficulty,
+            item_type=s_it.item_type
+        )
+        db.add(new_item)
+
+    db.commit()
+    db.refresh(new_exam)
+
+    return {
+        "status": "SUCCESS",
+        "original_exam_id": str(source_exam.id),
+        "cloned_exam_id": str(new_exam.id),
+        "cloned_title": new_exam.title,
+        "target_tenant_id": target_tenant_id,
+        "cloned_by": current_user.username,
+        "cloned_items_count": len(source_items),
+        "message": f"Đã nhân bản thành công đề thi sang tổ chức '{target_tenant_id}'"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
