@@ -7,6 +7,7 @@ import {
   Shield,
   Crown,
   X,
+  ShieldAlert,
   Check,
   Mail,
   Sparkles,
@@ -223,6 +224,19 @@ export default function ProfileModal({
               </div>
             </div>
           </div>
+
+          {/* Role Delegation & Academic Governance Panel for ADMIN */}
+          {user.role === "ADMIN" && (
+            <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/80 space-y-2">
+              <div className="flex items-center space-x-2 text-xs font-bold text-amber-900">
+                <ShieldAlert className="w-4 h-4 text-amber-700" />
+                <span>Thẩm Quyền Quản Trị Hệ Thống (ADMIN Delegation)</span>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Tài khoản của bạn nắm giữ quyền tối cao: Phê duyệt câu hỏi vào Ngân hàng quốc gia, quản trị ma trận đề thi chuẩn và ủy quyền cấp vai trò Giáo viên qua cổng API <code className="font-mono bg-amber-100 px-1 py-0.5 rounded text-[10px]">PUT /api/auth/users/role</code>.
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">

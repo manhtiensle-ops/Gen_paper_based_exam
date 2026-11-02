@@ -86,6 +86,12 @@ def test_rbac_authorization_logic():
     g_content = generator_router.read_text(encoding="utf-8")
     assert "current_user: User = Depends(require_admin)" in g_content, "Thiếu bảo vệ phân quyền delete blueprint"
     
+    # Kiểm tra router auth có phân quyền admin cập nhật role
+    auth_router = CORE_API_DIR / "app" / "routers" / "auth.py"
+    a_content = auth_router.read_text(encoding="utf-8")
+    assert "def update_user_role_by_admin(" in a_content, "Thiếu endpoint update_user_role_by_admin"
+    assert "current_admin: User = Depends(require_admin)" in a_content, "Thiếu bảo vệ require_admin cho role delegation"
+    
     print("  ✓ RBAC Role Hierarchy (ADMIN, TEACHER, NORMAL) and route protections verified successfully")
 
 
