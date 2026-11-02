@@ -171,6 +171,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   // Live Canvas Preview State
   const [previewData, setPreviewData] = useState<any>(null);
   const [compiling, setCompiling] = useState(false);
+  const [lastCompileStats, setLastCompileStats] = useState<{ durationMs: number; timeStr: string } | null>(null);
   const [activePage, setActivePage] = useState<number>(0);
   const [zoomScale, setZoomScale] = useState<number>(100);
   const [canvasKey, setCanvasKey] = useState<number>(Date.now());
@@ -427,6 +428,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     mode = activeMode,
     customHeader = headerConfig
   ) => {
+    const startTime = performance.now();
     setCompiling(true);
     setPreviewError(null);
     try {
@@ -449,6 +451,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         const data = await res.json();
         setPreviewData(data);
         setCanvasKey(Date.now());
+        const duration = Math.round(performance.now() - startTime);
+        const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        setLastCompileStats({ durationMs: duration, timeStr: timeNow });
         if (data.latex_source) {
           setRawLatexCode(data.latex_source);
         }
@@ -468,6 +473,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   // Compile Raw Edited LaTeX (< 0.3s)
   const handleCompileRawLatex = async () => {
     if (!rawLatexCode.trim() || compiling) return;
+    const startTime = performance.now();
     setCompiling(true);
     try {
       const res = await fetch(`/api/studio/exams/${examId}/compile-raw`, {
@@ -482,6 +488,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         const data = await res.json();
         setPreviewData(data);
         setCanvasKey(Date.now());
+        const duration = Math.round(performance.now() - startTime);
+        const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        setLastCompileStats({ durationMs: duration, timeStr: timeNow });
         setIsDirty(false);
         setRestoredDraftNotice(null);
         saveExamDraft({
@@ -1677,6 +1686,15 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 <span className="text-[11px] text-emerald-600 flex items-center space-x-1 font-semibold ml-2">
                   <RefreshCw className="w-3 h-3 animate-spin" />
                   <span>Đang dựng bản in TeX Live...</span>
+                </span>
+              )}
+              {!compiling && lastCompileStats && (
+                <span
+                  className="text-[11px] text-slate-500 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded border border-slate-200 flex items-center space-x-1 ml-2 font-mono transition-colors cursor-help"
+                  title={`Biên dịch hoàn tất lúc ${lastCompileStats.timeStr}. Thời gian xử lý: ${lastCompileStats.durationMs}ms`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                  <span>{lastCompileStats.durationMs >= 1000 ? (lastCompileStats.durationMs / 1000).toFixed(1) + 's' : lastCompileStats.durationMs + 'ms'}</span>
                 </span>
               )}
               {previewError && (
