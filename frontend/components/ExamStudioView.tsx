@@ -49,7 +49,8 @@ import {
   HelpCircle,
   Command,
   PieChart,
-  Info
+  Info,
+  Search
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -81,6 +82,56 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [rawLatexCode, setRawLatexCode] = useState<string>("");
   const [isPreambleFolded, setIsPreambleFolded] = useState<boolean>(true);
   const [editorFontSize, setEditorFontSize] = useState<number>(12); // pt
+  const [editorSearchTerm, setEditorSearchTerm] = useState<string>("");
+  const [isEditorSearchOpen, setIsEditorSearchOpen] = useState<boolean>(false);
+  const [editorSearchMatches, setEditorSearchMatches] = useState<number>(0);
+  const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Helper: Find next occurrence of term in editor
+  const handleFindNextInEditor = (forward: boolean = true) => {
+    if (!editorSearchTerm || !editorTextareaRef.current) return;
+    const textarea = editorTextareaRef.current;
+    const text = textarea.value;
+    const term = editorSearchTerm.toLowerCase();
+    const curPos = forward ? textarea.selectionEnd : Math.max(0, textarea.selectionStart - 1);
+    
+    let nextIdx = -1;
+    if (forward) {
+      nextIdx = text.toLowerCase().indexOf(term, curPos);
+      if (nextIdx === -1) {
+        // wrap around
+        nextIdx = text.toLowerCase().indexOf(term, 0);
+      }
+    } else {
+      nextIdx = text.toLowerCase().lastIndexOf(term, curPos);
+      if (nextIdx === -1) {
+        // wrap around
+        nextIdx = text.toLowerCase().lastIndexOf(term);
+      }
+    }
+
+    if (nextIdx !== -1) {
+      textarea.focus();
+      textarea.setSelectionRange(nextIdx, nextIdx + term.length);
+    }
+  };
+
+  // Recount matches whenever search term or code changes
+  useEffect(() => {
+    if (!editorSearchTerm) {
+      setEditorSearchMatches(0);
+      return;
+    }
+    const lowerText = rawLatexCode.toLowerCase();
+    const lowerTerm = editorSearchTerm.toLowerCase();
+    let count = 0;
+    let pos = 0;
+    while ((pos = lowerText.indexOf(lowerTerm, pos)) !== -1) {
+      count++;
+      pos += lowerTerm.length;
+    }
+    setEditorSearchMatches(count);
+  }, [editorSearchTerm, rawLatexCode]);
   const [isWordWrap, setIsWordWrap] = useState<boolean>(true);
   const [copiedTex, setCopiedTex] = useState<boolean>(false);
   const [isDirty, setIsDirty] = useState<boolean>(false);
@@ -618,6 +669,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setAiDrawerOpen((prev) => !prev);
+      }
+      // Ctrl + F: Toggle Search in LaTeX Code Editor (when on editor tab)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          setIsEditorSearchOpen((prev) => !prev);
+        }
       }
       // Ctrl + '+' / '=': Zoom in preview canvas
       if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
@@ -1279,6 +1337,20 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
 
                 <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+                  {/* Find in Code Toggle */}
+                  <button
+                    onClick={() => setIsEditorSearchOpen(!isEditorSearchOpen)}
+                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
+                      isEditorSearchOpen
+                        ? "bg-indigo-100 border-indigo-300 text-indigo-700 font-semibold"
+                        : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700"
+                    }`}
+                    title="Tìm kiếm từ khóa trong mã nguồn LaTeX (Ctrl+F)"
+                  >
+                    <Search className="w-3 h-3 text-slate-500" />
+                    <span>Tìm (Ctrl+F)</span>
+                  </button>
+
                   <button
                     onClick={async () => {
                       if (!rawLatexCode) return;
@@ -1386,9 +1458,69 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
               )}
 
+              {/* In-Editor Search Bar (Ctrl+F) */}
+              {isEditorSearchOpen && (
+                <div className="bg-indigo-50/90 border-b border-indigo-200 px-4 py-1.5 flex items-center justify-between text-xs shrink-0 animate-in fade-in duration-150">
+                  <div className="flex items-center space-x-2">
+                    <Search className="w-3.5 h-3.5 text-indigo-600" />
+                    <input
+                      type="text"
+                      value={editorSearchTerm}
+                      onChange={(e) => setEditorSearchTerm(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleFindNextInEditor(!e.shiftKey);
+                        } else if (e.key === "Escape") {
+                          setIsEditorSearchOpen(false);
+                        }
+                      }}
+                      placeholder="Tìm từ khóa LaTeX... (Enter: tiếp, Shift+Enter: trước)"
+                      autoFocus
+                      className="px-2 py-0.5 text-xs bg-white border border-indigo-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 w-64 text-slate-800"
+                    />
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => handleFindNextInEditor(false)}
+                        className="px-1.5 py-0.5 bg-white hover:bg-slate-100 border border-indigo-200 rounded text-slate-700 text-[10px] font-semibold"
+                        title="Tìm mục trước đó (Shift+Enter)"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        onClick={() => handleFindNextInEditor(true)}
+                        className="px-1.5 py-0.5 bg-white hover:bg-slate-100 border border-indigo-200 rounded text-slate-700 text-[10px] font-semibold"
+                        title="Tìm mục tiếp theo (Enter)"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                    <span className="text-[11px] text-indigo-700 font-medium">
+                      {editorSearchTerm ? (
+                        editorSearchMatches > 0 ? (
+                          `${editorSearchMatches} kết quả`
+                        ) : (
+                          <span className="text-rose-600">Không tìm thấy</span>
+                        )
+                      ) : (
+                        "Nhập từ khóa"
+                      )}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsEditorSearchOpen(false)}
+                    className="text-slate-400 hover:text-slate-700 font-bold px-1.5 py-0.5 rounded text-xs"
+                    title="Đóng tìm kiếm (Esc)"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* Code Editor Body */}
               <div className="flex-1 flex overflow-hidden">
                 <textarea
+                  ref={editorTextareaRef}
                   value={rawLatexCode}
                   onChange={(e) => {
                     setRawLatexCode(e.target.value);
@@ -2466,6 +2598,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Bật / Tắt Trợ lý AI Khảo thí</span>
                     <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + K</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Tìm kiếm từ khóa trong mã nguồn LaTeX</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + F</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Mở hộp thoại phím tắt này</span>
