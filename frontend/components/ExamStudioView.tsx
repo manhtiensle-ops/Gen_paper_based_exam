@@ -71,7 +71,8 @@ import {
   Binary,
   History,
   Boxes,
-  Plus
+  Plus,
+  Trash2
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -132,6 +133,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isEditorAnswerKeyOpen, setIsEditorAnswerKeyOpen] = useState<boolean>(false);
   const [isScaleScoreModalOpen, setIsScaleScoreModalOpen] = useState<boolean>(false);
   const [isPrintConfigModalOpen, setIsPrintConfigModalOpen] = useState<boolean>(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [isBatchActionModalOpen, setIsBatchActionModalOpen] = useState<boolean>(false);
+  const [batchTargetDifficulty, setBatchTargetDifficulty] = useState<string>("TH");
+  const [batchPointsDelta, setBatchPointsDelta] = useState<number>(0.5);
   const [printCopies, setPrintCopies] = useState<number>(1);
   const [includeAnswerKeyInPrint, setIncludeAnswerKeyInPrint] = useState<boolean>(false);
   const [includeStudentPledge, setIncludeStudentPledge] = useState<boolean>(false);
@@ -1529,6 +1534,76 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     } finally {
       setIsGeneratingVariants(false);
     }
+  };
+
+  // Helper: Batch update cognitive level/difficulty for selected questions
+  const handleApplyBatchDifficulty = (diff: string) => {
+    if (selectedItemIds.length === 0) {
+      showToast("Chưa chọn câu hỏi nào để cập nhật!", "warning");
+      return;
+    }
+    const updated = items.map((it) => {
+      if (selectedItemIds.includes(it.id)) {
+        return {
+          ...it,
+          difficulty: diff,
+          problem_snapshot: {
+            ...(it.problem_snapshot || {}),
+            difficulty: diff,
+            cognitive_level: diff,
+          },
+        };
+      }
+      return it;
+    });
+    setItems(updated);
+    setIsDirty(true);
+    setIsBatchActionModalOpen(false);
+    showToast(`Đã cập nhật độ khó cho ${selectedItemIds.length} câu hỏi thành công!`, "success");
+  };
+
+  // Helper: Batch set points for selected questions
+  const handleApplyBatchPoints = (points: number) => {
+    if (selectedItemIds.length === 0) {
+      showToast("Chưa chọn câu hỏi nào để gán điểm!", "warning");
+      return;
+    }
+    if (points <= 0) {
+      showToast("Điểm số phải lớn hơn 0!", "warning");
+      return;
+    }
+    const updated = items.map((it) => {
+      if (selectedItemIds.includes(it.id)) {
+        return {
+          ...it,
+          points: points,
+          max_points: points,
+        };
+      }
+      return it;
+    });
+    setItems(updated);
+    setIsDirty(true);
+    setIsBatchActionModalOpen(false);
+    showToast(`Đã gán ${points} điểm cho ${selectedItemIds.length} câu hỏi thành công!`, "success");
+  };
+
+  // Helper: Batch delete selected questions
+  const handleApplyBatchDelete = () => {
+    if (selectedItemIds.length === 0) {
+      showToast("Chưa chọn câu hỏi nào để xóa!", "warning");
+      return;
+    }
+    if (items.length - selectedItemIds.length <= 0) {
+      showToast("Không thể xóa toàn bộ câu hỏi của đề thi!", "warning");
+      return;
+    }
+    const remaining = items.filter((it) => !selectedItemIds.includes(it.id));
+    setItems(remaining);
+    setSelectedItemIds([]);
+    setIsDirty(true);
+    setIsBatchActionModalOpen(false);
+    showToast(`Đã xóa ${selectedItemIds.length} câu hỏi được chọn!`, "success");
   };
 
   // Helper: Rescale and rebalance exam score distribution
@@ -5028,29 +5103,66 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           {/* TAB 2: QUESTION ITEMS & REORDER */}
           {sidebarTab === "items" && (
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
-              {/* Thanh công cụ Sắp xếp chuẩn Sư phạm */}
-              <div className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200/80 shadow-xs mb-2">
-                <span className="text-[11px] font-bold text-slate-700 flex items-center space-x-1">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Sắp xếp sư phạm:</span>
-                </span>
-                <div className="flex items-center space-x-1.5">
-                  <button
-                    onClick={() => autoReorderPedagogical("difficulty")}
-                    className="px-2 py-1 text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 transition-all flex items-center space-x-1"
-                    title="Tự động xếp theo mức độ nhận thức: Nhận biết -> Thông hiểu -> Vận dụng -> Vận dụng cao"
-                  >
-                    <ArrowUpDown className="w-3 h-3" />
-                    <span>Theo Độ khó</span>
-                  </button>
-                  <button
-                    onClick={() => autoReorderPedagogical("points")}
-                    className="px-2 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 transition-all flex items-center space-x-1"
-                    title="Tự động xếp theo thang điểm tăng dần"
-                  >
-                    <ArrowUpDown className="w-3 h-3" />
-                    <span>Theo Điểm</span>
-                  </button>
+              {/* Thanh công cụ Sắp xếp chuẩn Sư phạm & Tác vụ hàng loạt */}
+              <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-xs mb-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-700 flex items-center space-x-1">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Sắp xếp sư phạm:</span>
+                  </span>
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      onClick={() => autoReorderPedagogical("difficulty")}
+                      className="px-2 py-1 text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 transition-all flex items-center space-x-1"
+                      title="Tự động xếp theo mức độ nhận thức: Nhận biết -> Thông hiểu -> Vận dụng -> Vận dụng cao"
+                    >
+                      <ArrowUpDown className="w-3 h-3" />
+                      <span>Theo Độ khó</span>
+                    </button>
+                    <button
+                      onClick={() => autoReorderPedagogical("points")}
+                      className="px-2 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 transition-all flex items-center space-x-1"
+                      title="Tự động xếp theo thang điểm tăng dần"
+                    >
+                      <ArrowUpDown className="w-3 h-3" />
+                      <span>Theo Điểm</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Batch Selection Action Bar */}
+                <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-[11px]">
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        if (selectedItemIds.length === items.length) {
+                          setSelectedItemIds([]);
+                        } else {
+                          setSelectedItemIds(items.map((it) => it.id));
+                        }
+                      }}
+                      className="font-bold text-slate-600 hover:text-indigo-600 flex items-center space-x-1"
+                    >
+                      <span>{selectedItemIds.length === items.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}</span>
+                    </button>
+                    {selectedItemIds.length > 0 && (
+                      <span className="text-slate-400">|</span>
+                    )}
+                    {selectedItemIds.length > 0 && (
+                      <span className="font-semibold text-indigo-700">
+                        Đã chọn <strong>{selectedItemIds.length}</strong> / {items.length} câu
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedItemIds.length > 0 && (
+                    <button
+                      onClick={() => setIsBatchActionModalOpen(true)}
+                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-all shadow-xs flex items-center space-x-1"
+                    >
+                      <span>⚡ Tác vụ hàng loạt</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -5058,14 +5170,31 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 const snap = it.problem_snapshot || {};
                 const rubric = it.rubric_data || {};
                 const steps = rubric.steps || [];
+                const isChecked = selectedItemIds.includes(it.id);
 
                 return (
                   <div
                     key={it.id}
-                    className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-sm space-y-2.5 transition-all text-xs hover:border-indigo-300"
+                    className={`p-4 bg-white rounded-2xl border transition-all text-xs ${
+                      isChecked
+                        ? "border-indigo-500 shadow-indigo-100/50 shadow-md ring-1 ring-indigo-400 bg-indigo-50/20"
+                        : "border-slate-200/90 shadow-sm hover:border-indigo-300"
+                    } space-y-2.5`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedItemIds([...selectedItemIds, it.id]);
+                            } else {
+                              setSelectedItemIds(selectedItemIds.filter((id) => id !== it.id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                        />
                         <span className="font-extrabold text-sm text-indigo-900">
                           {it.display_label}
                         </span>
@@ -6584,6 +6713,130 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center space-x-1"
               >
                 <span>Áp dụng quy đổi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Actions Modal */}
+      {isBatchActionModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-indigo-700 via-indigo-800 to-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-5 h-5 text-indigo-300" />
+                <div>
+                  <h3 className="font-bold text-sm">Tác Vụ Hàng Loạt ({selectedItemIds.length} câu đã chọn)</h3>
+                  <p className="text-[11px] text-indigo-200">Áp dụng thay đổi đồng thời cho nhiều câu hỏi</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBatchActionModalOpen(false)}
+                className="p-1 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-5 text-xs text-slate-700">
+              {/* Option 1: Batch Set Difficulty */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <span className="font-bold text-slate-900 flex items-center space-x-1.5">
+                  <span>🎯 1. Đồng bộ mức độ nhận thức / độ khó:</span>
+                </span>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { key: "NB", label: "Nhận biết", color: "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100" },
+                    { key: "TH", label: "Thông hiểu", color: "bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100" },
+                    { key: "VD", label: "Vận dụng", color: "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100" },
+                    { key: "VDC", label: "VDC", color: "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100" },
+                  ].map((lvl) => (
+                    <button
+                      key={lvl.key}
+                      onClick={() => handleApplyBatchDifficulty(lvl.key)}
+                      className={`px-2 py-1.5 rounded-lg border text-center font-bold transition-all ${lvl.color}`}
+                    >
+                      {lvl.key}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Option 2: Batch Set Points */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <span className="font-bold text-slate-900 flex items-center space-x-1.5">
+                  <span>⚖️ 2. Gán điểm số đồng loạt:</span>
+                </span>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0.1"
+                    max="10"
+                    value={batchPointsDelta}
+                    onChange={(e) => setBatchPointsDelta(parseFloat(e.target.value) || 0.25)}
+                    className="w-24 px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                  />
+                  <span className="text-slate-500 font-semibold">điểm / câu</span>
+                  <button
+                    onClick={() => handleApplyBatchPoints(batchPointsDelta)}
+                    className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-all shadow-xs"
+                  >
+                    Áp dụng
+                  </button>
+                </div>
+                <div className="flex items-center space-x-1.5 pt-1">
+                  {[0.2, 0.25, 0.5, 1.0].map((pt) => (
+                    <button
+                      key={pt}
+                      onClick={() => {
+                        setBatchPointsDelta(pt);
+                        handleApplyBatchPoints(pt);
+                      }}
+                      className="px-2 py-0.5 rounded bg-white border border-slate-300 text-slate-600 hover:border-indigo-400 hover:text-indigo-600 font-semibold text-[10px] transition-all"
+                    >
+                      {pt}đ
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Option 3: Batch Delete */}
+              <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-rose-800 flex items-center space-x-1">
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>3. Xóa các câu đã chọn khỏi đề thi</span>
+                  </span>
+                  <button
+                    onClick={handleApplyBatchDelete}
+                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg transition-all shadow-xs text-xs"
+                  >
+                    Xóa {selectedItemIds.length} câu
+                  </button>
+                </div>
+                <p className="text-[10px] text-rose-600">
+                  Lưu ý: Thao tác sẽ gỡ bỏ {selectedItemIds.length} câu hỏi ra khỏi đề thi hiện tại.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3.5 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
+              <button
+                onClick={() => setSelectedItemIds([])}
+                className="px-3 py-1.5 text-slate-600 hover:bg-slate-200 rounded-lg font-bold transition-all text-xs"
+              >
+                Hủy chọn tất cả
+              </button>
+              <button
+                onClick={() => setIsBatchActionModalOpen(false)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold transition-all text-xs"
+              >
+                Đóng
               </button>
             </div>
           </div>
