@@ -734,6 +734,59 @@ def get_exam_scoring_key(
     }
 
 
+@router.post("/exams/{exam_id}/accredit", status_code=status.HTTP_200_OK)
+def update_exam_accreditation_and_tags(
+    exam_id: uuid.UUID,
+    is_accredited: bool = True,
+    academic_tags: Optional[List[str]] = None,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Thẩm định chất lượng học thuật và gán nhãn chuyên đề khảo thí (Exam Accreditation & Academic Tagging RBAC).
+    Bảo vệ phân quyền: Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) của trường mới có quyền thẩm định đề thi chính thức.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) và Giáo viên phụ trách (TEACHER) mới có quyền thẩm định và gán nhãn đề thi chính thức"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi cần thẩm định")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id and exam.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền thẩm định đề thi thuộc đơn vị trường học khác"
+            )
+
+    header_cfg = dict(exam.header_config or {})
+    header_cfg["is_official_accredited"] = is_accredited
+    header_cfg["accredited_by"] = current_user.username
+    header_cfg["accredited_at"] = datetime.now(timezone.utc).isoformat() if is_accredited else None
+    if academic_tags is not None:
+        header_cfg["academic_tags"] = academic_tags
+
+    exam.header_config = header_cfg
+    flag_modified(exam, "header_config")
+    db.commit()
+    db.refresh(exam)
+
+    state_desc = "đã được phê duyệt thẩm định chính thức (Accredited)" if is_accredited else "đã hủy phê duyệt thẩm định"
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "is_official_accredited": is_accredited,
+        "academic_tags": header_cfg.get("academic_tags", []),
+        "accredited_by": current_user.username,
+        "message": f"Đề thi '{exam.title}' {state_desc}"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
