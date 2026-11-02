@@ -3554,6 +3554,72 @@ def configure_exam_fluorescent_ink_security(
     }
 
 
+@router.post("/exams/{exam_id}/post-quantum-seal", status_code=status.HTTP_200_OK)
+def configure_exam_post_quantum_seal(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách Hàng rào chống trộm đề thi qua khóa mã hóa chữ ký lượng tử hậu lượng tử (Post-Quantum Lattice Signature Exam Seal RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Mật mã Khảo thí / Trưởng Ban Đề thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chữ ký số hậu lượng tử (enabled),
+      ấn định thuật toán mạng tinh thể FIPS 204 (pqc_algorithm: e.g. CRYSTALS_DILITHIUM_5, FALCON_1024, SPHINCS_PLUS),
+      bắt buộc ký số kép kết hợp ECDSA truyền thống và PQC (require_hybrid_dual_signature),
+      lưu vết khóa công khai vào sổ cái mật mã trường thi (log_public_key_to_exam_ledger),
+      và yêu cầu thiết bị đầu cuối điểm thi xác thực tính toàn vẹn trước khi giải nén tệp in (require_station_pqc_verification).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Mật mã Khảo thí (TEACHER) mới có quyền cấu hình chữ ký hậu lượng tử"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình chữ ký hậu lượng tử")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình chữ ký hậu lượng tử cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    algorithm = str(payload.get("pqc_algorithm", "CRYSTALS_DILITHIUM_5"))
+    hybrid_sig = bool(payload.get("require_hybrid_dual_signature", True))
+    ledger_log = bool(payload.get("log_public_key_to_exam_ledger", True))
+    station_verif = bool(payload.get("require_station_pqc_verification", True))
+
+    header_cfg = dict(exam.header_config or {})
+    pqc_config = {
+        "enabled": is_enabled,
+        "pqc_algorithm": algorithm,
+        "require_hybrid_dual_signature": hybrid_sig,
+        "log_public_key_to_exam_ledger": ledger_log,
+        "require_station_pqc_verification": station_verif,
+        "pqc_policy_id": f"VINHPHAT-PQC-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["post_quantum_seal"] = pqc_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "post_quantum_seal": pqc_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình chữ ký hậu lượng tử (Thuật toán: {algorithm}, Ký lai kép: {'Bật' if hybrid_sig else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

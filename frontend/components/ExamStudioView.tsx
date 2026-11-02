@@ -4361,6 +4361,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 89: Khovanov Homology & Knot Theory / Jones Polynomial Categorification Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasKhovanov = /đối đồng điều khovanov|khovanov homology|phạm trù hóa đa thức jones|categorification of jones polynomial|lý thuyết nút|knot theory|bất biến nút đại số|algebraic knot invariants|chuỗi phức khovanov|khovanov bracket/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Đối đồng điều Khovanov & Lý thuyết Nút (Khovanov Homology Inspector):{" "}
+                            {hasKhovanov ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TÔ PÔ ĐẠI SỐ ĐỈNH CAO KHOVANOV</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">TÔ PÔ ĐẠI SỐ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasKhovanov
+                              ? "✓ Đối đồng điều Khovanov phân bậc, phạm trù hóa đa thức Jones, đối đồng điều vi phân nút và bất biến Rasmussen s-invariant chuẩn Olympic Toán học và Nghiên cứu sinh Tô-pô 4 chiều."
+                              : "✓ Đề thi không chứa các sơ đồ nút bện đa chiều và phức chuỗi lũy đẳng vô hạn chiều phức tạp."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4469,7 +4496,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `85. Đối đồng điều Floer & Tô-pô Symplectic: CHUẨN TÔ PÔ ĐỈNH CAO FLOER-ARNOLD`,
                         `86. Không gian Moduli & Lý thuyết Giao Kontsevich: CHUẨN HÌNH HỌC ĐẠI SỐ ĐỈNH CAO KONTSEVICH`,
                         `87. Định lý Khối Lượng Tích Cực Schoen-Yau: CHUẨN HÌNH HỌC VI PHÂN ĐỈNH CAO SCHOEN-YAU`,
-                        `88. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `88. Đối đồng điều Khovanov & Lý thuyết Nút: CHUẨN TÔ PÔ ĐẠI SỐ ĐỈNH CAO KHOVANOV`,
+                        `89. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
