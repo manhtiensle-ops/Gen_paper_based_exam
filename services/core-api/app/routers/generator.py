@@ -2958,6 +2958,72 @@ def configure_exam_box_tamper_evident_seal(
     }
 
 
+@router.post("/exams/{exam_id}/iot-vault-lock", status_code=status.HTTP_200_OK)
+def configure_exam_iot_vault_lock(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chế độ kiểm soát két sắt lưu trữ bài thi thông minh tích hợp IoT (IoT Smart Vault Tamper Lock RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Trưởng Ban Đề Thi / Giáo viên bảo mật kỳ thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ khóa két sắt thông minh IoT (enabled),
+      chỉ định mã định danh két sắt IoT (vault_device_id),
+      yêu cầu xác thực mở khóa 2 yếu tố qua OTP sinh ngẫu nhiên từ máy chủ (require_dynamic_otp_unlock),
+      bật cảm biến phát hiện chấn động/di chuyển trái phép (enable_vibration_tamper_sensor),
+      và tự động kích hoạt còi báo động khẩn cấp gửi thông báo đa kênh khi phát hiện cạy phá (auto_alarm_on_breach).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Trưởng Ban Đề Thi (TEACHER) mới có quyền cấu hình khóa két sắt thông minh IoT"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình khóa két sắt thông minh IoT")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình khóa két sắt thông minh IoT cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    device_id = str(payload.get("vault_device_id", f"VAULT-IOT-{uuid.uuid4().hex[:6].upper()}"))
+    require_otp = bool(payload.get("require_dynamic_otp_unlock", True))
+    enable_sensor = bool(payload.get("enable_vibration_tamper_sensor", True))
+    auto_alarm = bool(payload.get("auto_alarm_on_breach", True))
+
+    header_cfg = dict(exam.header_config or {})
+    iot_vault_config = {
+        "enabled": is_enabled,
+        "vault_device_id": device_id,
+        "require_dynamic_otp_unlock": require_otp,
+        "enable_vibration_tamper_sensor": enable_sensor,
+        "auto_alarm_on_breach": auto_alarm,
+        "iot_lock_policy_id": f"VINHPHAT-IOTVAULT-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["iot_vault_lock"] = iot_vault_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "iot_vault_lock": iot_vault_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình két sắt thông minh IoT (Thiết bị: {device_id}, OTP: {'Bật' if require_otp else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

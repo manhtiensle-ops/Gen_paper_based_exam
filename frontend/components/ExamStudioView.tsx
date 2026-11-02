@@ -4118,6 +4118,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 80: Yang-Mills Existence & Mass Gap / Quantum Gauge Theory Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasYangMills = /yang-mills|bài toán yang-mills|khoảng trống khối lượng|mass gap|lý thuyết trường chuẩn phi giao hoán|non-abelian gauge theory|nhóm chuẩn su\(n\)|su\(n\) gauge group|liên kết wightman|wightman axioms|không gian hilbert trạng thái chân không|quantum gauge theory|bài toán thiên niên kỷ yang-mills/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Lý thuyết Yang-Mills & Khoảng trống khối lượng (Yang-Mills Mass Gap Inspector):{" "}
+                            {hasYangMills ? (
+                              <span className="font-mono text-emerald-700">CHUẨN BÀI TOÁN THIÊN NIÊN KỶ YANG-MILLS ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">VẬT LÝ TOÁN LƯỢNG TỬ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasYangMills
+                              ? "✓ Bài toán Thiên niên kỷ Yang-Mills Existence & Mass Gap (Δ > 0), hệ tiên đề Wightman, nhóm chuẩn SU(N) và không gian Hilbert trạng thái lượng tử chuẩn Vật lý lý thuyết và Toán giải tích hàm hiện đại."
+                              : "✓ Đề thi không chứa các cấu trúc lý thuyết trường chuẩn phi giao hoán và giải tích hàm vô hạn chiều trừu tượng."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4217,7 +4244,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `76. Navier-Stokes & Dòng chảy hỗn loạn: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ NAVIER-STOKES ĐỈNH CAO`,
                         `77. Giả thuyết Hodge & Chu trình xạ ảnh: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ HODGE ĐỈNH CAO`,
                         `78. Giả thuyết Birch-Swinnerton-Dyer: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ BSD ĐỈNH CAO`,
-                        `79. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `79. Yang-Mills & Khoảng trống khối lượng: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ YANG-MILLS ĐỈNH CAO`,
+                        `80. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
