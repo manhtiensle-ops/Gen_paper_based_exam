@@ -56,6 +56,14 @@ interface QuestionItem {
     points?: number;
   }>;
   difficulty?: string;
+  figures_meta?: Array<{
+    figure_key?: string;
+    placement_target?: string;
+    position?: string;
+    caption?: string;
+    svg_data?: string;
+    relative_url?: string;
+  }>;
 }
 
 interface Props {
@@ -1096,6 +1104,32 @@ export default function A4PaperPreview({
                         <MathRenderer content={q.content_latex} />
                       )}
                     </div>
+                    {/* Render Geometric SVG Diagrams or Figures if present */}
+                    {q.figures_meta && q.figures_meta.length > 0 && (
+                      <div className="my-2 flex flex-wrap gap-2 items-center justify-center">
+                        {q.figures_meta.map((fig, fIdx) => (
+                          <div key={fIdx} className="text-center p-1 bg-slate-50 border border-slate-200 rounded max-w-full">
+                            {fig.svg_data ? (
+                              <div
+                                className="max-w-[280px] max-h-[200px] overflow-hidden flex items-center justify-center [&>svg]:w-full [&>svg]:h-auto"
+                                dangerouslySetInnerHTML={{ __html: fig.svg_data }}
+                              />
+                            ) : fig.relative_url ? (
+                              <img
+                                src={fig.relative_url}
+                                alt={fig.caption || "Hình vẽ minh họa"}
+                                className="max-h-[160px] object-contain rounded mx-auto"
+                              />
+                            ) : null}
+                            {fig.caption && (
+                              <p className="text-[10px] text-slate-500 italic mt-0.5 font-sans">
+                                {fig.caption}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {/* Bilingual English Prompt Sub-label if enabled */}
                     {isBilingualMode && (
                       <div className="mt-0.5 text-[11px] text-teal-800 font-serif italic border-l-2 border-teal-500 pl-2 bg-teal-50/50 py-0.5">
@@ -1150,6 +1184,32 @@ export default function A4PaperPreview({
                         <MathRenderer content={q.content_latex} />
                       )}
                     </div>
+                    {/* Render Geometric SVG Diagrams or Figures for Part 2 */}
+                    {q.figures_meta && q.figures_meta.length > 0 && (
+                      <div className="my-2 flex flex-wrap gap-2 items-center justify-center">
+                        {q.figures_meta.map((fig, fIdx) => (
+                          <div key={fIdx} className="text-center p-1 bg-slate-50 border border-slate-200 rounded max-w-full">
+                            {fig.svg_data ? (
+                              <div
+                                className="max-w-[280px] max-h-[200px] overflow-hidden flex items-center justify-center [&>svg]:w-full [&>svg]:h-auto"
+                                dangerouslySetInnerHTML={{ __html: fig.svg_data }}
+                              />
+                            ) : fig.relative_url ? (
+                              <img
+                                src={fig.relative_url}
+                                alt={fig.caption || "Hình vẽ minh họa"}
+                                className="max-h-[160px] object-contain rounded mx-auto"
+                              />
+                            ) : null}
+                            {fig.caption && (
+                              <p className="text-[10px] text-slate-500 italic mt-0.5 font-sans">
+                                {fig.caption}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {/* Sub-questions a, b, c, d */}
                     {Array.isArray(q.sub_questions) && q.sub_questions.length > 0 && (
                       <div className="ml-3 mt-1 space-y-1 text-[11px]">
@@ -1192,6 +1252,32 @@ export default function A4PaperPreview({
                         <MathRenderer content={q.content_latex} />
                       )}
                     </div>
+                    {/* Render Geometric SVG Diagrams or Figures if present */}
+                    {q.figures_meta && q.figures_meta.length > 0 && (
+                      <div className="my-2 flex flex-wrap gap-2 items-center justify-center">
+                        {q.figures_meta.map((fig, fIdx) => (
+                          <div key={fIdx} className="text-center p-1 bg-slate-50 border border-slate-200 rounded max-w-full">
+                            {fig.svg_data ? (
+                              <div
+                                className="max-w-[280px] max-h-[200px] overflow-hidden flex items-center justify-center [&>svg]:w-full [&>svg]:h-auto"
+                                dangerouslySetInnerHTML={{ __html: fig.svg_data }}
+                              />
+                            ) : fig.relative_url ? (
+                              <img
+                                src={fig.relative_url}
+                                alt={fig.caption || "Hình vẽ minh họa"}
+                                className="max-h-[160px] object-contain rounded mx-auto"
+                              />
+                            ) : null}
+                            {fig.caption && (
+                              <p className="text-[10px] text-slate-500 italic mt-0.5 font-sans">
+                                {fig.caption}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {/* Bilingual English Prompt Sub-label if enabled */}
                     {isBilingualMode && (
                       <div className="mt-0.5 text-[11px] text-teal-800 font-serif italic border-l-2 border-teal-500 pl-2 bg-teal-50/50 py-0.5">

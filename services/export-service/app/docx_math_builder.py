@@ -29,6 +29,10 @@ def get_minio_client() -> Minio:
 class LaTeXMathConverter:
     """Preprocessor for Vietnamese Math LaTeX macros and MathML-to-OMML converter."""
 
+    # In-memory LRU Cache cho OMML chuyển đổi để tăng tốc xuất file Word < 0.2s
+    _OMML_CACHE: Dict[str, str] = {}
+    _CACHE_MAX_SIZE: int = 2000
+
     MML2OMML_XSL_FALLBACK = """<?xml version="1.0" encoding="UTF-8"?>
     <xsl:stylesheet version="1.0" 
         xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
@@ -126,8 +130,29 @@ class LaTeXMathConverter:
         return omml_dom.getroot()
 
     def convert_latex_to_omml_element(self, latex_str: str) -> ET._Element:
-        mathml = self.latex_to_mathml(latex_str)
-        return self.mathml_to_omml(mathml)
+        trimmed = latex_str.strip()
+        if trimmed in self._OMML_CACHE:
+            try:
+                cached_xml = self._OMML_CACHE[trimmed]
+                return ET.fromstring(cached_xml.encode("utf-8"))
+            except Exception:
+                pass
+
+        mathml = self.latex_to_mathml(trimmed)
+        element = self.mathml_to_omml(mathml)
+
+        try:
+            xml_str = ET.tostring(element, encoding="utf-8").decode("utf-8")
+            if len(self._OMML_CACHE) >= self._CACHE_MAX_SIZE:
+                # Xóa 20% cache cũ nhất khi đầy
+                keys_to_remove = list(self._OMML_CACHE.keys())[:int(self._CACHE_MAX_SIZE * 0.2)]
+                for k in keys_to_remove:
+                    self._OMML_CACHE.pop(k, None)
+            self._OMML_CACHE[trimmed] = xml_str
+        except Exception:
+            pass
+
+        return element
 
 
 class DocxMathExamBuilder:
