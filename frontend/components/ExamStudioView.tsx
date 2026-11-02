@@ -48,7 +48,8 @@ import {
   Check,
   HelpCircle,
   Command,
-  PieChart
+  PieChart,
+  Info
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -84,6 +85,23 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [copiedTex, setCopiedTex] = useState<boolean>(false);
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{
+    id: number;
+    text: string;
+    type: "success" | "info" | "warning";
+  } | null>(null);
+
+  const showToast = (text: string, type: "success" | "info" | "warning" = "success") => {
+    setToastMessage({ id: Date.now(), text, type });
+  };
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
 
   // Warn user before leaving page if there are unsaved modifications
   useEffect(() => {
@@ -526,6 +544,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         setLastCompileStats({ durationMs: duration, timeStr: timeNow });
         setIsDirty(false);
         setRestoredDraftNotice(null);
+        showToast("Đã biên dịch mã nguồn LaTeX thành công!", "success");
         saveExamDraft({
           schema_version: 2,
           exam_id: examId,
@@ -796,6 +815,12 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
+      showToast(
+        fmt === "docx"
+          ? "Đã tạo và tải file Word OMML thành công!"
+          : "Đã xuất bản in PDF TeX Live thành công!",
+        "success"
+      );
     } catch (err: any) {
       alert(`Không thể tải tệp: ${err.message || "Lỗi hệ thống"}`);
     } finally {
@@ -1031,6 +1056,32 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         </div>
       </header>
 
+      {/* TOAST NOTIFICATION FLOATING PILL */}
+      {toastMessage && (
+        <div className="fixed top-16 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div
+            className={`flex items-center space-x-2.5 px-4 py-2.5 rounded-xl shadow-lg border backdrop-blur-md text-xs font-semibold ${
+              toastMessage.type === "success"
+                ? "bg-emerald-900/90 text-white border-emerald-700/50 shadow-emerald-950/20"
+                : toastMessage.type === "info"
+                ? "bg-sky-900/90 text-white border-sky-700/50 shadow-sky-950/20"
+                : "bg-amber-900/90 text-white border-amber-700/50 shadow-amber-950/20"
+            }`}
+          >
+            {toastMessage.type === "success" && <Check className="w-4 h-4 text-emerald-300 shrink-0" />}
+            {toastMessage.type === "info" && <Info className="w-4 h-4 text-sky-300 shrink-0" />}
+            {toastMessage.type === "warning" && <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0" />}
+            <span>{toastMessage.text}</span>
+            <button
+              onClick={() => setToastMessage(null)}
+              className="ml-2 text-white/70 hover:text-white transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* DISASTER RECOVERY RESTORED DRAFT BANNER */}
       {restoredDraftNotice && (
         <div className="bg-amber-50 border-b border-amber-200 px-5 py-2 flex items-center justify-between text-xs text-amber-900 z-40 shrink-0">
@@ -1233,6 +1284,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                       if (!rawLatexCode) return;
                       navigator.clipboard.writeText(rawLatexCode);
                       setCopiedTex(true);
+                      showToast("Đã sao chép toàn bộ mã nguồn LaTeX vào bộ nhớ tạm!", "info");
                       setTimeout(() => setCopiedTex(false), 2000);
                     }}
                     className="flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
