@@ -131,6 +131,11 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isVariantsModalOpen, setIsVariantsModalOpen] = useState<boolean>(false);
   const [isEditorAnswerKeyOpen, setIsEditorAnswerKeyOpen] = useState<boolean>(false);
   const [isScaleScoreModalOpen, setIsScaleScoreModalOpen] = useState<boolean>(false);
+  const [isPrintConfigModalOpen, setIsPrintConfigModalOpen] = useState<boolean>(false);
+  const [printCopies, setPrintCopies] = useState<number>(1);
+  const [includeAnswerKeyInPrint, setIncludeAnswerKeyInPrint] = useState<boolean>(false);
+  const [includeStudentPledge, setIncludeStudentPledge] = useState<boolean>(false);
+  const [printPageNumbering, setPrintPageNumbering] = useState<boolean>(true);
   const [targetScaleScore, setTargetScaleScore] = useState<number>(10);
   const [scaleMode, setScaleMode] = useState<"proportional" | "equal">("proportional");
   const [variantCount, setVariantCount] = useState<number>(4);
@@ -2946,9 +2951,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               <span>{isExporting === "pdf" ? "Đang tạo..." : "PDF In"}</span>
             </button>
             <button
-              onClick={() => window.print()}
+              onClick={() => setIsPrintConfigModalOpen(true)}
               className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-emerald-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
-              title="In trực tiếp ra máy in A4 / Lưu file PDF trình duyệt (Ctrl + P)"
+              title="Cấu hình thiết lập in A4 sư phạm & In trực tiếp (Ctrl + P)"
             >
               <Printer className="w-3.5 h-3.5 text-emerald-600" />
               <span>In Ngay</span>
@@ -5732,8 +5737,50 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   </div>
                 )}
 
-                <div className="mt-8 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400">
-                  -- HẾT -- (Bản xem trước A4 trực quan VINH PHÁT Platform)
+                {/* Optional Student Pledge & Examination Proctor Signatures */}
+                {includeStudentPledge && (
+                  <div className="mt-6 pt-3 border-t-2 border-dashed border-slate-300 text-[11px] text-slate-700">
+                    <div className="flex justify-between items-start italic mb-2">
+                      <span>* Thí sinh không được sử dụng tài liệu. Cán bộ coi thi không giải thích gì thêm.</span>
+                      <span>Họ và tên thí sinh: .............................................................. SBD: ......................</span>
+                    </div>
+                    <div className="flex justify-around text-center pt-2 font-bold text-slate-800">
+                      <div>
+                        <div>CÁN BỘ COI THI 1</div>
+                        <div className="text-[10px] font-normal italic text-slate-400 mt-8">(Ký và ghi rõ họ tên)</div>
+                      </div>
+                      <div>
+                        <div>CÁN BỘ COI THI 2</div>
+                        <div className="text-[10px] font-normal italic text-slate-400 mt-8">(Ký và ghi rõ họ tên)</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Optional Compact Answer Key at the end */}
+                {includeAnswerKeyInPrint && (
+                  <div className="mt-8 pt-4 border-t-2 border-slate-800 break-before-page">
+                    <div className="text-center font-bold text-xs uppercase tracking-wider mb-2 text-slate-800">
+                      BẢNG ĐÁP ÁN THAM KHẢO DÀNH CHO CÁN BỘ CHẤM THI
+                    </div>
+                    <div className="grid grid-cols-10 gap-1 text-[10px] text-center border border-slate-300 p-2 rounded-sm bg-slate-50/50">
+                      {examAnswerKeyMatrix.map((item) => (
+                        <div key={item.questionNumber} className="border border-slate-200 bg-white p-1 rounded-xs">
+                          <div className="font-semibold text-slate-500 text-[9px]">Câu {item.questionNumber}</div>
+                          <div className="font-bold text-slate-900 text-xs">{item.correctAnswer}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-8 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 flex items-center justify-between">
+                  <span>-- HẾT -- (Đề thi gồm có {items.length} câu)</span>
+                  {printPageNumbering && (
+                    <span className="font-medium font-mono text-[9px] text-slate-500">
+                      Hệ thống Khảo thí VINH PHÁT Platform
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -6538,6 +6585,169 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               >
                 <span>Áp dụng quy đổi</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exam Print Preflight & Options Modal */}
+      {isPrintConfigModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-700 via-emerald-800 to-teal-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Printer className="w-5 h-5 text-emerald-200" />
+                <div>
+                  <h3 className="font-bold text-sm">Thiết Lập In Đề Thi Chuẩn Sư Phạm A4</h3>
+                  <p className="text-[11px] text-emerald-200">Tối ưu bản in cho máy in trường học & phòng thi khảo thí</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPrintConfigModalOpen(false)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 text-xs font-sans">
+              {/* Exam Info Card */}
+              <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-emerald-900 font-bold block text-xs">
+                    {headerConfig.school_name || "Trường THPT"} — {headerConfig.subject || "Môn thi"}
+                  </span>
+                  <span className="text-[11px] text-emerald-700 block">
+                    Mã đề: <strong className="font-mono">{headerConfig.exam_code || "101"}</strong> | Thời gian: {headerConfig.duration_minutes || "90"} phút
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-800 font-bold text-[11px]">
+                    {items.length} câu hỏi
+                  </span>
+                </div>
+              </div>
+
+              {/* Print Preferences */}
+              <div className="space-y-3">
+                <label className="block text-slate-700 font-bold">Tùy chọn bổ trợ phòng thi:</label>
+
+                <label
+                  onClick={() => setIncludeStudentPledge((prev) => !prev)}
+                  className={`flex items-start p-2.5 rounded-xl border cursor-pointer transition-all ${
+                    includeStudentPledge
+                      ? "bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-400"
+                      : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={includeStudentPledge}
+                    onChange={(e) => setIncludeStudentPledge(e.target.checked)}
+                    className="mt-0.5 rounded-sm text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div className="ml-2.5 text-left">
+                    <span className="font-bold text-slate-800 block text-xs">
+                      Cam kết kỷ luật phòng thi & chữ ký giám thị
+                    </span>
+                    <span className="text-[11px] text-slate-500 leading-normal block">
+                      In thêm dòng: &quot;Thí sinh không được sử dụng tài liệu. Cán bộ coi thi không giải thích gì thêm&quot; kèm ô ký nhận.
+                    </span>
+                  </div>
+                </label>
+
+                <label
+                  onClick={() => setIncludeAnswerKeyInPrint((prev) => !prev)}
+                  className={`flex items-start p-2.5 rounded-xl border cursor-pointer transition-all ${
+                    includeAnswerKeyInPrint
+                      ? "bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-400"
+                      : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={includeAnswerKeyInPrint}
+                    onChange={(e) => setIncludeAnswerKeyInPrint(e.target.checked)}
+                    className="mt-0.5 rounded-sm text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div className="ml-2.5 text-left">
+                    <span className="font-bold text-slate-800 block text-xs">
+                      Đính kèm Bảng đáp án thu nhỏ ở trang cuối
+                    </span>
+                    <span className="text-[11px] text-slate-500 leading-normal block">
+                      Dành riêng cho giáo viên phục vụ việc chấm thi nhanh (không in cho học sinh).
+                    </span>
+                  </div>
+                </label>
+
+                <label
+                  onClick={() => setPrintPageNumbering((prev) => !prev)}
+                  className={`flex items-start p-2.5 rounded-xl border cursor-pointer transition-all ${
+                    printPageNumbering
+                      ? "bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-400"
+                      : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={printPageNumbering}
+                    onChange={(e) => setPrintPageNumbering(e.target.checked)}
+                    className="mt-0.5 rounded-sm text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div className="ml-2.5 text-left">
+                    <span className="font-bold text-slate-800 block text-xs">
+                      Đánh số trang khảo thí chuẩn (Trang X / Y)
+                    </span>
+                    <span className="text-[11px] text-slate-500 leading-normal block">
+                      Tự động gán footer chân trang kiểm soát số trang in, tránh thất lạc trang thi.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* Print Instruction notice */}
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-[11px] space-y-1">
+                <div className="font-bold flex items-center space-x-1">
+                  <span>💡 Khuyến nghị khi bấm lệnh In:</span>
+                </div>
+                <p>
+                  1. Chọn kích thước giấy: <strong>Khổ A4</strong>.<br />
+                  2. Lề trang (Margins): Chọn <strong>Tối thiểu (Minimum)</strong> hoặc <strong>Mặc định (Default)</strong>.<br />
+                  3. Bật tùy chọn: <strong>In đồ họa nền (Background graphics)</strong> để hiển thị watermark và khung đề đầy đủ.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">
+                Nhấn <strong>Enter</strong> hoặc nút xanh để mở trình in
+              </span>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPrintConfigModalOpen(false)}
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-800 text-xs font-semibold rounded-lg hover:bg-slate-200/60"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPrintConfigModalOpen(false);
+                    // Open browser native print dialog
+                    setTimeout(() => {
+                      window.print();
+                    }, 200);
+                  }}
+                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Xác Nhận & In Ngay</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
