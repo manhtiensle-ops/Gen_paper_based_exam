@@ -120,6 +120,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isEditorSymbolsOpen, setIsEditorSymbolsOpen] = useState<boolean>(false);
   const [editorBookmarks, setEditorBookmarks] = useState<number[]>([]);
   const [isEditorBookmarksOpen, setIsEditorBookmarksOpen] = useState<boolean>(false);
+  const [isEditorPreflightOpen, setIsEditorPreflightOpen] = useState<boolean>(false);
   const [lastSavedLatexSnapshot, setLastSavedLatexSnapshot] = useState<string>("");
   const [editorSearchMatches, setEditorSearchMatches] = useState<number>(0);
   const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1073,6 +1074,109 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     return diagnostics;
   }, [rawLatexCode]);
 
+  // Preflight Quality Assurance Checklist for BGD 2025 Exam Standard
+  interface PreflightCheckItem {
+    id: string;
+    title: string;
+    description: string;
+    passed: boolean;
+    severity: "critical" | "recommended" | "optional";
+    category: "structure" | "pedagogy" | "syntax" | "printing";
+  }
+
+  const examPreflightAudit = useMemo<{
+    items: PreflightCheckItem[];
+    score: number;
+    totalPassed: number;
+    totalChecks: number;
+    isReadyForPrint: boolean;
+  }>(() => {
+    const text = rawLatexCode || "";
+    const stats = examPedagogicalStats;
+    const diagnostics = examLatexDiagnostics;
+
+    const items: PreflightCheckItem[] = [
+      {
+        id: "syntax_errors",
+        title: "Toàn vẹn cú pháp & môi trường LaTeX",
+        description: "Không có lỗi nghiêm trọng (unclosed environments, thẻ lệch)",
+        passed: diagnostics.filter((d) => d.severity === "error").length === 0,
+        severity: "critical",
+        category: "syntax",
+      },
+      {
+        id: "has_questions",
+        title: "Có câu hỏi thi hợp lệ",
+        description: "Tài liệu chứa ít nhất 1 câu hỏi (môi trường ex)",
+        passed: stats.totalQuestions > 0,
+        severity: "critical",
+        category: "structure",
+      },
+      {
+        id: "part_one_structure",
+        title: "Cấu trúc Phần I: Trắc nghiệm 4 lựa chọn",
+        description: "Có phần I và số phương án choice đúng chuẩn 4 phương án {A}{B}{C}{D}",
+        passed: stats.part1Matches === 0 || (stats.part1Matches > 0 && stats.choice4Count >= 1),
+        severity: "recommended",
+        category: "pedagogy",
+      },
+      {
+        id: "part_two_structure",
+        title: "Cấu trúc Phần II: Trắc nghiệm Đúng/Sai",
+        description: "Nếu có Phần II, phải có các mệnh đề choiceTF 4 ý {a}{b}{c}{d}",
+        passed: stats.part2Matches === 0 || (stats.part2Matches > 0 && stats.choiceTFCount >= 1),
+        severity: "recommended",
+        category: "pedagogy",
+      },
+      {
+        id: "solutions_rate",
+        title: "Đầy đủ lời giải chi tiết (\\loigiai)",
+        description: "Tối thiểu 70% số câu hỏi có phần hướng dẫn giải chi tiết sư phạm",
+        passed: stats.totalQuestions === 0 ? false : (stats.loigiaiCount / stats.totalQuestions) >= 0.7,
+        severity: "recommended",
+        category: "pedagogy",
+      },
+      {
+        id: "exam_header",
+        title: "Thông tin tiêu đề đề thi & Trung tâm",
+        description: "Có tiêu đề đề thi, mã đề hoặc tên trường/trung tâm",
+        passed: text.includes("\\tieude") || text.includes("\\begin{center}") || text.includes("ĐỀ THI") || text.includes("SỞ GIÁO DỤC") || text.includes("TRUNG TÂM"),
+        severity: "recommended",
+        category: "structure",
+      },
+      {
+        id: "no_syntax_warnings",
+        title: "Không có cảnh báo công thức toán ($...$)",
+        description: "Các công thức toán inline đều được đóng cặp trọn vẹn",
+        passed: diagnostics.filter((d) => d.severity === "warning").length === 0,
+        severity: "optional",
+        category: "syntax",
+      },
+      {
+        id: "duration_specified",
+        title: "Quy định thời gian làm bài chuẩn",
+        description: "Có ghi rõ thời gian làm bài (ví dụ: 90 phút, 50 phút)",
+        passed: /thời gian( làm bài)?:\s*\d+/i.test(text) || /\d+\s*phút/i.test(text),
+        severity: "optional",
+        category: "printing",
+      },
+    ];
+
+    const criticalItems = items.filter((i) => i.severity === "critical");
+    const recommendedItems = items.filter((i) => i.severity === "recommended");
+    const totalPassed = items.filter((i) => i.passed).length;
+    const score = Math.round((totalPassed / items.length) * 100);
+    const isReadyForPrint = criticalItems.every((i) => i.passed) && recommendedItems.filter((i) => i.passed).length >= 2;
+
+    return {
+      items,
+      score,
+      totalPassed,
+      totalChecks: items.length,
+      isReadyForPrint,
+    };
+  }, [rawLatexCode, examPedagogicalStats, examLatexDiagnostics]);
+
   // Helper: Handle smart auto-pairing, auto-wrap & backspace removal in editor
   const handleEditorKeyDownAutoPair = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (!isAutoClosePairs) return;
@@ -1859,6 +1963,24 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           setIsEditorDiffOpen((prev) => !prev);
         }
       }
+      // Ctrl + Alt + P: Toggle Pedagogical Preflight QA Audit Drawer (when on editor tab)
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key.toLowerCase() === "p") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          setIsEditorPreflightOpen((prev) => {
+            const next = !prev;
+            if (next) {
+              if (isEditorBookmarksOpen) setIsEditorBookmarksOpen(false);
+              if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
+              if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
+              if (isEditorStatsOpen) setIsEditorStatsOpen(false);
+              if (isEditorLinterOpen) setIsEditorLinterOpen(false);
+              if (isEditorSymbolsOpen) setIsEditorSymbolsOpen(false);
+            }
+            return next;
+          });
+        }
+      }
       // Ctrl + B / Cmd + B: Toggle Bookmark at current cursor line (when on editor tab)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
         if (sidebarTab === "editor") {
@@ -2010,6 +2132,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         setIsEditorLinterOpen(false);
         setIsEditorSymbolsOpen(false);
         setIsEditorBookmarksOpen(false);
+        setIsEditorPreflightOpen(false);
         setIsEditorOutlineOpen(false);
       }
       if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -2652,6 +2775,37 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
 
                 <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+                  {/* Pedagogical Preflight QA Audit Button */}
+                  <button
+                    onClick={() => {
+                      setIsEditorPreflightOpen((prev) => !prev);
+                      if (isEditorBookmarksOpen) setIsEditorBookmarksOpen(false);
+                      if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
+                      if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
+                      if (isEditorStatsOpen) setIsEditorStatsOpen(false);
+                      if (isEditorLinterOpen) setIsEditorLinterOpen(false);
+                      if (isEditorSymbolsOpen) setIsEditorSymbolsOpen(false);
+                    }}
+                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
+                      isEditorPreflightOpen
+                        ? "bg-purple-100 text-purple-900 border-purple-300 font-semibold"
+                        : examPreflightAudit.isReadyForPrint
+                        ? "hover:bg-slate-100 text-purple-700 border-purple-200 bg-purple-50/50"
+                        : "hover:bg-slate-100 text-slate-600 border-slate-200"
+                    }`}
+                    title="Kiểm định chất lượng xuất bản & Sư phạm BGD 2025 (Ctrl+Alt+P / Preflight QA)"
+                  >
+                    <CheckSquare className="w-3 h-3 text-purple-600" />
+                    <span>Nghiệm thu: {examPreflightAudit.score}%</span>
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        examPreflightAudit.isReadyForPrint
+                          ? "bg-emerald-500 animate-pulse"
+                          : "bg-amber-500"
+                      }`}
+                    />
+                  </button>
+
                   {/* Editor Bookmarks Quick Manager Button */}
                   <div className="flex items-center rounded border border-slate-200 bg-slate-100 p-0.5 space-x-0.5">
                     <button
@@ -3049,6 +3203,78 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     <span>% [Cấu hình hệ thống TeX Live & Tiêu chuẩn Bộ GD&ĐT (đã thu gọn) — Bấm để mở rộng]</span>
                   </span>
                   <span className="text-[10px] text-indigo-600 font-semibold">Xem mã preamble →</span>
+                </div>
+              )}
+
+              {/* Pedagogical Preflight QA Audit Drawer */}
+              {isEditorPreflightOpen && (
+                <div className="bg-purple-50/95 border-b border-purple-200 p-2.5 text-xs shrink-0 animate-in fade-in duration-150 shadow-inner flex flex-col font-sans">
+                  <div className="flex items-center justify-between pb-2 border-b border-purple-200 mb-2 px-1">
+                    <div className="flex items-center space-x-2">
+                      <CheckSquare className="w-4 h-4 text-purple-700" />
+                      <span className="font-semibold text-purple-950 text-xs">
+                        Bảng Nghiệm Thu Sư Phạm & Tiêu Chuẩn Xuất Bản BGD 2025 (Preflight QA)
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                          examPreflightAudit.isReadyForPrint
+                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                            : "bg-amber-100 text-amber-800 border border-amber-300"
+                        }`}
+                      >
+                        {examPreflightAudit.score}% — {examPreflightAudit.isReadyForPrint ? "Đạt chuẩn xuất bản" : "Cần hoàn thiện"}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[11px] text-purple-800">
+                        {examPreflightAudit.totalPassed}/{examPreflightAudit.totalChecks} tiêu chí đạt
+                      </span>
+                      <button
+                        onClick={() => setIsEditorPreflightOpen(false)}
+                        className="text-purple-700 hover:text-purple-900 px-1.5 py-0.5 rounded hover:bg-purple-100 font-bold text-xs"
+                        title="Đóng bảng nghiệm thu (Esc)"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
+                    {examPreflightAudit.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`p-2 rounded border flex flex-col justify-between transition-all ${
+                          item.passed
+                            ? "bg-white border-emerald-200 text-slate-700"
+                            : item.severity === "critical"
+                            ? "bg-rose-50 border-rose-300 text-rose-900"
+                            : item.severity === "recommended"
+                            ? "bg-amber-50 border-amber-300 text-amber-900"
+                            : "bg-slate-50 border-slate-200 text-slate-600"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between space-x-1.5 mb-1">
+                          <span className="font-medium text-xs leading-snug">
+                            {item.title}
+                          </span>
+                          <span
+                            className={`px-1.5 py-0.2 rounded text-[9px] font-bold shrink-0 ${
+                              item.passed
+                                ? "bg-emerald-100 text-emerald-700"
+                                : item.severity === "critical"
+                                ? "bg-rose-200 text-rose-800 font-mono"
+                                : "bg-amber-200 text-amber-800 font-mono"
+                            }`}
+                          >
+                            {item.passed ? "✓ ĐẠT" : item.severity === "critical" ? "✕ BẮT BUỘC" : "! KHUYÊN DÙNG"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">
+                          {item.description}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -5015,6 +5241,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Tự động đóng cặp ngoặc & bọc chọn</span>
                     <span className="text-[11px] font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{}, [], (), $$, ""</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Bảng nghiệm thu xuất bản (Preflight QA)</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + Alt + P</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Đánh dấu / Gỡ Bookmark dòng</span>
