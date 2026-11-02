@@ -57,7 +57,9 @@ import {
   ArrowRight,
   Hash,
   AlignLeft,
-  MessageSquareCode
+  MessageSquareCode,
+  GitCompare,
+  FileCheck2
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -100,8 +102,105 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isEditorReplaceMode, setIsEditorReplaceMode] = useState<boolean>(false);
   const [isEditorGotoLineOpen, setIsEditorGotoLineOpen] = useState<boolean>(false);
   const [gotoLineInput, setGotoLineInput] = useState<string>("");
+  const [isEditorDiffOpen, setIsEditorDiffOpen] = useState<boolean>(false);
+  const [lastSavedLatexSnapshot, setLastSavedLatexSnapshot] = useState<string>("");
   const [editorSearchMatches, setEditorSearchMatches] = useState<number>(0);
   const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Helper: Compute line-by-line diff between current editor LaTeX and last saved/compiled snapshot
+  const computeLatexDiff = () => {
+    const originalLines = (lastSavedLatexSnapshot || "").split("\n");
+    const currentLines = (rawLatexCode || "").split("\n");
+
+    const diffRows: Array<{
+      type: "added" | "removed" | "unchanged" | "modified";
+      origLineNum?: number;
+      currLineNum?: number;
+      origText?: string;
+      currText?: string;
+    }> = [];
+
+    let origIdx = 0;
+    let currIdx = 0;
+
+    while (origIdx < originalLines.length || currIdx < currentLines.length) {
+      const origLine = originalLines[origIdx];
+      const currLine = currentLines[currIdx];
+
+      if (origIdx < originalLines.length && currIdx < currentLines.length) {
+        if (origLine === currLine) {
+          diffRows.push({
+            type: "unchanged",
+            origLineNum: origIdx + 1,
+            currLineNum: currIdx + 1,
+            origText: origLine,
+            currText: currLine,
+          });
+          origIdx++;
+          currIdx++;
+        } else {
+          // Lookahead heuristic for line modification vs insert/delete
+          const nextMatchInOrig = originalLines.indexOf(currLine, origIdx + 1);
+          const nextMatchInCurr = currentLines.indexOf(origLine, currIdx + 1);
+
+          if (nextMatchInCurr !== -1 && (nextMatchInOrig === -1 || nextMatchInCurr <= nextMatchInOrig)) {
+            // New line added in current
+            diffRows.push({
+              type: "added",
+              currLineNum: currIdx + 1,
+              currText: currLine,
+            });
+            currIdx++;
+          } else if (nextMatchInOrig !== -1) {
+            // Line removed in current
+            diffRows.push({
+              type: "removed",
+              origLineNum: origIdx + 1,
+              origText: origLine,
+            });
+            origIdx++;
+          } else {
+            // Line modified
+            diffRows.push({
+              type: "modified",
+              origLineNum: origIdx + 1,
+              currLineNum: currIdx + 1,
+              origText: origLine,
+              currText: currLine,
+            });
+            origIdx++;
+            currIdx++;
+          }
+        }
+      } else if (currIdx < currentLines.length) {
+        // Remaining added lines
+        diffRows.push({
+          type: "added",
+          currLineNum: currIdx + 1,
+          currText: currLine,
+        });
+        currIdx++;
+      } else {
+        // Remaining removed lines
+        diffRows.push({
+          type: "removed",
+          origLineNum: origIdx + 1,
+          origText: origLine,
+        });
+        origIdx++;
+      }
+    }
+
+    const addedCount = diffRows.filter((r) => r.type === "added").length;
+    const removedCount = diffRows.filter((r) => r.type === "removed").length;
+    const modifiedCount = diffRows.filter((r) => r.type === "modified").length;
+
+    return {
+      diffRows,
+      stats: { addedCount, removedCount, modifiedCount },
+      hasChanges: addedCount > 0 || removedCount > 0 || modifiedCount > 0,
+    };
+  };
 
   // Helper: Toggle LaTeX Line Comments (% prefix) for selected lines or current cursor line
   const handleToggleCommentInEditor = () => {
@@ -906,6 +1005,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         setLastCompileStats({ durationMs: duration, timeStr: timeNow });
         if (data.latex_source) {
           setRawLatexCode(data.latex_source);
+          setLastSavedLatexSnapshot((prev) => prev || data.latex_source);
           pushToLatexHistory(data.latex_source);
         }
       } else {
@@ -949,6 +1049,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
         setLastCompileStats({ durationMs: duration, timeStr: timeNow });
         setIsDirty(false);
+        setLastSavedLatexSnapshot(rawLatexCode);
         setRestoredDraftNotice(null);
         showToast("Đã biên dịch mã nguồn LaTeX thành công!", "success");
         saveExamDraft({
@@ -1037,6 +1138,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         if (sidebarTab === "editor") {
           e.preventDefault();
           handleToggleCommentInEditor();
+        }
+      }
+      // Ctrl + D / Cmd + D: Toggle LaTeX Diff Inspector (when on editor tab)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          setIsEditorDiffOpen((prev) => !prev);
         }
       }
       // Ctrl + Alt + F / Shift + Alt + F: Format LaTeX Code (when on editor tab)
@@ -1739,6 +1847,20 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
 
                 <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+                  {/* Compare Diff */}
+                  <button
+                    onClick={() => setIsEditorDiffOpen(true)}
+                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
+                      isDirty
+                        ? "border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold animate-pulse"
+                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                    title="So sánh thay đổi với bản lưu/biên dịch gần nhất (Diff Inspector)"
+                  >
+                    <GitCompare className="w-3 h-3 text-indigo-600" />
+                    <span>So sánh {isDirty ? "(Có sửa)" : ""}</span>
+                  </button>
+
                   {/* Toggle Comment */}
                   <button
                     onClick={handleToggleCommentInEditor}
@@ -1974,6 +2096,100 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   </button>
                 </div>
               )}
+
+              {/* In-Editor Diff Inspector Bar (Modal Drawer) */}
+              {isEditorDiffOpen && (() => {
+                const diffData = computeLatexDiff();
+                return (
+                  <div className="bg-slate-900 border-b border-slate-700 p-3 text-xs shrink-0 animate-in fade-in duration-150 shadow-md max-h-72 flex flex-col">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
+                      <div className="flex items-center space-x-2">
+                        <GitCompare className="w-4 h-4 text-indigo-400" />
+                        <span className="font-semibold text-slate-100">
+                          So sánh thay đổi mã nguồn LaTeX (Diff Inspector)
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">
+                          +{diffData.stats.addedCount} thêm
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-950 text-rose-400 border border-rose-800">
+                          -{diffData.stats.removedCount} xóa
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-950 text-amber-400 border border-amber-800">
+                          ~{diffData.stats.modifiedCount} sửa
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => {
+                            if (lastSavedLatexSnapshot) {
+                              setRawLatexCode(lastSavedLatexSnapshot);
+                              pushToLatexHistory(lastSavedLatexSnapshot);
+                              setIsDirty(false);
+                              showToast("Đã khôi phục về bản lưu gần nhất!", "info");
+                            }
+                          }}
+                          className="px-2 py-0.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-600 transition-colors"
+                          title="Hoàn tác toàn bộ các thay đổi chưa lưu"
+                        >
+                          Khôi phục bản lưu
+                        </button>
+                        <button
+                          onClick={() => setIsEditorDiffOpen(false)}
+                          className="text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-slate-800 font-bold"
+                          title="Đóng bảng so sánh (Esc)"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-0.5 font-mono text-[11px] select-text">
+                      {!diffData.hasChanges ? (
+                        <div className="py-4 text-center text-slate-400 flex items-center justify-center space-x-2">
+                          <FileCheck2 className="w-4 h-4 text-emerald-400" />
+                          <span>Mã nguồn hiện tại trùng khớp hoàn toàn với bản lưu / biên dịch gần nhất. Chưa có thay đổi nào!</span>
+                        </div>
+                      ) : (
+                        diffData.diffRows.map((row, idx) => {
+                          if (row.type === "unchanged") return null; // Only show changes to keep clean
+                          if (row.type === "added") {
+                            return (
+                              <div key={idx} className="bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded flex items-start space-x-2 border-l-2 border-emerald-500">
+                                <span className="w-8 shrink-0 text-slate-500 text-right">L{row.currLineNum}</span>
+                                <span className="font-bold text-emerald-400 shrink-0">+</span>
+                                <span className="break-all">{row.currText}</span>
+                              </div>
+                            );
+                          }
+                          if (row.type === "removed") {
+                            return (
+                              <div key={idx} className="bg-rose-950/60 text-rose-300 px-2 py-0.5 rounded flex items-start space-x-2 border-l-2 border-rose-500 line-through">
+                                <span className="w-8 shrink-0 text-slate-500 text-right">L{row.origLineNum}</span>
+                                <span className="font-bold text-rose-400 shrink-0">-</span>
+                                <span className="break-all">{row.origText}</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={idx} className="bg-amber-950/50 text-amber-200 px-2 py-0.5 rounded flex flex-col space-y-0.5 border-l-2 border-amber-500">
+                              <div className="flex items-start space-x-2 opacity-75 line-through text-rose-300">
+                                <span className="w-8 shrink-0 text-slate-500 text-right">L{row.origLineNum}</span>
+                                <span className="font-bold text-rose-400 shrink-0">-</span>
+                                <span className="break-all">{row.origText}</span>
+                              </div>
+                              <div className="flex items-start space-x-2 text-emerald-300">
+                                <span className="w-8 shrink-0 text-slate-500 text-right">L{row.currLineNum}</span>
+                                <span className="font-bold text-emerald-400 shrink-0">+</span>
+                                <span className="break-all">{row.currText}</span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* In-Editor Search & Replace Bar (Ctrl+F / Ctrl+H) */}
               {isEditorSearchOpen && (
@@ -3364,6 +3580,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Bật / Tắt chú thích dòng % (Toggle Comment)</span>
                     <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + /</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">So sánh thay đổi mã nguồn LaTeX (Diff Inspector)</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + D</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Định dạng & Căn lề mã nguồn LaTeX</span>
