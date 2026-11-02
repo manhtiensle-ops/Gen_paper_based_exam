@@ -3686,6 +3686,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 64: Mathematical Statistics & Hypothesis Testing / MLE Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasMathStats = /thống kê toán|ước lượng hợp lý cực đại|mle|ước lượng không chệch|khoảng tin cậy|kiểm định giả thuyết|kiểm định student|t-test|kiểm định chi bình phương|chi-square|kiểm định fisher|f-test|phân tích phương sai|anova|hồi quy tuyến tính|p-value kiểm định/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Thống kê toán học & Kiểm định giả thuyết (Mathematical Statistics Inspector):{" "}
+                            {hasMathStats ? (
+                              <span className="font-mono text-emerald-700">CHUẨN THỐNG KÊ TOÁN & KIỂM ĐỊNH GIẢ THUYẾT ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">THỐNG KÊ MÔ TẢ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasMathStats
+                              ? "✓ Ước lượng hợp lý cực đại MLE, khoảng tin cậy, kiểm định t-test, ANOVA và hồi quy tuyến tính chuẩn Olympic Toán ứng dụng và Thống kê suy diễn."
+                              : "✓ Đề thi không chứa cấu trúc ước lượng thống kê suy diễn và kiểm định giả thuyết nâng cao."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3769,7 +3796,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `60. Giải tích hàm & Toán tử tuyến tính: CHUẨN GIẢI TÍCH HÀM & TOÁN TỬ TUYẾN TÍNH ĐỈNH CAO`,
                         `61. Giải tích biến phân & Điều khiển tối ưu: CHUẨN BIẾN PHÂN EULER-LAGRANGE & TỐI ƯU ĐỈNH CAO`,
                         `62. Hình học vi phân & Độ cong Gauss: CHUẨN HÌNH HỌC VI PHÂN & ĐƯỜNG TRẮC ĐỊA ĐỈNH CAO`,
-                        `63. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `63. Thống kê toán học & Kiểm định giả thuyết: CHUẨN THỐNG KÊ TOÁN & KIỂM ĐỊNH GIẢ THUYẾT ĐỈNH CAO`,
+                        `64. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

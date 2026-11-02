@@ -1918,6 +1918,69 @@ def configure_exam_blind_grading(
     }
 
 
+@router.post("/exams/{exam_id}/score-normalization", status_code=status.HTTP_200_OK)
+def configure_exam_score_normalization(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình bộ chuẩn hóa phổ điểm và chính sách quy đổi điểm số khảo thí (Exam Score Normalization RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách môn thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt quy chuẩn chuẩn hóa phổ điểm (enabled), chọn phương pháp chuẩn hóa (method: 'Z_SCORE', 'T_SCORE', 'PERCENTILE_RANK', 'CURVE_SMOOTHING'),
+      cấu hình thang điểm đích (target_scale: 10, 20, 100) và độ dốc đường phân phối (distribution_smoothing_factor).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền cấu hình chuẩn hóa phổ điểm bài thi"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình chuẩn hóa phổ điểm")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình chuẩn hóa phổ điểm cho đề thi thuộc trường học khác"
+            )
+
+    norm_enabled = bool(payload.get("enabled", True))
+    norm_method = payload.get("method", "Z_SCORE")
+    target_scale = float(payload.get("target_scale", 10.0))
+    apply_curve_smoothing = bool(payload.get("apply_curve_smoothing", False))
+    smoothing_factor = float(payload.get("smoothing_factor", 1.0))
+
+    header_cfg = dict(exam.header_config or {})
+    norm_config = {
+        "enabled": norm_enabled,
+        "method": norm_method,
+        "target_scale": target_scale,
+        "apply_curve_smoothing": apply_curve_smoothing,
+        "smoothing_factor": smoothing_factor,
+        "normalization_policy_id": f"VINHPHAT-NORM-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["score_normalization"] = norm_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "score_normalization": norm_config,
+        "message": f"Đã {'kích hoạt' if norm_enabled else 'vô hiệu hóa'} cấu hình chuẩn hóa phổ điểm ({norm_method} - thang {target_scale}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
