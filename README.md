@@ -7,6 +7,17 @@
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white)](./services/core-api)
 [![TeX Live](https://img.shields.io/badge/Engine-TeX%20Live%20Native-blue)](./services/export-service)
 [![Word OMML](https://img.shields.io/badge/Export-Word%20OMML%20Native-2B579A?logo=microsoftword&logoColor=white)](./services/export-service)
+[![Architecture Docs](https://img.shields.io/badge/Docs-4%20Departments%20Specs-emerald)](./docs/INDEX.md)
+
+---
+
+## 🏛️ Bộ Tài Liệu Kỹ Thuật 4 Phòng Ban (Dành Cho AI Agents & B2B)
+Toàn bộ kiến trúc và hướng dẫn kế thừa đã được chuẩn hóa chi tiết:
+- 📚 **[Mục lục Tổng quan Hệ thống Tài liệu (docs/INDEX.md)](./docs/INDEX.md)**
+- 🏢 **[Phòng Core API (`Dept_Core_API`)](./docs/departments/DEPT_CORE_API.md)**: Database, Composite Indexes, RBAC 3 tầng, RESTful API.
+- 🧠 **[Phòng Trí tuệ Nhân tạo (`Dept_AI_Ingestion`)](./docs/departments/DEPT_AI_INGESTION.md)**: OCR 2 tầng, Vector SVG hình học, Normalizer.
+- 🖨️ **[Phòng Xuất bản (`Dept_Docx_Export`)](./docs/departments/DEPT_DOCX_EXPORT.md)**: OMML Word native, TeX Live A4 Nghị định 30, Cache < 0.2s.
+- 🎨 **[Phòng Giao diện Studio (`Dept_Frontend_Studio`)](./docs/departments/DEPT_FRONTEND_STUDIO.md)**: Next.js 14, Interactive Canvas, Fallback A4.
 
 ---
 
