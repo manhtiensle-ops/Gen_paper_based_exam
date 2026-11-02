@@ -141,6 +141,7 @@ def test_rbac_authorization_logic():
     assert "configure_exam_rfid_smart_seal" in g_content, "Thiếu endpoint configure_exam_rfid_smart_seal"
     assert "configure_exam_fluorescent_ink_security" in g_content, "Thiếu endpoint configure_exam_fluorescent_ink_security"
     assert "configure_exam_post_quantum_seal" in g_content, "Thiếu endpoint configure_exam_post_quantum_seal"
+    assert "configure_exam_blockchain_ledger_seal" in g_content, "Thiếu endpoint configure_exam_blockchain_ledger_seal"
     assert "status.HTTP_403_FORBIDDEN" in g_content, "Thiếu mã lỗi HTTP 403 Forbidden trong generator router"
     assert "export_type.lower() == \"docx\"" in g_content, "Thiếu phân quyền xuất bản Word DOCX"
     assert "download_exam_file" in g_content and "fmt == \"docx\"" in g_content, "Thiếu phân quyền streaming download Word DOCX"

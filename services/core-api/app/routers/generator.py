@@ -3620,6 +3620,72 @@ def configure_exam_post_quantum_seal(
     }
 
 
+@router.post("/exams/{exam_id}/blockchain-ledger-seal", status_code=status.HTTP_200_OK)
+def configure_exam_blockchain_ledger_seal(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách Hàng rào chống đánh tráo bài thi bằng chuỗi khối thời gian thực (Real-Time Exam Ledger Blockchain RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Hội đồng Khảo thí Quốc gia / Trưởng Ban Coi thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt sổ cái chuỗi khối (enabled),
+      ấn định cơ chế băm cây Merkle từng trang bài nộp (merkle_tree_hashing: bool),
+      kích hoạt tem dấu thời gian bất biến chuẩn RFC 3161 (rfc3161_timestamping: bool),
+      ấn định mạng chuỗi khối liên trường khảo thí (consortium_network_name: e.g. VINHPHAT_CONSORTIUM_LEDGER, VIETNAM_EDUCHAIN),
+      và yêu cầu đồng thuận tối thiểu đa nút trường thi (min_consensus_nodes: e.g. 3).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Hội đồng Khảo thí (TEACHER) mới có quyền cấu hình chuỗi khối khảo thí"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình chuỗi khối khảo thí")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình chuỗi khối khảo thí cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    merkle = bool(payload.get("merkle_tree_hashing", True))
+    rfc_ts = bool(payload.get("rfc3161_timestamping", True))
+    network = str(payload.get("consortium_network_name", "VINHPHAT_CONSORTIUM_LEDGER"))
+    consensus_nodes = int(payload.get("min_consensus_nodes", 3))
+
+    header_cfg = dict(exam.header_config or {})
+    ledger_config = {
+        "enabled": is_enabled,
+        "merkle_tree_hashing": merkle,
+        "rfc3161_timestamping": rfc_ts,
+        "consortium_network_name": network,
+        "min_consensus_nodes": consensus_nodes,
+        "blockchain_seal_id": f"VINHPHAT-BLOCKCHAIN-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["blockchain_ledger_seal"] = ledger_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "blockchain_ledger_seal": ledger_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình sổ cái chuỗi khối (Mạng: {network}, Merkle: {'Bật' if merkle else 'Tắt'}, Nodes: {consensus_nodes}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
