@@ -60,3 +60,47 @@ button:active:not(:disabled), .btn-tactile:active {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Chuẩn hóa In ấn Khổ giấy A4 Sư phạm (@media print) */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 1.5cm;
+  }
+
+  html, body {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Ẩn toàn bộ thanh công cụ, sidebar, header và navigation */
+  header, nav, aside, .no-print, button, .lucide {
+    display: none !important;
+  }
+
+  /* Reset container scroll để print hiển thị trọn vẹn */
+  div {
+    overflow: visible !important;
+  }
+
+  /* Chỉ hiển thị duy nhất vùng nội dung tờ giấy thi */
+  .a4-print-target {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    position: static !important;
+  }
+
+  .page-break-after {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+}

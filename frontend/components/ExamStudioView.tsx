@@ -37,7 +37,8 @@ import {
   Play,
   Bot,
   ChevronDown,
-  Shuffle
+  Shuffle,
+  Printer
 } from "lucide-react";
 
 import ExamSettingsModal from "./ExamSettingsModal";
@@ -410,7 +411,8 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const compileLivePreview = async (
     currentItems = items,
     knobs = layoutKnobs,
-    mode = activeMode
+    mode = activeMode,
+    customHeader = headerConfig
   ) => {
     setCompiling(true);
     setPreviewError(null);
@@ -423,7 +425,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           layout_knobs: knobs,
-          header_config: headerConfig,
+          header_config: customHeader,
           mode: mode,
         }),
         signal: controller.signal,
@@ -773,6 +775,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             >
               <Download className="w-3.5 h-3.5 text-rose-600" />
               <span>PDF In</span>
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-emerald-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
+              title="In trực tiếp ra máy in A4 / Lưu file PDF trình duyệt (Ctrl + P)"
+            >
+              <Printer className="w-3.5 h-3.5 text-emerald-600" />
+              <span>In Ngay</span>
             </button>
           </div>
         </div>
@@ -1414,7 +1424,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   fontSize: `${layoutKnobs.font_size_pt || 12}pt`,
                   lineHeight: layoutKnobs.line_spread || 1.15,
                 }}
-                className="bg-white rounded-[2px] shadow-2xl border border-slate-300 text-slate-900 font-serif relative overflow-hidden"
+                className="bg-white rounded-[2px] shadow-2xl border border-slate-300 text-slate-900 font-serif relative overflow-hidden a4-print-target"
               >
                 {/* Watermark Overlay in DOM Mode */}
                 {headerConfig.watermark_text && headerConfig.watermark_text.trim() && (
@@ -1771,7 +1781,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         layoutKnobs={layoutKnobs}
         setLayoutKnobs={setLayoutKnobs}
         onSaveAndApply={(h, k) => {
-          compileLivePreview(items, k, activeMode);
+          setHeaderConfig(h);
+          setLayoutKnobs(k);
+          compileLivePreview(items, k, activeMode, h);
         }}
         applyPresetHeader={(key) => {
           if (key === "vinhphat") {
