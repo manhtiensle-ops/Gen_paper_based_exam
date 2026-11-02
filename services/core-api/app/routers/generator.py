@@ -500,7 +500,24 @@ def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # Trigger compilation to Word (.docx) & PDF via export-service
 @router.post("/exams/{exam_id}/export")
-def trigger_exam_export(exam_id: uuid.UUID, export_type: str = "docx", db: Session = Depends(get_db)):
+def trigger_exam_export(
+    exam_id: uuid.UUID,
+    export_type: str = "docx",
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """
+    Kích hoạt tiến trình biên dịch tài liệu thi.
+    - Định dạng DOCX (Native OMML): Yêu cầu người dùng đăng nhập và thuộc nhóm quyền TEACHER, PRO hoặc ADMIN.
+    - Định dạng PDF: Cho phép người dùng đại chúng tải về luyện tập.
+    """
+    if export_type.lower() == "docx":
+        if not current_user or current_user.role not in ["ADMIN", "TEACHER", "PRO"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tính năng xuất bản file Word (.docx) chuẩn OMML không vỡ font chỉ dành cho Giáo viên (TEACHER) hoặc tài khoản PRO/ADMIN"
+            )
+
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Generated exam not found")

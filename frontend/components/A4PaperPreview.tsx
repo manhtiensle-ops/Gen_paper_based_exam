@@ -115,6 +115,7 @@ export default function A4PaperPreview({
   const [isSecureQrSealMode, setIsSecureQrSealMode] = useState<boolean>(false);
   const [isDepartmentAuditMode, setIsDepartmentAuditMode] = useState<boolean>(false);
   const [isStudentOathSlipMode, setIsStudentOathSlipMode] = useState<boolean>(false);
+  const [isClassificationWatermarkMode, setIsClassificationWatermarkMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -564,6 +565,21 @@ export default function A4PaperPreview({
           >
             <GraduationCap className="w-3.5 h-3.5" />
             <span>{isStudentOathSlipMode ? "Cam Kết Thi (Bật)" : "Cam Kết Thi"}</span>
+          </button>
+
+          {/* Classification & Confidentiality Watermark Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsClassificationWatermarkMode(!isClassificationWatermarkMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isClassificationWatermarkMode
+                ? "bg-rose-100 border-rose-300 text-rose-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Đóng dấu thủy ấn bảo mật đề thi tối mật chống rò rỉ"
+          >
+            <Bookmark className="w-3.5 h-3.5" />
+            <span>{isClassificationWatermarkMode ? "Mật Lệnh Thi (Bật)" : "Mật Lệnh Thi"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1615,6 +1631,19 @@ export default function A4PaperPreview({
                   <span className="italic text-[8.5px] text-slate-500">Số tờ giấy thi đã nộp: ....... tờ | Số câu đã làm: ....... / {questions.length}</span>
                   <span className="font-bold text-slate-800">Chữ ký thí sinh: .......................................</span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Classification & Confidentiality Watermark Mode Block */}
+          {isClassificationWatermarkMode && (
+            <div className="mt-6 pt-2 pb-1 border-y-2 border-dashed border-rose-500 bg-rose-50/30 print:bg-white print:border-rose-700 text-[9.5px] text-rose-950 print:text-rose-900 flex items-center justify-between px-3 break-inside-avoid">
+              <div className="flex items-center gap-2 font-bold tracking-wider uppercase">
+                <Bookmark className="w-3.5 h-3.5 text-rose-700 print:text-black" />
+                <span>CHẾ ĐỘ TÀI LIỆU KHẢO THÍ: MẬT LỆNH - LƯU HÀNH NỘI BỘ TRƯỜNG VINH PHÁT</span>
+              </div>
+              <div className="font-mono text-[8.5px] text-rose-800 print:text-black">
+                MÃ BẢO VỆ: CONFIDENTIAL-{new Date().getFullYear()}-VP-SECURE
               </div>
             </div>
           )}

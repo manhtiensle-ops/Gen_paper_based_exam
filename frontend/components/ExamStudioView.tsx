@@ -2930,6 +2930,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 36: 2D Analytic Geometry & Conic Sections Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const has2DConic = /đường tròn|elip|hypebol|parabol|tiêu cự|tâm sai|bán kính|tiếp tuyến|phương trình elip|mặt phẳng oxy|tọa độ oxy|\(C\)\s*:|\(E\)\s*:|\(H\)\s*:|\(P\)\s*:/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Hình học tọa độ Oxy & Đường Conic (2D Analytic Geometry):{" "}
+                            {has2DConic ? (
+                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC GIẢI TÍCH OXY & CONIC</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC KHÔNG GIAN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {has2DConic
+                              ? "✓ Phương trình đường tròn (x-a)² + (y-b)² = R², Elip, Parabol, Hypebol và tiếp tuyến trong Oxy thỏa mãn chuẩn hình học giải tích phổ thông."
+                              : "✓ Đề thi tập trung hình học không gian Oxyz hoặc thuần túy đại số, không chứa bài toán Conic Oxy."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2985,7 +3012,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `32. Giới hạn dãy số, hàm số & Tiệm cận: CHUẨN DẠNG VÔ ĐỊNH & KHỬ KHẢ VI`,
                         `33. Số phức & Mặt phẳng tọa độ Argand: CHUẨN ĐẠI SỐ TUYẾN TÍNH PHỨC`,
                         `34. Tổ hợp, Xác suất & Không gian mẫu: CHUẨN TIÊN ĐỀ LAPLACE & ĐẠI SỐ TỔ HỢP`,
-                        `35. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `35. Hình học tọa độ Oxy & Đường Conic: CHUẨN HÌNH HỌC GIẢI TÍCH OXY & CONIC`,
+                        `36. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

@@ -90,6 +90,7 @@ def test_rbac_authorization_logic():
     assert "def delete_generated_exam(" in g_content, "Thiếu endpoint delete_generated_exam"
     assert "def move_exam_to_folder(" in g_content, "Thiếu endpoint move_exam_to_folder"
     assert "status.HTTP_403_FORBIDDEN" in g_content, "Thiếu mã lỗi HTTP 403 Forbidden trong generator router"
+    assert "export_type.lower() == \"docx\"" in g_content, "Thiếu phân quyền xuất bản Word DOCX"
     
     # Kiểm tra router auth có phân quyền admin cập nhật role
     auth_router = CORE_API_DIR / "app" / "routers" / "auth.py"
