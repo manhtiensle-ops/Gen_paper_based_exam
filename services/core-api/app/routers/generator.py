@@ -2169,6 +2169,70 @@ def configure_exam_incident_submission_policy(
     }
 
 
+@router.post("/exams/{exam_id}/peripheral-device-guard", status_code=status.HTTP_200_OK)
+def configure_exam_peripheral_device_guard(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình bộ lọc phát hiện thiết bị ngoại vi & Bluetooth chống gian lận (Exam Peripheral Device Guard Policy RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách phòng thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ giám sát ngoại vi (enabled), chặn màn hình phụ nối dài (block_multiple_displays),
+      chặn thiết bị âm thanh tai nghe Bluetooth nghi vấn (block_bluetooth_audio), chặn thiết bị lưu trữ gắn ngoài USB (block_external_storage)
+      và thiết lập độ nhạy cảnh báo hành vi vi phạm (alert_sensitivity_level: LOW, MEDIUM, STRICT).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách phòng thi (TEACHER) mới có quyền cấu hình giám sát thiết bị ngoại vi"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình giám sát thiết bị ngoại vi")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình giám sát thiết bị ngoại vi cho đề thi thuộc trường học khác"
+            )
+
+    guard_enabled = bool(payload.get("enabled", True))
+    block_multiple_displays = bool(payload.get("block_multiple_displays", True))
+    block_bluetooth_audio = bool(payload.get("block_bluetooth_audio", True))
+    block_external_storage = bool(payload.get("block_external_storage", True))
+    alert_sensitivity = str(payload.get("alert_sensitivity_level", "STRICT")).upper()
+
+    header_cfg = dict(exam.header_config or {})
+    guard_config = {
+        "enabled": guard_enabled,
+        "block_multiple_displays": block_multiple_displays,
+        "block_bluetooth_audio": block_bluetooth_audio,
+        "block_external_storage": block_external_storage,
+        "alert_sensitivity_level": alert_sensitivity,
+        "device_guard_policy_id": f"VINHPHAT-DEVGUARD-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["peripheral_device_guard"] = guard_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "peripheral_device_guard": guard_config,
+        "message": f"Đã {'kích hoạt' if guard_enabled else 'vô hiệu hóa'} cấu hình giám sát ngoại vi mức {alert_sensitivity} thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

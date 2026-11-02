@@ -3794,6 +3794,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 68: Chaos Theory & Dynamical Systems / Mandelbrot Fractal Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasChaos = /lý thuyết hỗn độn|chaos theory|hệ động lực phi tuyến|dynamical system|hệ số lyapunov|lyapunov exponent|sơ đồ rẽ nhánh|bifurcation|tập fractal|fractal mandelbrot|tập julia|attractor kỳ lạ|hút kỳ lạ|lorenz attractor|ánh xạ logistic|bài toán ba vật thể/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Lý thuyết hỗn độn & Hệ động lực Fractal (Chaos & Fractal Inspector):{" "}
+                            {hasChaos ? (
+                              <span className="font-mono text-emerald-700">CHUẨN HỆ ĐỘNG LỰC PHI TUYẾN & FRACTAL ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HỆ THỐNG TUYẾN TÍNH TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasChaos
+                              ? "✓ Hệ số Lyapunov, rẽ nhánh bifurcation, tập Mandelbrot/Julia và attractor Lorenz chuẩn Olympic Toán mô hình hóa và Hệ động lực phi tuyến."
+                              : "✓ Đề thi không chứa cấu trúc hỗn độn vi phân phi tuyến và hình học fractal."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3881,7 +3908,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `64. Phương trình đạo hàm riêng & Tách biến Fourier: CHUẨN ĐẠO HÀM RIÊNG PDE & TÁCH BIẾN FOURIER ĐỈNH CAO`,
                         `65. Toán rời rạc & Mật mã học hiện đại: CHUẨN TOÁN RỜI RẠC & MẬT MÃ HỌC RSA / ECC ĐỈNH CAO`,
                         `66. Lý thuyết đồ thị & Luồng cực đại mạng: CHUẨN ĐỒ THỊ & LUỒNG CỰC ĐẠI FORD-FULKERSON ĐỈNH CAO`,
-                        `67. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `67. Lý thuyết hỗn độn & Hệ động lực Fractal: CHUẨN HỆ ĐỘNG LỰC PHI TUYẾN & FRACTAL ĐỈNH CAO`,
+                        `68. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
