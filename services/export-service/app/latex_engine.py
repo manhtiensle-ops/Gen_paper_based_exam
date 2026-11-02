@@ -97,6 +97,15 @@ def generate_latex_source(
     tex.append(f"\\setlength{{\\abovedisplayskip}}{{{math_skip}pt plus 2pt minus 2pt}}")
     tex.append(f"\\setlength{{\\belowdisplayskip}}{{{math_skip}pt plus 2pt minus 2pt}}")
 
+    # Watermark Support
+    watermark_text = str(header_config.get("watermark_text") or "").strip()
+    if watermark_text:
+        safe_watermark = escape_latex_text(watermark_text)
+        tex.append("\\usepackage{draftwatermark}")
+        tex.append(f"\\SetWatermarkText{{{safe_watermark}}}")
+        tex.append("\\SetWatermarkScale{0.6}")
+        tex.append("\\SetWatermarkColor[gray]{0.92}")
+
     # Macro Telemetry
     tex.append("\\newcommand{\\LogLayoutTelemetry}[2]{%")
     tex.append("  \\par\\write-1{[TELEMETRY] event=#1 id=#2 page=\\thepage\\space used_pt=\\the\\pagetotal\\space max_pt=\\the\\pagegoal}%")

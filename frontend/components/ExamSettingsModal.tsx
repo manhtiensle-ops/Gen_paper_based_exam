@@ -22,6 +22,7 @@ export interface HeaderConfig {
   duration_minutes?: number;
   exam_code?: string;
   show_sbd_box?: boolean;
+  watermark_text?: string;
   [key: string]: any;
 }
 
@@ -280,7 +281,20 @@ export default function ExamSettingsModal({
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50/50"
                   />
                 </div>
-                <div className="pt-4">
+                <div className="pt-2">
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Dấu chìm Watermark (Bảo mật đề thi / Bản quyền):
+                  </label>
+                  <input
+                    type="text"
+                    value={localHeader.watermark_text || ""}
+                    onChange={(e) => setLocalHeader({ ...localHeader, watermark_text: e.target.value })}
+                    placeholder="VD: TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN - ĐỀ THI THỬ"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50/50"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Để trống nếu không muốn in chìm chữ mờ trên các trang đề thi.</p>
+                </div>
+                <div className="pt-2">
                   <label className="flex items-center space-x-2 text-xs font-bold text-slate-700 cursor-pointer">
                     <input
                       type="checkbox"

@@ -89,7 +89,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   }, [examId]);
 
   // Header Config
-  const [headerConfig, setHeaderConfig] = useState({
+  const [headerConfig, setHeaderConfig] = useState<any>({
     governing_body: "SỞ GIÁO DỤC VÀ ĐÀO TẠO HÀ NỘI",
     department_or_school: "TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN",
     exam_name: "KỲ THI CHỌN HỌC SINH GIỎI LỚP 9",
@@ -98,6 +98,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     exam_code: "ĐỀ CHÍNH THỨC",
     duration_minutes: 150,
     show_sbd_box: true,
+    watermark_text: "",
   });
 
   // Debounced auto-save draft to local storage
@@ -1413,8 +1414,19 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   fontSize: `${layoutKnobs.font_size_pt || 12}pt`,
                   lineHeight: layoutKnobs.line_spread || 1.15,
                 }}
-                className="bg-white rounded-[2px] shadow-2xl border border-slate-300 text-slate-900 font-serif"
+                className="bg-white rounded-[2px] shadow-2xl border border-slate-300 text-slate-900 font-serif relative overflow-hidden"
               >
+                {/* Watermark Overlay in DOM Mode */}
+                {headerConfig.watermark_text && headerConfig.watermark_text.trim() && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 select-none overflow-hidden">
+                    <span
+                      className="text-slate-900/10 font-bold uppercase tracking-widest text-center whitespace-nowrap transform -rotate-35"
+                      style={{ fontSize: "2.8rem" }}
+                    >
+                      {headerConfig.watermark_text.trim()}
+                    </span>
+                  </div>
+                )}
                 {/* Header Form */}
                 <div className="border-b-2 border-slate-800 pb-3 text-center space-y-1 mb-6">
                   <div className="flex justify-between items-start text-[11px] font-bold uppercase tracking-wider text-slate-800">
