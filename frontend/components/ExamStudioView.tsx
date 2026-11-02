@@ -85,6 +85,11 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [rawLatexCode, setRawLatexCode] = useState<string>("");
   const [isPreambleFolded, setIsPreambleFolded] = useState<boolean>(true);
   const [editorFontSize, setEditorFontSize] = useState<number>(12); // pt
+  const [editorCursorInfo, setEditorCursorInfo] = useState<{ line: number; col: number; selectedChars: number }>({
+    line: 1,
+    col: 1,
+    selectedChars: 0,
+  });
   const [editorSearchTerm, setEditorSearchTerm] = useState<string>("");
   const [editorReplaceTerm, setEditorReplaceTerm] = useState<string>("");
   const [isEditorSearchOpen, setIsEditorSearchOpen] = useState<boolean>(false);
@@ -195,6 +200,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           editorTextareaRef.current.focus();
           const newPos = selStart + snippet.length + cursorOffset;
           editorTextareaRef.current.setSelectionRange(newPos, newPos);
+          updateCursorStats();
         }
       }, 30);
 
@@ -263,6 +269,24 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     }
   };
 
+  const updateCursorStats = () => {
+    const ta = editorTextareaRef.current;
+    if (!ta) return;
+    const val = ta.value;
+    const selStart = ta.selectionStart;
+    const selEnd = ta.selectionEnd;
+    const textBefore = val.substring(0, selStart);
+    const lines = textBefore.split("\n");
+    const currentLine = lines.length;
+    const currentCol = lines[lines.length - 1].length + 1;
+    const selectedChars = Math.abs(selEnd - selStart);
+    setEditorCursorInfo({
+      line: currentLine,
+      col: currentCol,
+      selectedChars,
+    });
+  };
+
   const handleEditorUndo = () => {
     if (historyIndex > 0) {
       isHistoryActionRef.current = true;
@@ -271,6 +295,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       setHistoryIndex(targetIndex);
       setRawLatexCode(targetCode);
       setIsDirty(true);
+      setTimeout(updateCursorStats, 30);
       showToast("Đã hoàn tác thao tác (Undo)", "info");
     }
   };
@@ -283,6 +308,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       setHistoryIndex(targetIndex);
       setRawLatexCode(targetCode);
       setIsDirty(true);
+      setTimeout(updateCursorStats, 30);
       showToast("Đã làm lại thao tác (Redo)", "info");
     }
   };
@@ -1970,7 +1996,11 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     setRawLatexCode(newVal);
                     pushToLatexHistory(newVal, true);
                     setIsDirty(true);
+                    updateCursorStats();
                   }}
+                  onKeyUp={updateCursorStats}
+                  onClick={updateCursorStats}
+                  onSelect={updateCursorStats}
                   placeholder="% Mã nguồn LaTeX của đề thi... Thầy cô có thể click sửa trực tiếp bất kỳ công thức toán hay câu từ nào và nhấn Ctrl+S để biên dịch!"
                   spellCheck={false}
                   style={{
@@ -1984,7 +2014,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
               {/* Footer status */}
               <div className="h-7 bg-slate-50 border-t border-slate-200 px-4 flex items-center justify-between text-[10px] text-slate-500 shrink-0">
-                <span>LaTeX 2e • UTF-8 • pdfTeX Engine • {rawLatexCode.split("\n").length} dòng • {rawLatexCode.length} ký tự</span>
+                <div className="flex items-center space-x-3">
+                  <span>LaTeX 2e • UTF-8 • pdfTeX Engine • {rawLatexCode.split("\n").length} dòng • {rawLatexCode.length} ký tự</span>
+                  <span className="text-slate-300">|</span>
+                  <span className="font-mono text-indigo-600 font-semibold bg-indigo-50/70 px-1.5 py-0.5 rounded border border-indigo-100">
+                    Dòng {editorCursorInfo.line}, Cột {editorCursorInfo.col}
+                    {editorCursorInfo.selectedChars > 0 && ` (${editorCursorInfo.selectedChars} đã chọn)`}
+                  </span>
+                </div>
                 <span className="text-emerald-600 font-semibold flex items-center space-x-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Sẵn sàng chỉnh sửa trực tiếp (Ctrl+S)</span>
