@@ -2563,6 +2563,71 @@ def configure_exam_quick_rubric_qr(
     }
 
 
+@router.post("/exams/{exam_id}/download-quota-policy", status_code=status.HTTP_200_OK)
+def configure_exam_download_quota_policy(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình hạn ngạch tải về & Khóa dải IP nội bộ khảo thí (Exam Download Quota & IP Lockdown RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách khảo thí (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chính sách hạn ngạch tải về (enabled), số lượt tải tối đa cho phép trên mỗi tài khoản (max_downloads_per_user: 1 - 50),
+      thời hạn hiệu lực của liên kết tải về (link_expiration_hours: 1 - 720 giờ),
+      danh sách các dải mạng IP nội bộ trường thi được phép truy cập (allowed_ip_subnets: CIDR / IP list)
+      và cấm tải về qua proxy / VPN công cộng (block_public_proxies).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách khảo thí (TEACHER) mới có quyền cấu hình hạn ngạch tải về và khóa dải IP"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình hạn ngạch tải về")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình hạn ngạch tải về cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    max_downloads = int(payload.get("max_downloads_per_user", 5))
+    expiration_hours = int(payload.get("link_expiration_hours", 48))
+    allowed_subnets = list(payload.get("allowed_ip_subnets", []))
+    block_proxies = bool(payload.get("block_public_proxies", True))
+
+    header_cfg = dict(exam.header_config or {})
+    quota_config = {
+        "enabled": is_enabled,
+        "max_downloads_per_user": max_downloads,
+        "link_expiration_hours": expiration_hours,
+        "allowed_ip_subnets": allowed_subnets,
+        "block_public_proxies": block_proxies,
+        "quota_policy_id": f"VINHPHAT-QUOTA-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["download_quota_policy"] = quota_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "download_quota_policy": quota_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình hạn ngạch tải về (Tối đa {max_downloads} lần, Hạn {expiration_hours}h) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

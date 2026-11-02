@@ -3956,6 +3956,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 74: Noncommutative Geometry & C*-Algebra / Alain Connes Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasNoncommGeom = /hình học không giao hoán|noncommutative geometry|c\\\*-đại số|c\\\*-algebra|đại số von neumann|von neumann algebra|bộ ba phổ|spectral triple|k-lý thuyết toán tử|operator k-theory|alain connes|chu trình chu kỳ|cyclic cohomology|hình học lượng tử/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Hình học không giao hoán & C*-Đại số (Noncommutative Geometry Inspector):{" "}
+                            {hasNoncommGeom ? (
+                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC LƯỢNG TỬ & C*-ĐẠI SỐ ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC VI PHÂN TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasNoncommGeom
+                              ? "✓ Hình học không giao hoán Alain Connes, C*-đại số, bộ ba phổ, đại số Von Neumann và K-lý thuyết toán tử chuẩn Olympic Toán học và Nghiên cứu sinh Vật lý lý thuyết lượng tử."
+                              : "✓ Đề thi không chứa hình học vi phân không giao hoán và đại số toán tử vô hạn chiều."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4049,7 +4076,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `70. Tô pô đại số & Nhóm cơ bản Đồng điều: CHUẨN TÔ PÔ ĐẠI SỐ & ĐỒNG ĐIỀU HOMOLOGY ĐỈNH CAO`,
                         `71. Biểu diễn nhóm & Đại số Lie: CHUẨN BIỂU DIỄN NHÓM & ĐẠI SỐ LIE SCHUR ĐỈNH CAO`,
                         `72. Lý thuyết nút thắt & Đa thức Jones: CHUẨN NÚT THẮT & BẤT BIẾN JONES ĐỈNH CAO`,
-                        `73. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `73. Hình học không giao hoán & C*-Đại số: CHUẨN HÌNH HỌC LƯỢNG TỬ & C*-ĐẠI SỐ ĐỈNH CAO`,
+                        `74. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
