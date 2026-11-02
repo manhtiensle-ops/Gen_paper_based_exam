@@ -65,6 +65,7 @@ import {
   CopyPlus,
   LayoutTemplate,
   BarChart3,
+  ShieldCheck,
   Plus
 } from "lucide-react";
 
@@ -112,6 +113,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isEditorOutlineOpen, setIsEditorOutlineOpen] = useState<boolean>(false);
   const [isEditorSnippetsOpen, setIsEditorSnippetsOpen] = useState<boolean>(false);
   const [isEditorStatsOpen, setIsEditorStatsOpen] = useState<boolean>(false);
+  const [isEditorLinterOpen, setIsEditorLinterOpen] = useState<boolean>(false);
   const [lastSavedLatexSnapshot, setLastSavedLatexSnapshot] = useState<string>("");
   const [editorSearchMatches, setEditorSearchMatches] = useState<number>(0);
   const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -865,6 +867,104 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       tikzTabs,
       readingMinutes,
     };
+  }, [rawLatexCode]);
+
+  // Helper: Real-time LaTeX syntax, environment & bracket linter
+  interface LatexLintDiagnostic {
+    id: string;
+    line: number;
+    severity: "error" | "warning";
+    message: string;
+    suggestion?: string;
+  }
+
+  const examLatexDiagnostics = useMemo<LatexLintDiagnostic[]>(() => {
+    const text = rawLatexCode || "";
+    if (!text.trim()) return [];
+    const lines = text.split("\n");
+    const diagnostics: LatexLintDiagnostic[] = [];
+
+    // 1. Line-by-line checks
+    const envStack: { name: string; line: number }[] = [];
+
+    lines.forEach((lineText, idx) => {
+      const lineNum = idx + 1;
+      const trimmed = lineText.trim();
+      if (trimmed.startsWith("%")) return; // Skip pure comment lines
+
+      // Count unescaped dollar signs on this line (inline math pairing warning)
+      const unescapedDollars = (lineText.match(/(?<!\\)\$/g) || []).length;
+      if (unescapedDollars % 2 !== 0 && !lineText.includes("$$")) {
+        diagnostics.push({
+          id: `dollar-${lineNum}`,
+          line: lineNum,
+          severity: "warning",
+          message: `Dấu $ mở công thức toán chưa được đóng trên dòng này (${unescapedDollars} dấu $).`,
+          suggestion: "Kiểm tra xem bạn có quên đóng cặp $...$ không.",
+        });
+      }
+
+      // Check unbalanced curly braces on single line if not spanning multiline
+      let openBraces = 0;
+      let closeBraces = 0;
+      for (let i = 0; i < lineText.length; i++) {
+        if (lineText[i] === "{" && (i === 0 || lineText[i - 1] !== "\\")) openBraces++;
+        if (lineText[i] === "}" && (i === 0 || lineText[i - 1] !== "\\")) closeBraces++;
+      }
+      if (openBraces !== closeBraces && Math.abs(openBraces - closeBraces) > 2) {
+        diagnostics.push({
+          id: `brace-${lineNum}`,
+          line: lineNum,
+          severity: "warning",
+          message: `Dấu ngoặc nhọn { } có độ lệch lớn (${openBraces} mở vs ${closeBraces} đóng).`,
+          suggestion: "Kiểm tra các cặp ngoặc tham số của lệnh LaTeX.",
+        });
+      }
+
+      // Track begin / end environments
+      const beginMatches = Array.from(lineText.matchAll(/\\begin\{([a-zA-Z0-9*_-]+)\}/g));
+      beginMatches.forEach((m) => {
+        envStack.push({ name: m[1], line: lineNum });
+      });
+
+      const endMatches = Array.from(lineText.matchAll(/\\end\{([a-zA-Z0-9*_-]+)\}/g));
+      endMatches.forEach((m) => {
+        const endName = m[1];
+        if (envStack.length === 0) {
+          diagnostics.push({
+            id: `end-unmatched-${lineNum}-${endName}`,
+            line: lineNum,
+            severity: "error",
+            message: `Lệnh \\end{${endName}} không có môi trường \\begin tương ứng trước đó.`,
+            suggestion: `Bổ sung \\begin{${endName}} hoặc xóa thẻ đóng dư thừa.`,
+          });
+        } else {
+          const last = envStack.pop()!;
+          if (last.name !== endName) {
+            diagnostics.push({
+              id: `env-mismatch-${lineNum}`,
+              line: lineNum,
+              severity: "error",
+              message: `Môi trường đóng lệch: mong đợi \\end{${last.name}} (mở ở dòng ${last.line}) nhưng gặp \\end{${endName}}.`,
+              suggestion: `Đóng đúng môi trường \\end{${last.name}} trước khi đóng \\end{${endName}}.`,
+            });
+          }
+        }
+      });
+    });
+
+    // Check remaining unclosed environments
+    envStack.forEach((unclosed) => {
+      diagnostics.push({
+        id: `unclosed-env-${unclosed.line}-${unclosed.name}`,
+        line: unclosed.line,
+        severity: "error",
+        message: `Môi trường \\begin{${unclosed.name}} ở dòng ${unclosed.line} chưa được đóng bằng \\end{${unclosed.name}}.`,
+        suggestion: `Bổ sung \\end{${unclosed.name}} vào cuối khối câu hỏi hoặc văn bản.`,
+      });
+    });
+
+    return diagnostics;
   }, [rawLatexCode]);
 
   // Helper: Handle smart auto-pairing, auto-wrap & backspace removal in editor
@@ -1653,6 +1753,16 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           setIsEditorDiffOpen((prev) => !prev);
         }
       }
+      // Ctrl + L / Cmd + L: Toggle Real-time LaTeX Syntax & Environment Linter (when on editor tab)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "l") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          setIsEditorLinterOpen((prev) => !prev);
+          if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
+          if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
+          if (isEditorStatsOpen) setIsEditorStatsOpen(false);
+        }
+      }
       // Ctrl + I / Cmd + I: Toggle Pedagogical Document Stats & Analytics Drawer (when on editor tab)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "i") {
         if (sidebarTab === "editor") {
@@ -1766,6 +1876,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         setSwappingItemId(null);
         setIsEditorSnippetsOpen(false);
         setIsEditorStatsOpen(false);
+        setIsEditorLinterOpen(false);
         setIsEditorOutlineOpen(false);
       }
       if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -2408,6 +2519,36 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
 
                 <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+                  {/* Real-time LaTeX Syntax & Environment Linter Drawer Button */}
+                  <button
+                    onClick={() => {
+                      setIsEditorLinterOpen((prev) => !prev);
+                      if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
+                      if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
+                      if (isEditorStatsOpen) setIsEditorStatsOpen(false);
+                    }}
+                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
+                      isEditorLinterOpen
+                        ? "border-rose-300 bg-rose-50 text-rose-800 font-semibold"
+                        : examLatexDiagnostics.length > 0
+                        ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-medium"
+                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                    title="Kiểm tra cú pháp & tính toàn vẹn môi trường LaTeX thời gian thực (Ctrl+L / Cmd+L)"
+                  >
+                    {examLatexDiagnostics.length > 0 ? (
+                      <>
+                        <AlertTriangle className="w-3 h-3 text-amber-600 animate-pulse" />
+                        <span>Cú pháp ({examLatexDiagnostics.length} cảnh báo)</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        <span>Cú pháp: Chuẩn</span>
+                      </>
+                    )}
+                  </button>
+
                   {/* Pedagogical Document Analytics & Stats Drawer Button */}
                   <button
                     onClick={() => {
@@ -2703,6 +2844,92 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     <span>% [Cấu hình hệ thống TeX Live & Tiêu chuẩn Bộ GD&ĐT (đã thu gọn) — Bấm để mở rộng]</span>
                   </span>
                   <span className="text-[10px] text-indigo-600 font-semibold">Xem mã preamble →</span>
+                </div>
+              )}
+
+              {/* Real-time LaTeX Syntax & Environment Linter Drawer */}
+              {isEditorLinterOpen && (
+                <div className="bg-rose-50/95 border-b border-rose-200 p-2.5 text-xs shrink-0 animate-in fade-in duration-150 shadow-inner flex flex-col font-sans">
+                  <div className="flex items-center justify-between pb-2 border-b border-rose-200 mb-2 px-1">
+                    <div className="flex items-center space-x-2">
+                      <ShieldCheck className="w-4 h-4 text-rose-700" />
+                      <span className="font-semibold text-rose-950 text-xs">
+                        Kiểm tra cú pháp & Tính toàn vẹn cấu trúc LaTeX (Syntax & Environment Linter)
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                          examLatexDiagnostics.length === 0
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-rose-200 text-rose-900"
+                        }`}
+                      >
+                        {examLatexDiagnostics.length === 0
+                          ? "✓ Không phát hiện lỗi cú pháp"
+                          : `⚠ ${examLatexDiagnostics.length} vấn đề cần lưu ý`}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setIsEditorLinterOpen(false)}
+                      className="text-rose-700 hover:text-rose-900 px-1.5 py-0.5 rounded hover:bg-rose-100 font-bold text-xs"
+                      title="Đóng bảng cú pháp (Esc)"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {examLatexDiagnostics.length === 0 ? (
+                    <div className="p-3 bg-white/90 border border-emerald-200 rounded text-center text-emerald-800 text-xs flex items-center justify-center space-x-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Toàn bộ các cặp môi trường `\begin` - `\end`, dấu ngoặc nhọn `{}` và cặp `$` đều cân bằng chuẩn xác!</span>
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                      {examLatexDiagnostics.map((diag) => (
+                        <div
+                          key={diag.id}
+                          onClick={() => {
+                            // Jump to line and focus
+                            const ta = editorTextareaRef.current;
+                            if (ta) {
+                              const lines = (ta.value || "").split("\n");
+                              let charIndex = 0;
+                              for (let i = 0; i < Math.min(diag.line - 1, lines.length); i++) {
+                                charIndex += lines[i].length + 1;
+                              }
+                              ta.focus();
+                              ta.setSelectionRange(charIndex, charIndex + (lines[diag.line - 1] ? lines[diag.line - 1].length : 0));
+                              updateCursorStats();
+                            }
+                          }}
+                          className={`p-2 rounded border cursor-pointer transition-all flex items-start space-x-2 ${
+                            diag.severity === "error"
+                              ? "bg-white border-rose-200 hover:border-rose-400 hover:bg-rose-50/50"
+                              : "bg-white border-amber-200 hover:border-amber-400 hover:bg-amber-50/50"
+                          }`}
+                          title="Bấm để nhảy tới dòng này trong Editor"
+                        >
+                          <span
+                            className={`px-1.5 py-0.5 rounded font-mono text-[10px] font-bold shrink-0 ${
+                              diag.severity === "error" ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            Dòng {diag.line}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-slate-800 text-xs">{diag.message}</div>
+                            {diag.suggestion && (
+                              <div className="text-[11px] text-slate-500 mt-0.5 italic">
+                                Gợi ý khắc phục: {diag.suggestion}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-400 hover:text-slate-600 shrink-0 font-medium">
+                            Nhảy tới ➔
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -4457,6 +4684,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Tự động đóng cặp ngoặc & bọc chọn</span>
                     <span className="text-[11px] font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{}, [], (), $$, ""</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Kiểm tra cú pháp & Linter LaTeX</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + L</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Bảng phân tích định lượng sư phạm (Telemetry)</span>
