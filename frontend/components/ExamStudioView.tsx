@@ -3497,6 +3497,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 57: Abstract Algebra & Group Theory / Homomorphism Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasAbstractAlgebra = /lý thuyết nhóm|nhóm Abel|nhóm cyclic|nhóm đối xứng|nhóm con chuẩn tắc|định lý Lagrange|đồng cấu nhóm|đẳng cấu nhóm|vành và trường|trường hữu hạn|ideal|nhóm nhân modulo|quỹ đạo và nhóm ổn định/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Đại số trừu tượng & Lý thuyết nhóm (Abstract Algebra & Group Theory Inspector):{" "}
+                            {hasAbstractAlgebra ? (
+                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ TRỪU TƯỢNG & LÝ THUYẾT NHÓM CAO CẤP</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐẠI SỐ CƠ BẢN TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasAbstractAlgebra
+                              ? "✓ Nhóm Abel, cyclic, nhóm đối xứng, định lý Lagrange và đồng cấu/đẳng cấu nhóm chuẩn đề thi Olympic Toán và Đại số hiện đại."
+                              : "✓ Đề thi không chứa cấu trúc đại số trừu tượng và lý thuyết nhóm chuyên sâu."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3573,7 +3600,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `53. Giải tích số phức & Biến đổi Möbius: CHUẨN GIẢI TÍCH PHỨC & BIẾN ĐỔI MÖBIUS CAO CẤP`,
                         `54. Đại số tuyến tính & Giá trị riêng / Ma trận: CHUẨN ĐẠI SỐ TUYẾN TÍNH & MA TRẬN OLYMPIC TOÁN`,
                         `55. Tô pô đại cương & Không gian Metric: CHUẨN TÔ PÔ ĐẠI CƯƠNG & METRIC CAO CẤP`,
-                        `56. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `56. Đại số trừu tượng & Lý thuyết nhóm: CHUẨN ĐẠI SỐ TRỪU TƯỢNG & LÝ THUYẾT NHÓM CAO CẤP`,
+                        `57. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

@@ -1489,6 +1489,64 @@ def handle_exam_regrade_request(
     raise HTTPException(status_code=400, detail=f"Hành động '{action}' không hợp lệ. Chọn SUBMIT, APPROVE hoặc REJECT")
 
 
+@router.post("/exams/{exam_id}/anti-cheating-freeze", status_code=status.HTTP_200_OK)
+def toggle_exam_anti_cheating_freeze(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Kích hoạt chế độ niêm phong chống gian lận trong phòng thi (Exam Question Anti-Cheating Freeze RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách môn thi (TEACHER) mới có quyền bật/tắt niêm phong thứ tự câu hỏi và phương án làm bài.
+    - Chặn hoàn toàn học sinh và người dùng ngoài với HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên khảo thí (TEACHER) mới có quyền cấu hình chế độ chống gian lận"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình niêm phong")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền thiết lập chế độ chống gian lận cho đề thi thuộc trường học khác"
+            )
+
+    freeze_enabled = bool(payload.get("freeze_enabled", True))
+    lock_shuffle = bool(payload.get("lock_shuffle", True))
+    lock_regenerate = bool(payload.get("lock_regenerate", True))
+    pin_code = payload.get("pin_code", "")
+
+    header_cfg = dict(exam.header_config or {})
+    anti_cheating = {
+        "freeze_enabled": freeze_enabled,
+        "lock_shuffle": lock_shuffle,
+        "lock_regenerate": lock_regenerate,
+        "pin_code": pin_code if pin_code else "SECURE-PIN",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["anti_cheating_freeze"] = anti_cheating
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "anti_cheating_freeze": anti_cheating,
+        "message": f"Đã {'kích hoạt' if freeze_enabled else 'vô hiệu hóa'} chế độ niêm phong chống gian lận phòng thi thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
