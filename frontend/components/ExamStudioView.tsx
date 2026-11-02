@@ -130,6 +130,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isEditorWrapEnvOpen, setIsEditorWrapEnvOpen] = useState<boolean>(false);
   const [isVariantsModalOpen, setIsVariantsModalOpen] = useState<boolean>(false);
   const [isEditorAnswerKeyOpen, setIsEditorAnswerKeyOpen] = useState<boolean>(false);
+  const [isScaleScoreModalOpen, setIsScaleScoreModalOpen] = useState<boolean>(false);
+  const [targetScaleScore, setTargetScaleScore] = useState<number>(10);
+  const [scaleMode, setScaleMode] = useState<"proportional" | "equal">("proportional");
   const [variantCount, setVariantCount] = useState<number>(4);
   const [variantPrefix, setVariantPrefix] = useState<string>("101");
   const [isGeneratingVariants, setIsGeneratingVariants] = useState<boolean>(false);
@@ -1521,6 +1524,60 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     } finally {
       setIsGeneratingVariants(false);
     }
+  };
+
+  // Helper: Rescale and rebalance exam score distribution
+  const handleApplyScoreRescaling = () => {
+    if (items.length === 0) {
+      showToast("Không có câu hỏi nào để quy đổi điểm!", "warning");
+      return;
+    }
+    if (targetScaleScore <= 0) {
+      showToast("Thang điểm mục tiêu phải lớn hơn 0!", "warning");
+      return;
+    }
+
+    let updatedItems = [...items];
+    if (scaleMode === "equal") {
+      // Chia đều điểm cho tất cả câu hỏi
+      const rawPointsPerItem = targetScaleScore / items.length;
+      const roundedPoints = Math.round(rawPointsPerItem * 100) / 100;
+      let totalAssigned = 0;
+
+      updatedItems = updatedItems.map((item, index) => {
+        if (index === updatedItems.length - 1) {
+          // Gán phần dư chính xác cho câu cuối cùng để tổng điểm tuyệt đối bằng targetScaleScore
+          const lastPoint = Math.round((targetScaleScore - totalAssigned) * 100) / 100;
+          return { ...item, points: lastPoint };
+        }
+        totalAssigned += roundedPoints;
+        return { ...item, points: roundedPoints };
+      });
+    } else {
+      // Quy đổi tỷ lệ thuận theo điểm hiện tại (Proportional)
+      const currentSum = updatedItems.reduce((acc, it) => acc + (it.points || 1), 0);
+      if (currentSum <= 0) {
+        showToast("Tổng điểm hiện tại không hợp lệ!", "warning");
+        return;
+      }
+      const ratio = targetScaleScore / currentSum;
+      let totalAssigned = 0;
+
+      updatedItems = updatedItems.map((item, index) => {
+        if (index === updatedItems.length - 1) {
+          const lastPoint = Math.round((targetScaleScore - totalAssigned) * 100) / 100;
+          return { ...item, points: lastPoint };
+        }
+        const scaledPoint = Math.round((item.points || 1) * ratio * 100) / 100;
+        totalAssigned += scaledPoint;
+        return { ...item, points: scaledPoint };
+      });
+    }
+
+    setItems(updatedItems);
+    setIsDirty(true);
+    setIsScaleScoreModalOpen(false);
+    showToast(`Đã quy đổi toàn bộ điểm sang thang ${targetScaleScore} điểm thành công!`, "success");
   };
 
   // Helper: Wrap currently selected text with a custom LaTeX environment
@@ -5294,9 +5351,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <span className="text-xs uppercase font-bold tracking-wider text-indigo-200">Tổng Quan Khảo Thí</span>
                   <span className="px-2 py-0.5 bg-white/20 rounded-full text-[11px] font-semibold">{items.length} câu hỏi</span>
                 </div>
-                <div className="flex items-baseline space-x-2">
-                  <span className="text-3xl font-extrabold">{currentTotalScore.toFixed(2)}</span>
-                  <span className="text-sm text-indigo-200 font-medium">/ 10.00 điểm</span>
+                <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-3xl font-extrabold">{currentTotalScore.toFixed(2)}</span>
+                    <span className="text-sm text-indigo-200 font-medium">điểm</span>
+                  </div>
+                  <button
+                    onClick={() => setIsScaleScoreModalOpen(true)}
+                    className="px-2.5 py-1 bg-white/20 hover:bg-white text-white hover:text-indigo-800 rounded-lg text-xs font-bold transition-all shadow-xs flex items-center space-x-1"
+                    title="Mở công cụ quy đổi điểm thang 10, 20 hoặc tự chọn"
+                  >
+                    <span>⚖️ Quy đổi thang điểm</span>
+                  </button>
                 </div>
                 <div className="mt-3 text-[11px] text-indigo-100 flex items-center justify-between border-t border-white/20 pt-2">
                   <span>Trắc nghiệm / Tự luận phối hợp</span>
@@ -6318,6 +6384,159 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 className="px-4 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl shadow-sm transition-all"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exam Score Rescaling & Rebalance Modal */}
+      {isScaleScoreModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-indigo-700 via-indigo-800 to-indigo-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">⚖️</span>
+                <div>
+                  <h3 className="font-bold text-sm">Quy Đổi & Cân Bằng Thang Điểm Khảo Thí</h3>
+                  <p className="text-[11px] text-indigo-200">Chuẩn hóa thang điểm 10, 20 hoặc tự chọn theo tỷ lệ sư phạm</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsScaleScoreModalOpen(false)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 text-xs font-sans">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">
+                  Thang điểm mục tiêu:
+                </label>
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  {[10, 20, 50, 100].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setTargetScaleScore(val)}
+                      className={`py-1.5 rounded-lg border font-bold text-xs transition-all ${
+                        targetScaleScore === val
+                          ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      {val} điểm
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-slate-500 font-medium">Hoặc nhập điểm tự chọn:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    step="0.5"
+                    value={targetScaleScore}
+                    onChange={(e) => setTargetScaleScore(parseFloat(e.target.value) || 0)}
+                    className="w-24 px-2 py-1 border border-slate-300 rounded-lg font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <span className="text-slate-600 font-bold">điểm</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">
+                  Phương thức phân bổ điểm:
+                </label>
+                <div className="space-y-2">
+                  <label
+                    onClick={() => setScaleMode("proportional")}
+                    className={`flex items-start p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      scaleMode === "proportional"
+                        ? "bg-indigo-50/70 border-indigo-300 ring-1 ring-indigo-400"
+                        : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="scaleMode"
+                      checked={scaleMode === "proportional"}
+                      onChange={() => setScaleMode("proportional")}
+                      className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div className="ml-2.5 text-left">
+                      <span className="font-bold text-slate-800 block text-xs">
+                        Tỷ lệ thuận theo điểm hiện tại (Khuyên dùng)
+                      </span>
+                      <span className="text-[11px] text-slate-500 leading-normal block">
+                        Giữ nguyên tỷ trọng phân hóa (câu khó nhiều điểm hơn, câu dễ ít điểm hơn).
+                      </span>
+                    </div>
+                  </label>
+
+                  <label
+                    onClick={() => setScaleMode("equal")}
+                    className={`flex items-start p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      scaleMode === "equal"
+                        ? "bg-indigo-50/70 border-indigo-300 ring-1 ring-indigo-400"
+                        : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="scaleMode"
+                      checked={scaleMode === "equal"}
+                      onChange={() => setScaleMode("equal")}
+                      className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div className="ml-2.5 text-left">
+                      <span className="font-bold text-slate-800 block text-xs">
+                        Chia đều điểm cho mọi câu hỏi
+                      </span>
+                      <span className="text-[11px] text-slate-500 leading-normal block">
+                        Mỗi câu hỏi có số điểm bằng nhau ({items.length > 0 ? (targetScaleScore / items.length).toFixed(2) : 0}đ/câu).
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Status Comparison */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Số lượng câu hỏi:</span>
+                  <span className="font-bold text-slate-800 font-mono">{items.length} câu</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Tổng điểm hiện tại:</span>
+                  <span className="font-bold text-amber-700 font-mono">{currentTotalScore.toFixed(2)} điểm</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-slate-200 pt-1.5">
+                  <span className="font-bold text-indigo-900">Tổng điểm sau quy đổi:</span>
+                  <span className="font-extrabold text-indigo-700 font-mono text-sm">{targetScaleScore.toFixed(2)} điểm</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setIsScaleScoreModalOpen(false)}
+                className="px-3 py-1.5 text-slate-600 hover:text-slate-800 text-xs font-semibold rounded-lg hover:bg-slate-200/60"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyScoreRescaling}
+                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center space-x-1"
+              >
+                <span>Áp dụng quy đổi</span>
               </button>
             </div>
           </div>
