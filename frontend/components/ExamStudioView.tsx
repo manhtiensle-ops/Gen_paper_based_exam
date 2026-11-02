@@ -174,6 +174,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [lastCompileStats, setLastCompileStats] = useState<{ durationMs: number; timeStr: string } | null>(null);
   const [activePage, setActivePage] = useState<number>(0);
   const [zoomScale, setZoomScale] = useState<number>(100);
+  const canvasAreaRef = useRef<HTMLDivElement>(null);
+
+  // Auto-fit A4 page width to viewport
+  const handleAutoFitWidth = () => {
+    const el = canvasAreaRef.current || canvasScrollRef.current;
+    if (!el) return;
+    const availableWidth = el.clientWidth - 48; // padding margin
+    if (availableWidth > 200) {
+      const calculatedScale = Math.min(180, Math.max(50, Math.round((availableWidth / 595) * 100)));
+      setZoomScale(calculatedScale);
+    }
+  };
   const [canvasKey, setCanvasKey] = useState<number>(Date.now());
   const [viewerMode, setViewerMode] = useState<"scroll" | "pdf" | "html">("scroll");
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -1783,6 +1795,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   >
                     <Maximize2 className="w-3.5 h-3.5" />
                   </button>
+                  <button
+                    onClick={handleAutoFitWidth}
+                    className="px-1.5 py-0.5 hover:bg-white rounded text-indigo-700 hover:text-indigo-900 transition-all font-sans font-bold text-[10px] bg-indigo-50/70 border border-indigo-200 ml-1"
+                    title="Căn vừa vặn bề ngang màn hình (Fit Width)"
+                  >
+                    Fit Vừa
+                  </button>
                 </div>
               )}
             </div>
@@ -1790,7 +1809,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
           {/* Canvas Viewer Area with Smooth Continuous Scroll */}
           {viewerMode === "html" || (!previewData?.pdf_key && !previewData?.page_keys && !compiling) ? (
-            <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center bg-slate-200/70">
+            <div ref={canvasAreaRef} className="flex-1 overflow-y-auto p-8 flex flex-col items-center bg-slate-200/70">
               <div
                 style={{
                   width: `${(595 * zoomScale) / 100}px`,
@@ -2247,6 +2266,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">In Ngay ra máy in / Xuất PDF trình duyệt</span>
                     <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + P</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Tự động căn vừa màn hình Canvas (Fit Width)</span>
+                    <span className="text-xs text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Nút "Fit Vừa"</span>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Đóng cửa sổ / Hộp thoại đang mở</span>
