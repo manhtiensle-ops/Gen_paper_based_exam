@@ -46,7 +46,8 @@ import {
   Copy,
   Check,
   HelpCircle,
-  Command
+  Command,
+  PieChart
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -70,7 +71,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const activePointerIdRef = useRef<number | null>(null);
 
   // Left Sidebar Tab: "editor" | "rubric-table" | "items" | "knobs"
-  const [sidebarTab, setSidebarTab] = useState<"editor" | "rubric-table" | "items" | "knobs">("editor");
+  const [sidebarTab, setSidebarTab] = useState<"editor" | "rubric-table" | "items" | "knobs" | "matrix">("editor");
   const [templateDoc, setTemplateDoc] = useState<any | null>(null);
 
   // Raw LaTeX Code State for Live Editor
@@ -989,6 +990,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 <Sliders className="w-3.5 h-3.5" />
                 <span>Bố Cục (Sliders)</span>
               </button>
+
+              <button
+                onClick={() => setSidebarTab("matrix")}
+                className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
+                  sidebarTab === "matrix"
+                    ? "border-indigo-600 text-indigo-700 bg-white"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <PieChart className="w-3.5 h-3.5" />
+                <span>Ma Trận & Phổ Điểm</span>
+              </button>
             </div>
 
             {/* Split Presets & Collapse Toggle */}
@@ -1508,6 +1521,112 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 >
                   Áp Dụng Lề Mới
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: MA TRẬN & PHỔ ĐIỂM SƯ PHẠM */}
+          {sidebarTab === "matrix" && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-5">
+              {/* Thống kê Tổng quan */}
+              <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white p-4 rounded-2xl shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs uppercase font-bold tracking-wider text-indigo-200">Tổng Quan Khảo Thí</span>
+                  <span className="px-2 py-0.5 bg-white/20 rounded-full text-[11px] font-semibold">{items.length} câu hỏi</span>
+                </div>
+                <div className="flex items-baseline space-x-2">
+                  <span className="text-3xl font-extrabold">{currentTotalScore.toFixed(2)}</span>
+                  <span className="text-sm text-indigo-200 font-medium">/ 10.00 điểm</span>
+                </div>
+                <div className="mt-3 text-[11px] text-indigo-100 flex items-center justify-between border-t border-white/20 pt-2">
+                  <span>Trắc nghiệm / Tự luận phối hợp</span>
+                  <span>Chuẩn Bộ GD&ĐT</span>
+                </div>
+              </div>
+
+              {/* Phân bố 4 Cấp Độ Nhận Thức */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center justify-between">
+                  <span>Cấp Độ Nhận Thức</span>
+                  <span className="text-[11px] text-slate-400 font-normal">Tỷ lệ điểm</span>
+                </h4>
+                {(() => {
+                  const levels = [
+                    { key: "NB", label: "Nhận biết", color: "bg-emerald-500", light: "bg-emerald-50 text-emerald-800" },
+                    { key: "TH", label: "Thông hiểu", color: "bg-blue-500", light: "bg-blue-50 text-blue-800" },
+                    { key: "VD", label: "Vận dụng", color: "bg-amber-500", light: "bg-amber-50 text-amber-800" },
+                    { key: "VDC", label: "Vận dụng cao", color: "bg-rose-500", light: "bg-rose-50 text-rose-800" },
+                  ];
+                  return (
+                    <div className="space-y-2.5">
+                      {levels.map((lvl) => {
+                        const count = items.filter((it: any) => it.difficulty === lvl.key).length;
+                        const pts = items
+                          .filter((it: any) => it.difficulty === lvl.key)
+                          .reduce((s: number, it: any) => s + (parseFloat(it.max_points) || 0), 0);
+                        const pct = currentTotalScore > 0 ? (pts / currentTotalScore) * 100 : 0;
+                        return (
+                          <div key={lvl.key}>
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="font-semibold text-slate-700 flex items-center space-x-1.5">
+                                <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${lvl.light}`}>
+                                  {lvl.key}
+                                </span>
+                                <span>{lvl.label}</span>
+                              </span>
+                              <span className="font-mono text-slate-600 font-medium">
+                                {count} câu ({pts.toFixed(1)}đ - {pct.toFixed(0)}%)
+                              </span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full ${lvl.color} transition-all duration-300`}
+                                style={{ width: `${Math.min(100, pct)}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Phân bố Chủ Đề / Mạch Kiến Thức */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">
+                  Mạch Kiến Thức Khảo Thí
+                </h4>
+                {(() => {
+                  const topicCounts: Record<string, { count: number; pts: number }> = {};
+                  items.forEach((it: any) => {
+                    const top = it.topic || "OTHER";
+                    if (!topicCounts[top]) topicCounts[top] = { count: 0, pts: 0 };
+                    topicCounts[top].count += 1;
+                    topicCounts[top].pts += parseFloat(it.max_points) || 0;
+                  });
+
+                  return (
+                    <div className="space-y-2">
+                      {Object.entries(topicCounts).map(([top, data]) => {
+                        const label = TOPIC_VI_MAP[top] || top;
+                        const pct = currentTotalScore > 0 ? (data.pts / currentTotalScore) * 100 : 0;
+                        return (
+                          <div key={top} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-100">
+                            <span className="text-slate-700 font-medium">{label}</span>
+                            <span className="font-mono text-slate-500 font-medium">
+                              {data.count} câu | {data.pts.toFixed(1)}đ ({pct.toFixed(0)}%)
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 leading-relaxed">
+                ⚖️ <span className="font-bold">Khuyến nghị sư phạm:</span> Đề thi đạt chuẩn phân hóa học sinh tốt khi tỷ lệ điểm Vận dụng & Vận dụng cao (VD + VDC) chiếm khoảng 30% - 40% tổng điểm toàn bài.
               </div>
             </div>
           )}
