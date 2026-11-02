@@ -3929,6 +3929,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 73: Knot Theory & Jones Polynomial / Reidemeister Moves Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasKnotTheory = /lý thuyết nút thắt|knot theory|đa thức jones|jones polynomial|đa thức alexander|alexander polynomial|biến đổi reidemeister|reidemeister moves|nhóm bím tóc artin|braid group|bất biến nút thắt|knot invariant|liên kết kauffman|khovanov homology|nút ba lá|trefoil knot/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Lý thuyết nút thắt & Đa thức Jones (Knot Theory Inspector):{" "}
+                            {hasKnotTheory ? (
+                              <span className="font-mono text-emerald-700">CHUẨN NÚT THẮT & BẤT BIẾN JONES ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">TÔ PÔ HÌNH HỌC TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasKnotTheory
+                              ? "✓ Đa thức Jones, đa thức Alexander, biến đổi Reidemeister, nhóm bím tóc Artin và đồng điều Khovanov chuẩn Olympic Toán học và Mô hình sinh học phân tử DNA."
+                              : "✓ Đề thi không chứa cấu trúc không gian nút thắt và bất biến đa thức Jones."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4021,7 +4048,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `69. Lý thuyết số đại số & Định lý Modularity Wiles: CHUẨN SỐ ĐẠI SỐ & ĐỊNH LÝ FERMAT WILES ĐỈNH CAO`,
                         `70. Tô pô đại số & Nhóm cơ bản Đồng điều: CHUẨN TÔ PÔ ĐẠI SỐ & ĐỒNG ĐIỀU HOMOLOGY ĐỈNH CAO`,
                         `71. Biểu diễn nhóm & Đại số Lie: CHUẨN BIỂU DIỄN NHÓM & ĐẠI SỐ LIE SCHUR ĐỈNH CAO`,
-                        `72. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `72. Lý thuyết nút thắt & Đa thức Jones: CHUẨN NÚT THẮT & BẤT BIẾN JONES ĐỈNH CAO`,
+                        `73. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

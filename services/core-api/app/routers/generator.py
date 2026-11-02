@@ -2499,6 +2499,70 @@ def configure_exam_omr_camera_calibration(
     }
 
 
+@router.post("/exams/{exam_id}/quick-rubric-qr", status_code=status.HTTP_200_OK)
+def configure_exam_quick_rubric_qr(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình mã QR tra cứu bareme rút gọn & Hướng dẫn chấm bài tự luận in ấn (Exam Quick-Rubric QR Policy RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách môn thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chèn mã QR bareme (enabled), vị trí in trên trang giấy thi (qr_position: 'TOP_RIGHT', 'BOTTOM_RIGHT', 'FOOTER_CENTER'),
+      cơ chế bảo vệ bằng mật khẩu mở khóa đáp án (require_passcode), mã khóa giải mã (access_passcode: 4-12 ký tự)
+      và thời điểm chính thức mở quyền quét mã cho học sinh (reveal_after_timestamp).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách môn thi (TEACHER) mới có quyền cấu hình mã QR bareme"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình mã QR bareme")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình mã QR bareme cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    qr_position = str(payload.get("qr_position", "TOP_RIGHT"))
+    require_passcode = bool(payload.get("require_passcode", True))
+    access_passcode = str(payload.get("access_passcode", "VP8888"))
+    reveal_timestamp = payload.get("reveal_after_timestamp")
+
+    header_cfg = dict(exam.header_config or {})
+    rubric_qr_config = {
+        "enabled": is_enabled,
+        "qr_position": qr_position,
+        "require_passcode": require_passcode,
+        "access_passcode": access_passcode if require_passcode else None,
+        "reveal_after_timestamp": reveal_timestamp,
+        "rubric_qr_id": f"VINHPHAT-QRUBRIC-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["quick_rubric_qr"] = rubric_qr_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "quick_rubric_qr": rubric_qr_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình mã QR bareme ({qr_position}, Mật khẩu: {'Bật' if require_passcode else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
