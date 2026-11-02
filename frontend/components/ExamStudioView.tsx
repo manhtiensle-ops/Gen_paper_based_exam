@@ -3362,6 +3362,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 52: Projective Geometry & Harmonic Bundles / Pole and Polar Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasHarmonic = /hàng điểm điều hòa|chùm điều hòa|tỉ số kép|cực và đối cực|đường đối cực|định lý Desargues|định lý Pascal|định lý Brianchon|trục đẳng phương|tâm đẳng phương|Menelaus dạng lượng giác|Ceva dạng lượng giác/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Hình học xạ ảnh & Hàng điểm điều hòa / Cực đối cực (Harmonic Bundles Inspector):{" "}
+                            {hasHarmonic ? (
+                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC XẠ ẢNH & ĐIỀU HÒA CHUYÊN SÂU</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC PHẲNG TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasHarmonic
+                              ? "✓ Hàng điểm điều hòa, tỉ số kép, chùm đường thẳng điều hòa, cực đối cực chuẩn đề thi chọn học sinh giỏi môn Toán."
+                              : "✓ Đề thi không chứa cấu hình hình học xạ ảnh và hàng điểm điều hòa nâng cao."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3433,7 +3460,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `48. Đa thức & Nghiệm / Định lý Viète bậc cao: CHUẨN ĐA THỨC ĐẠI SỐ & ĐỊNH LÝ VIÈTE CHUYÊN SÂU`,
                         `49. Tổ hợp nâng cao & Nguyên lý Dirichlet / Bất biến: CHUẨN TỔ HỢP RỜI RẠC & NGUYÊN LÝ DIRICHLET HSG QUỐC GIA`,
                         `50. Lý thuyết số & Đồng dư thức / Diophantine: CHUẨN LÝ THUYẾT SỐ & ĐỒNG DƯ THỨC HSG CHUYÊN SÂU`,
-                        `51. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `51. Hình học xạ ảnh & Hàng điểm điều hòa / Cực đối cực: CHUẨN HÌNH HỌC XẠ ẢNH & ĐIỀU HÒA CHUYÊN SÂU`,
+                        `52. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

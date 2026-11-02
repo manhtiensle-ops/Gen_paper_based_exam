@@ -3,7 +3,8 @@ import uuid
 import re
 import unicodedata
 import logging
-from datetime import datetime, timezone
+import secrets
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any
 from urllib.parse import quote
 import requests
@@ -1115,6 +1116,71 @@ def export_exam_grading_matrix(
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "grading_matrix": grading_rows,
         "confidentiality": "STRICT_CONFIDENTIAL_GRADING_COMMITTEE_ONLY"
+    }
+
+
+@router.post("/exams/{exam_id}/proctor-token", status_code=status.HTTP_200_OK)
+def generate_exam_proctor_token(
+    exam_id: uuid.UUID,
+    valid_hours: int = 4,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấp phát Token / Mã QR Giám Thị phòng thi và liên kết làm bài thi thử (Proctor Exam Access Token RBAC).
+    Bảo vệ phân quyền:
+    - Chỉ ADMIN hoặc TEACHER thuộc đơn vị trường học sở hữu đề thi mới có quyền sinh mã Token giám thị.
+    - Chặn hoàn toàn học sinh hoặc người dùng vãng lai với HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách môn thi (TEACHER) mới có quyền cấp phát Token giám thị"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấp Token giám thị")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấp Token giám thị cho đề thi thuộc đơn vị trường học khác"
+            )
+
+    token_secret = secrets.token_urlsafe(16)
+    valid_hours = max(1, min(72, valid_hours))
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(hours=valid_hours)
+
+    proctor_token_data = {
+        "token": token_secret,
+        "issued_by": current_user.username,
+        "issued_at": now.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "valid_hours": valid_hours,
+        "proctor_qr_url": f"/exam/proctor-verify?exam_id={exam.id}&token={token_secret}"
+    }
+
+    header_cfg = dict(exam.header_config or {})
+    header_cfg["latest_proctor_token"] = proctor_token_data
+    exam.header_config = header_cfg
+    flag_modified(exam, "header_config")
+
+    db.commit()
+    db.refresh(exam)
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "proctor_token": token_secret,
+        "valid_hours": valid_hours,
+        "expires_at": expires_at.isoformat(),
+        "issued_by": current_user.username,
+        "proctor_qr_url": proctor_token_data["proctor_qr_url"],
+        "message": f"Đã khởi tạo thành công Token giám thị cho đề thi '{exam.title}' có hiệu lực trong {valid_hours} giờ"
     }
 
 
