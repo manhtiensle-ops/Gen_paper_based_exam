@@ -28,6 +28,7 @@ import {
   X,
   Scissors,
   CheckSquare,
+  Award,
   Shuffle,
   Grid,
   Languages,
@@ -110,6 +111,7 @@ export default function A4PaperPreview({
   const [isEssentialFormulaStampMode, setIsEssentialFormulaStampMode] = useState<boolean>(false);
   const [isCryptographicSealMode, setIsCryptographicSealMode] = useState<boolean>(false);
   const [isRegulationNoticeMode, setIsRegulationNoticeMode] = useState<boolean>(false);
+  const [isExaminerRubricMode, setIsExaminerRubricMode] = useState<boolean>(false);
 
   // Group questions by part if available, or sequential
   const part1Questions = questions.filter(
@@ -499,6 +501,21 @@ export default function A4PaperPreview({
           >
             <Scale className="w-3.5 h-3.5" />
             <span>{isRegulationNoticeMode ? "Quy Chế Thi (Bật)" : "Quy Chế Thi"}</span>
+          </button>
+
+          {/* Examiner Feedback & Grading Rubric Slip Print Mode Button */}
+          <button
+            type="button"
+            onClick={() => setIsExaminerRubricMode(!isExaminerRubricMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+              isExaminerRubricMode
+                ? "bg-emerald-100 border-emerald-300 text-emerald-900 font-bold shadow-2xs"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+            title="Tích hợp bảng điểm và nhận xét chữ ký của 2 giám khảo chấm thi"
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>{isExaminerRubricMode ? "Phiếu Chấm Điểm (Bật)" : "Phiếu Chấm Điểm"}</span>
           </button>
           {/* 1 col vs 2 col switch */}
           <button
@@ -1412,6 +1429,57 @@ export default function A4PaperPreview({
                   <div className="font-bold text-rose-800 print:text-black mb-0.5">XỬ LÝ KỶ LUẬT:</div>
                   <div>• Cấm tuyệt đối mang điện thoại di động, thiết bị thu phát sóng và tài liệu trái phép vào phòng thi.</div>
                   <div>• Mọi hành vi trao đổi bài, quay cóp hoặc làm biến dạng phiếu trả lời sẽ bị đình chỉ thi và hủy kết quả xét tuyển.</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Examiner Feedback & Grading Rubric Slip Print Mode Block */}
+          {isExaminerRubricMode && (
+            <div className="mt-6 pt-3 border-t-2 border-emerald-500 p-2.5 rounded-lg bg-emerald-50/40 print:bg-white print:border-slate-800 text-[10px] text-slate-800 break-inside-avoid">
+              <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-emerald-300 print:border-slate-400 font-bold text-[10.5px] text-emerald-950 print:text-black">
+                <span className="flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-emerald-700 print:text-black" />
+                  PHIẾU CHẤM ĐIỂM &amp; BIÊN BẢN ĐÁNH GIÁ CỦA CẶP GIÁM KHẢO CHẤM THI
+                </span>
+                <span className="text-[9px] text-emerald-800 print:text-black font-mono">
+                  MÃ ĐỀ: {isShufflePackageActive ? selectedVariantCode : (examCode || "101")}
+                </span>
+              </div>
+              <div className="grid grid-cols-12 gap-2 text-[9.5px]">
+                {/* Bảng điểm tổng hợp */}
+                <div className="col-span-7 border border-emerald-200 print:border-slate-400 rounded overflow-hidden">
+                  <table className="w-full text-center border-collapse">
+                    <thead>
+                      <tr className="bg-emerald-100/70 print:bg-slate-100 font-bold text-emerald-900 print:text-black text-[9px]">
+                        <th className="border-r border-b border-emerald-200 print:border-slate-400 py-1">Phần I (Trắc nghiệm)</th>
+                        <th className="border-r border-b border-emerald-200 print:border-slate-400 py-1">Phần II (Đúng/Sai)</th>
+                        <th className="border-r border-b border-emerald-200 print:border-slate-400 py-1">Phần III (Trả lời ngắn)</th>
+                        <th className="border-b border-emerald-200 print:border-slate-400 py-1 bg-emerald-200/60 print:bg-slate-200">ĐIỂM TOÀN BÀI</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="h-9">
+                        <td className="border-r border-emerald-200 print:border-slate-400"></td>
+                        <td className="border-r border-emerald-200 print:border-slate-400"></td>
+                        <td className="border-r border-emerald-200 print:border-slate-400"></td>
+                        <td className="font-bold text-base bg-emerald-50/50 print:bg-white"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                {/* Khung chữ ký 2 Giám khảo */}
+                <div className="col-span-5 grid grid-cols-2 gap-1 border border-emerald-200 print:border-slate-400 rounded p-1.5 bg-white">
+                  <div className="flex flex-col justify-between text-center border-r border-dashed border-emerald-200 print:border-slate-300 pr-1">
+                    <span className="font-bold text-[9px] text-slate-800">GIÁM KHẢO 1</span>
+                    <span className="text-[8px] text-slate-400 italic">(Ký và ghi rõ họ tên)</span>
+                    <div className="h-6"></div>
+                  </div>
+                  <div className="flex flex-col justify-between text-center pl-1">
+                    <span className="font-bold text-[9px] text-slate-800">GIÁM KHẢO 2</span>
+                    <span className="text-[8px] text-slate-400 italic">(Ký và ghi rõ họ tên)</span>
+                    <div className="h-6"></div>
+                  </div>
                 </div>
               </div>
             </div>

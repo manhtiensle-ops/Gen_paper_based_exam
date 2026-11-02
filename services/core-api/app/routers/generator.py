@@ -23,7 +23,13 @@ from ..schemas import (
 )
 from ..services.hybrid_search import search_candidate_questions
 from ..services.minio_client import get_minio_client
-from ..services.quota_service import get_current_user_optional, require_authenticated_user
+from ..services.quota_service import (
+    get_current_user_optional,
+    require_authenticated_user,
+    require_role,
+    require_teacher_or_admin,
+    require_admin,
+)
 from ..models.models import ExamFolder, User
 
 router = APIRouter(prefix="/api/generator", tags=["Exam Generator & Blueprints"])
@@ -133,12 +139,17 @@ def clone_blueprint(blueprint_id: uuid.UUID, db: Session = Depends(get_db)):
     return new_bp
 
 @router.delete("/blueprints/{blueprint_id}")
-def delete_blueprint(blueprint_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_blueprint(
+    blueprint_id: uuid.UUID,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Xóa ma trận đề thi mẫu. Chỉ có Quản trị viên (ADMIN) mới có thẩm quyền xóa ma trận hệ thống."""
     bp = db.query(ExamBlueprint).filter(ExamBlueprint.id == blueprint_id).first()
     if not bp:
         raise HTTPException(status_code=404, detail="Blueprint not found")
-    if bp.is_preset:
-        raise HTTPException(status_code=400, detail="Không thể xóa khung ma trận chuẩn có sẵn của hệ thống")
+    if bp.is_preset and (current_user.role or "").upper() != "ADMIN":
+        raise HTTPException(status_code=403, detail="Không thể xóa khung ma trận chuẩn có sẵn của hệ thống")
     db.delete(bp)
     db.commit()
     return {"status": "ok", "message": "Đã xóa khung ma trận thành công"}

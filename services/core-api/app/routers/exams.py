@@ -280,11 +280,12 @@ def get_source_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
 def delete_source_exam(
     exam_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_optional)
+    current_user: User = Depends(require_authenticated_user)
 ):
     """
     Xóa tài liệu đề thi nguồn:
-    - Nếu là tác giả hoặc admin: cho phép xóa.
+    - Phải đăng nhập xác thực.
+    - Nếu là tác giả hoặc admin/teacher: cho phép xóa.
     - Cập nhật các câu hỏi liên kết để ngắt liên kết (source_exam_id = NULL) hoặc giữ an toàn.
     """
     exam = db.query(SourceExam).filter(SourceExam.id == exam_id).first()
@@ -292,9 +293,8 @@ def delete_source_exam(
         raise HTTPException(status_code=404, detail="Tài liệu đề thi không tồn tại")
     
     # Kiểm tra quyền hạn nếu tài liệu có người sở hữu
-    if exam.user_id and current_user:
-        if exam.user_id != current_user.id and current_user.role not in ["ADMIN", "TEACHER"]:
-            raise HTTPException(status_code=403, detail="Bạn không có quyền xóa tài liệu này")
+    if exam.user_id and exam.user_id != current_user.id and current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền xóa tài liệu này")
             
     # Ngắt liên kết câu hỏi thuộc source exam này để bảo toàn câu hỏi đã vào ngân hàng
     db.query(Question).filter(Question.source_exam_id == exam_id).update({"source_exam_id": None})

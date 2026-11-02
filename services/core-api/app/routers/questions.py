@@ -15,7 +15,14 @@ from openai import OpenAI
 from sqlalchemy import or_, and_, cast, String
 from ..database import get_db
 from ..models import Question, User
-from ..services.quota_service import require_authenticated_user, get_current_user_optional, consume_ai_quota
+from ..services.quota_service import (
+    require_authenticated_user,
+    get_current_user_optional,
+    consume_ai_quota,
+    require_role,
+    require_teacher_or_admin,
+    require_admin,
+)
 from ..schemas import (
     QuestionResponse,
     PaginatedQuestionsResponse,
@@ -325,8 +332,10 @@ def revert_question_content(question_id: UUID, db: Session = Depends(get_db)):
 def toggle_verify_question(
     question_id: UUID,
     payload: QuestionVerifyToggle,
+    current_user: User = Depends(require_teacher_or_admin),
     db: Session = Depends(get_db)
 ):
+    """Kiểm duyệt / Xác thực câu hỏi. Chỉ có vai trò TEACHER, PRO, ADMIN mới có thẩm quyền."""
     q = db.query(Question).filter(Question.id == question_id).first()
     if not q:
         raise HTTPException(status_code=404, detail="Question not found")

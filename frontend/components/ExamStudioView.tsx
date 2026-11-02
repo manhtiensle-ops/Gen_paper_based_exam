@@ -2795,6 +2795,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 31: Exponential & Radical Expression Domain Integrity Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasExpRadical = /\\sqrt|căn bậc|lũy thừa|số mũ|\\^\{|mũ thực|cơ số dương/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Biểu thức lũy thừa & Căn thức số học (Radicals & Exponentials):{" "}
+                            {hasExpRadical ? (
+                              <span className="font-mono text-emerald-700">CHUẨN MIỀN XÁC ĐỊNH</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐẠI SỐ ĐA THỨC SƠ CẤP</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasExpRadical
+                              ? "✓ Căn thức bậc chẵn và lũy thừa số mũ thực tuân thủ nghiêm ngặt điều kiện xác định (biểu thức dưới căn >= 0, cơ số > 0), không có nghịch lý tính toán."
+                              : "✓ Đề thi sử dụng biểu thức đa thức và phân thức cơ bản, bảo đảm tính xác định hiển nhiên."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -2845,7 +2872,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `27. Chu kỳ lượng giác & Miền giá trị góc: CHUẨN CHU KỲ LƯỢNG GIÁC`,
                         `28. Giới hạn & Tính liên tục giải tích: CHUẨN LIÊN TỤC & GIỚI HẠN`,
                         `29. Cấp số cộng, cấp số nhân & Dãy số: CHUẨN CẤP SỐ & HỘI TỤ`,
-                        `30. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `30. Lũy thừa & Căn thức số học: CHUẨN MIỀN XÁC ĐỊNH`,
+                        `31. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

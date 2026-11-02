@@ -65,8 +65,33 @@ def test_models_composite_indexes_integrity():
     print("  ✓ Toàn bộ 4 composite indexes trong models.py đã được xác minh đầy đủ")
 
 
+def test_rbac_authorization_logic():
+    """Kiểm tra logic phân quyền RBAC và phân tầng thẩm quyền vai trò."""
+    quota_service_path = CORE_API_DIR / "app" / "services" / "quota_service.py"
+    assert quota_service_path.exists(), f"File {quota_service_path} không tồn tại"
+    content = quota_service_path.read_text(encoding="utf-8")
+    
+    assert "def require_role(*allowed_roles: str):" in content, "Thiếu dependency require_role"
+    assert "def require_teacher_or_admin(" in content, "Thiếu dependency require_teacher_or_admin"
+    assert "def require_admin(" in content, "Thiếu dependency require_admin"
+    assert "ADMIN luôn có đặc quyền tối cao" in content, "Thiếu logic admin tối cao"
+    
+    # Kiểm tra router questions có phân quyền
+    questions_router = CORE_API_DIR / "app" / "routers" / "questions.py"
+    q_content = questions_router.read_text(encoding="utf-8")
+    assert "current_user: User = Depends(require_teacher_or_admin)" in q_content, "Thiếu bảo vệ phân quyền toggle verify"
+    
+    # Kiểm tra router generator có phân quyền
+    generator_router = CORE_API_DIR / "app" / "routers" / "generator.py"
+    g_content = generator_router.read_text(encoding="utf-8")
+    assert "current_user: User = Depends(require_admin)" in g_content, "Thiếu bảo vệ phân quyền delete blueprint"
+    
+    print("  ✓ RBAC Role Hierarchy (ADMIN, TEACHER, NORMAL) and route protections verified successfully")
+
+
 if __name__ == "__main__":
     print("Running Core API Test Suite...")
     test_slugify_vietnamese()
     test_models_composite_indexes_integrity()
+    test_rbac_authorization_logic()
     print("🎉 100% Core API Tests Passed Successfully!")

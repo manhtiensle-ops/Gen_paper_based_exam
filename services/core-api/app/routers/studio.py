@@ -10,7 +10,13 @@ from openai import OpenAI
 
 from app.database import get_db
 from app.models.models import GeneratedExam, ExamItem, Question, User
-from app.services.quota_service import require_authenticated_user, consume_ai_quota
+from app.services.quota_service import (
+    require_authenticated_user,
+    consume_ai_quota,
+    require_role,
+    require_teacher_or_admin,
+    require_admin,
+)
 from app.schemas.schemas import (
     ExamItemResponse,
     UpdateExamHeaderRequest,
