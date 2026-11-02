@@ -3158,6 +3158,72 @@ def configure_exam_paper_micro_texture_seal(
     }
 
 
+@router.post("/exams/{exam_id}/regrade-arbiter-blind-review", status_code=status.HTTP_200_OK)
+def configure_exam_regrade_arbiter_blind_review(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách Hội đồng trọng tài phúc khảo chấm mù ẩn danh cấp 2 (Anonymized Regrade Arbiter Blind-Review RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Thường trực Hội đồng Phúc khảo / Khảo thí (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ phúc khảo mù độc lập cấp 2 (enabled),
+      xóa bỏ hoàn toàn định danh giám khảo chấm đợt 1 khỏi phiếu chấm phúc khảo (strip_original_evaluator_identity),
+      ẩn danh mã phách thành mã phách trọng tài ngẫu nhiên (mask_original_exam_code),
+      yêu cầu tối thiểu số lượng trọng tài phúc khảo độc lập (min_arbiter_count: e.g. 2 - 5),
+      và tự động tính điểm bình quân trọng tài loại trừ điểm ngoại lai cực trị (auto_trimmed_mean_scoring).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Thường trực Hội đồng Phúc khảo (TEACHER) mới có quyền cấu hình chế độ chấm mù trọng tài phúc khảo"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình chế độ chấm mù trọng tài phúc khảo")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình chấm mù trọng tài phúc khảo cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    strip_evaluator = bool(payload.get("strip_original_evaluator_identity", True))
+    mask_code = bool(payload.get("mask_original_exam_code", True))
+    min_arbiters = int(payload.get("min_arbiter_count", 3))
+    trimmed_mean = bool(payload.get("auto_trimmed_mean_scoring", True))
+
+    header_cfg = dict(exam.header_config or {})
+    arbiter_config = {
+        "enabled": is_enabled,
+        "strip_original_evaluator_identity": strip_evaluator,
+        "mask_original_exam_code": mask_code,
+        "min_arbiter_count": min_arbiters,
+        "auto_trimmed_mean_scoring": trimmed_mean,
+        "arbiter_policy_id": f"VINHPHAT-ARBITER-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["regrade_arbiter_blind_review"] = arbiter_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "regrade_arbiter_blind_review": arbiter_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình chấm mù trọng tài phúc khảo (Tối thiểu: {min_arbiters} trọng tài, Ẩn danh giám khảo 1: {'Bật' if strip_evaluator else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
