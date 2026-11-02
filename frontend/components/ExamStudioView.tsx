@@ -461,10 +461,16 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         const errText = await res.text();
         console.warn("Preview API error, fallback to HTML DOM mode:", errText);
         setPreviewError("Máy chủ TeX đang tải. Hệ thống tự động chuyển sang bản xem trước DOM A4 trực quan.");
+        const duration = Math.round(performance.now() - startTime);
+        const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        setLastCompileStats({ durationMs: duration, timeStr: timeNow });
       }
     } catch (e: any) {
       console.warn("Compile preview exception, fallback to HTML DOM mode:", e);
       setPreviewError("Không thể kết nối máy chủ TeX. Đang hiển thị bản xem trước DOM A4.");
+      const duration = Math.round(performance.now() - startTime);
+      const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setLastCompileStats({ durationMs: duration, timeStr: timeNow });
     } finally {
       setCompiling(false);
     }
@@ -515,10 +521,16 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           if (raw) errDetail = raw;
         }
         alert(errDetail);
+        const duration = Math.round(performance.now() - startTime);
+        const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        setLastCompileStats({ durationMs: duration, timeStr: timeNow });
       }
     } catch (e: any) {
       console.error(e);
       alert(e.message || "Lỗi kết nối biên dịch mã nguồn");
+      const duration = Math.round(performance.now() - startTime);
+      const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setLastCompileStats({ durationMs: duration, timeStr: timeNow });
     } finally {
       setCompiling(false);
     }
