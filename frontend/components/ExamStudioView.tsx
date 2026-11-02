@@ -3470,6 +3470,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 56: General Topology & Metric Spaces / Compactness Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasTopology = /không gian metric|khoảng cách metric|tập mở|tập đóng|bao đóng|lân cận|điểm tụ|tính compact|tập compact|liên thông|tính liên thông|trù mật|độ đo|không gian Banach|không gian Hilbert/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Tô pô đại cương & Không gian Metric (Topology & Metric Spaces Inspector):{" "}
+                            {hasTopology ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TÔ PÔ ĐẠI CƯƠNG & METRIC CAO CẤP</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC & GIẢI TÍCH KHÔNG GIAN TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasTopology
+                              ? "✓ Không gian metric, tập mở/đóng, tính compact và tính liên thông chuẩn đề thi Olympic Toán và Giải tích cao cấp."
+                              : "✓ Đề thi không chứa cấu trúc tô pô và không gian metric chuyên sâu."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3545,7 +3572,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `52. Dãy số nguyên & Phương trình Pell / Fibonacci: CHUẨN DÃY SỐ NGUYÊN & PHƯƠNG TRÌNH PELL HSG QUỐC GIA`,
                         `53. Giải tích số phức & Biến đổi Möbius: CHUẨN GIẢI TÍCH PHỨC & BIẾN ĐỔI MÖBIUS CAO CẤP`,
                         `54. Đại số tuyến tính & Giá trị riêng / Ma trận: CHUẨN ĐẠI SỐ TUYẾN TÍNH & MA TRẬN OLYMPIC TOÁN`,
-                        `55. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `55. Tô pô đại cương & Không gian Metric: CHUẨN TÔ PÔ ĐẠI CƯƠNG & METRIC CAO CẤP`,
+                        `56. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

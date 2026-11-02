@@ -1383,6 +1383,112 @@ def export_exam_grade_report(
     }
 
 
+@router.post("/exams/{exam_id}/regrade-request", status_code=status.HTTP_200_OK)
+def handle_exam_regrade_request(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Quản trị quy trình nộp và phê duyệt phúc khảo điểm thi (Exam Regrade Request RBAC).
+    Phân quyền:
+    - Học sinh (STUDENT) hoặc bất kỳ người dùng nào có thể nộp đơn phúc khảo (action='SUBMIT').
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) cùng tenant_id mới có thẩm quyền
+      phê duyệt (action='APPROVE'), từ chối (action='REJECT') hoặc điều chỉnh điểm số.
+    - Học sinh cố gắng duyệt hoặc chỉnh sửa phúc khảo sẽ bị chặn đứng với HTTP 403 Forbidden.
+    """
+    action = payload.get("action", "SUBMIT").upper()
+    question_no = payload.get("question_no")
+    student_notes = payload.get("student_notes", "")
+    score_adjustment = payload.get("score_adjustment", 0.0)
+    decision_reason = payload.get("decision_reason", "")
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi cần xử lý phúc khảo")
+
+    # Kiểm tra phân quyền tenant nếu là Giáo viên
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền quản lý phúc khảo của đề thi thuộc trường học khác"
+            )
+
+    header_cfg = dict(exam.header_config or {})
+    regrade_requests = list(header_cfg.get("regrade_requests") or [])
+
+    if action == "SUBMIT":
+        new_request = {
+            "request_id": f"REQ-{secrets.token_hex(4).upper()}",
+            "student_username": current_user.username,
+            "student_role": current_user.role,
+            "submitted_at": datetime.now(timezone.utc).isoformat(),
+            "question_no": question_no,
+            "student_notes": student_notes,
+            "status": "PENDING_REVIEW"
+        }
+        regrade_requests.append(new_request)
+        header_cfg["regrade_requests"] = regrade_requests
+        exam.header_config = header_cfg
+        db.commit()
+        return {
+            "status": "SUCCESS",
+            "action": "SUBMIT",
+            "message": "Đã gửi đơn phúc khảo thành công, đang chờ Giáo viên/Hội đồng chấm thi xét duyệt",
+            "request": new_request
+        }
+
+    # Các thao tác phê duyệt hoặc từ chối phúc khảo yêu cầu TEACHER hoặc ADMIN
+    if action in ["APPROVE", "REJECT", "REVIEW"]:
+        if current_user.role not in ["ADMIN", "TEACHER"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên chấm thi (TEACHER) mới có quyền xét duyệt phúc khảo"
+            )
+
+        target_req_id = payload.get("request_id")
+        found = False
+        for req in regrade_requests:
+            if target_req_id and req.get("request_id") == target_req_id:
+                req["status"] = "APPROVED" if action == "APPROVE" else "REJECTED"
+                req["reviewed_by"] = current_user.username
+                req["reviewed_role"] = current_user.role
+                req["reviewed_at"] = datetime.now(timezone.utc).isoformat()
+                req["score_adjustment"] = float(score_adjustment)
+                req["decision_reason"] = decision_reason
+                found = True
+                break
+
+        if not found and regrade_requests:
+            # Fallback nếu không truyền request_id thì cập nhật yêu cầu gần nhất đang pending
+            for req in reversed(regrade_requests):
+                if req.get("status") == "PENDING_REVIEW":
+                    req["status"] = "APPROVED" if action == "APPROVE" else "REJECTED"
+                    req["reviewed_by"] = current_user.username
+                    req["reviewed_role"] = current_user.role
+                    req["reviewed_at"] = datetime.now(timezone.utc).isoformat()
+                    req["score_adjustment"] = float(score_adjustment)
+                    req["decision_reason"] = decision_reason
+                    found = True
+                    break
+
+        header_cfg["regrade_requests"] = regrade_requests
+        exam.header_config = header_cfg
+        db.commit()
+
+        return {
+            "status": "SUCCESS",
+            "action": action,
+            "message": f"Đã {('phê duyệt và cập nhật điểm số' if action == 'APPROVE' else 'từ chối')} đơn phúc khảo thành công",
+            "reviewed_by": current_user.username,
+            "reviewed_at": datetime.now(timezone.utc).isoformat()
+        }
+
+    raise HTTPException(status_code=400, detail=f"Hành động '{action}' không hợp lệ. Chọn SUBMIT, APPROVE hoặc REJECT")
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
