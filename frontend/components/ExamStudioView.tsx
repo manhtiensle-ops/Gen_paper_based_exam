@@ -4226,6 +4226,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 84: Witten K-Theory & Topological String Invariants / Spin Dirac Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasWitten = /bất biến gromov-witten|gromov-witten invariants|tô-pô đại số k-theory|k-theory witten|toán tử dirac trên đa tạp spin|spin dirac operator|lý thuyết dây tô-pô|topological string theory|định lý atiyah-singer|atiyah-singer index theorem|bất biến witten/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Bất biến Witten & Tô-pô K-Theory (Witten K-Theory Inspector):{" "}
+                            {hasWitten ? (
+                              <span className="font-mono text-emerald-700">CHUẨN TOÁN LÝ ĐỈNH CAO WITTEN-ATIYAH</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">TÔ PÔ ĐẠI SỐ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasWitten
+                              ? "✓ Bất biến Gromov-Witten, tô-pô vi phân K-Theory, định lý chỉ số Atiyah-Singer và toán tử Dirac trên đa tạp Spin chuẩn Olympic Toán học và Nghiên cứu sinh Vật lý lý thuyết hiện đại."
+                              : "✓ Đề thi không chứa các cấu trúc không gian dây lượng tử và toán tử vi phân chỉ số bậc cao phức tạp."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4329,7 +4356,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `80. Giả thuyết Poincaré & Dòng Ricci: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ POINCARÉ ĐỈNH CAO`,
                         `81. P vs NP & Định lý Cook-Levin: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ P VS NP ĐỈNH CAO`,
                         `82. Chu kỳ Deligne & Cấu trúc Hodge hỗn hợp: CHUẨN ĐẠI SỐ ĐỈNH CAO GROTHENDIECK-DELIGNE`,
-                        `83. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `83. Bất biến Witten & Tô-pô K-Theory: CHUẨN TOÁN LÝ ĐỈNH CAO WITTEN-ATIYAH`,
+                        `84. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

@@ -3224,6 +3224,72 @@ def configure_exam_regrade_arbiter_blind_review(
     }
 
 
+@router.post("/exams/{exam_id}/dynamic-qr-rubric", status_code=status.HTTP_200_OK)
+def configure_exam_dynamic_qr_rubric(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách Hàng rào số hóa đề thi qua mã QR mã hóa động (Dynamic Encrypted Rubric QR RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Trưởng Ban Khảo thí / Cán bộ Chấm thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt mã QR động bảo mật (enabled),
+      thiết lập chu kỳ làm mới khóa mã hóa OTP QR (refresh_interval_seconds: e.g. 15 - 120s),
+      ấn định thuật toán mã hóa khóa công khai (encryption_algorithm: e.g. AES_GCM_256, RSA_4096),
+      yêu cầu định danh ứng dụng chấm thi độc quyền (require_certified_scanner_app),
+      và cấm chụp ảnh màn hình hoặc photo đề thi để giải mã trái phép (auto_invalidate_on_replay).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Trưởng Ban Khảo thí (TEACHER) mới có quyền cấu hình mã QR động bảo mật"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình mã QR động")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình mã QR động cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    refresh_seconds = int(payload.get("refresh_interval_seconds", 30))
+    algorithm = str(payload.get("encryption_algorithm", "AES_GCM_256"))
+    require_app = bool(payload.get("require_certified_scanner_app", True))
+    anti_replay = bool(payload.get("auto_invalidate_on_replay", True))
+
+    header_cfg = dict(exam.header_config or {})
+    dynamic_qr_config = {
+        "enabled": is_enabled,
+        "refresh_interval_seconds": refresh_seconds,
+        "encryption_algorithm": algorithm,
+        "require_certified_scanner_app": require_app,
+        "auto_invalidate_on_replay": anti_replay,
+        "dynamic_qr_policy_id": f"VINHPHAT-DYNQR-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["dynamic_qr_rubric"] = dynamic_qr_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "dynamic_qr_rubric": dynamic_qr_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình mã QR động bảo mật (Chu kỳ: {refresh_seconds}s, Thuật toán: {algorithm}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
