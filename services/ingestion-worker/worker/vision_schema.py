@@ -63,7 +63,6 @@ class LLMFigureBox(BaseModel):
     placement_target: FigurePlacementEnum
     position: FigurePositionEnum
     caption: str = Field(description="Brief Vietnamese description of the figure")
-    svg_data: Optional[str] = Field(None, description="Optional standalone SVG vector markup representing the mathematical diagram")
 
 class LLMSubQuestion(BaseModel):
     part_id: str = Field(description="Sub-part key: 'a', 'b', 'c'")

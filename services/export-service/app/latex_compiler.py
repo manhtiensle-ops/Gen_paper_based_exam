@@ -29,22 +29,6 @@ def sanitize_latex(text: str) -> str:
     text = text.replace("“", "``").replace("”", "''").replace("‘", "`").replace("’", "'")
     return text
 
-def escape_latex_text(text: Any) -> str:
-    if not text:
-        return ""
-    text = str(text)
-    replacements = [
-        ("&", r"\&"),
-        ("%", r"\%"),
-        ("$", r"\$"),
-        ("#", r"\#"),
-        ("_", r"\_"),
-    ]
-    for old, new in replacements:
-        pattern = f"(?<!\\\\){re.escape(old)}"
-        text = re.sub(pattern, new, text)
-    return text
-
 def build_latex_exam_source(exam_data: Dict[str, Any], layout_knobs: Optional[Dict[str, Any]] = None, mode: str = "EXAM") -> str:
     """
     Builds production-grade Vietnamese Math Exam LaTeX document with Times New Roman font (mathptmx)
@@ -61,12 +45,12 @@ def build_latex_exam_source(exam_data: Dict[str, Any], layout_knobs: Optional[Di
     math_skip = knobs.get("math_skip_pt", 6)
 
     header = exam_data.get("header_config") or {}
-    governing_body = escape_latex_text(header.get("governing_body", "SỞ GIÁO DỤC VÀ ĐÀO TẠO"))
-    school_name = escape_latex_text(header.get("department_or_school", "TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN"))
-    exam_name = escape_latex_text(header.get("exam_name", exam_data.get("title", "KỲ THI CHỌN HỌC SINH GIỎI TOÁN LỚP 9")))
-    school_year = escape_latex_text(header.get("academic_year", "NĂM HỌC 2026 - 2027"))
-    subject_title = escape_latex_text(header.get("subject_title", "TOÁN 9"))
-    exam_code = escape_latex_text(header.get("exam_code", "ĐỀ CHÍNH THỨC"))
+    governing_body = header.get("governing_body", "SỞ GIÁO DỤC VÀ ĐÀO TẠO")
+    school_name = header.get("department_or_school", "TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN")
+    exam_name = header.get("exam_name", exam_data.get("title", "KỲ THI CHỌN HỌC SINH GIỎI TOÁN LỚP 9"))
+    school_year = header.get("academic_year", "NĂM HỌC 2026 - 2027")
+    subject_title = header.get("subject_title", "TOÁN 9")
+    exam_code = header.get("exam_code", "ĐỀ CHÍNH THỨC")
     duration = header.get("duration_minutes", 150)
     show_sbd = header.get("show_sbd_box", True)
 
@@ -273,13 +257,13 @@ def compile_exam_latex(exam_data: Dict[str, Any], layout_knobs: Optional[Dict[st
                     except Exception as e:
                         print(f"[Warning] Failed to fetch figure {fig_key}: {e}")
 
-        # Run pdflatex 2 passes to resolve \pageref{LastPage} (with -no-shell-escape for security)
-        cmd = ["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "-halt-on-error", "exam.tex"]
+        # Run pdflatex 2 passes to resolve \pageref{LastPage}
+        cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "exam.tex"]
         res1 = subprocess.run(cmd, cwd=td, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if res1.returncode != 0:
             print("[LaTeX Error]:", res1.stdout[-600:])
             # Fallback compile without halt-on-error
-            res1 = subprocess.run(["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "exam.tex"], cwd=td, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            res1 = subprocess.run(["pdflatex", "-interaction=nonstopmode", "exam.tex"], cwd=td, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         # Pass 2 for references
         subprocess.run(cmd, cwd=td, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)

@@ -22,22 +22,6 @@ def get_minio_client() -> Minio:
         client.make_bucket(bucket_name)
     return client
 
-def escape_latex_text(text: Any) -> str:
-    if not text:
-        return ""
-    text = str(text)
-    replacements = [
-        ("&", r"\&"),
-        ("%", r"\%"),
-        ("$", r"\$"),
-        ("#", r"\#"),
-        ("_", r"\_"),
-    ]
-    for old, new in replacements:
-        pattern = f"(?<!\\\\){re.escape(old)}"
-        text = re.sub(pattern, new, text)
-    return text
-
 
 def generate_latex_source(
     exam_id: str,
@@ -58,13 +42,13 @@ def generate_latex_source(
     item_gap = layout_knobs.get("item_gap_pt", 10)
     math_skip = layout_knobs.get("math_skip_pt", 6)
 
-    # Header vars (auto-escaped for TeX formatting)
-    gov_body = escape_latex_text(header_config.get("governing_body", "SỞ GIÁO DỤC VÀ ĐÀO TẠO"))
-    school = escape_latex_text(header_config.get("department_or_school", "TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN"))
-    exam_name = escape_latex_text(header_config.get("exam_name", title or "KỲ THI CHỌN HỌC SINH GIỎI LỚP 9"))
-    acad_year = escape_latex_text(header_config.get("academic_year", "Năm học: 2026 - 2027"))
-    subj = escape_latex_text(header_config.get("subject_title", "Môn thi: TOÁN 9"))
-    code = escape_latex_text(header_config.get("exam_code", "ĐỀ CHÍNH THỨC"))
+    # Header vars
+    gov_body = header_config.get("governing_body", "SỞ GIÁO DỤC VÀ ĐÀO TẠO")
+    school = header_config.get("department_or_school", "TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN")
+    exam_name = header_config.get("exam_name", title or "KỲ THI CHỌN HỌC SINH GIỎI LỚP 9")
+    acad_year = header_config.get("academic_year", "Năm học: 2026 - 2027")
+    subj = header_config.get("subject_title", "Môn thi: TOÁN 9")
+    code = header_config.get("exam_code", "ĐỀ CHÍNH THỨC")
     duration = header_config.get("duration_minutes", 150)
     show_sbd = header_config.get("show_sbd_box", True)
 
@@ -81,16 +65,11 @@ def generate_latex_source(
     tex.append("\\usepackage{graphicx}")
     tex.append("\\usepackage{array,longtable,tabularx}")
     tex.append("\\usepackage{fancyhdr}")
-    tex.append("\\usepackage{lastpage}")
     tex.append("\\usepackage{calc}")
 
     # Geometry & Layout knobs
     tex.append(f"\\geometry{{a4paper, top={m_top}cm, bottom={m_bottom}cm, left={m_left}cm, right={m_right}cm}}")
     tex.append(f"\\linespread{{{line_spread}}}\\selectfont")
-    tex.append("\\pagestyle{fancy}")
-    tex.append("\\fancyhf{}")
-    tex.append(f"\\cfoot{{\\fontsize{{9pt}}{{11pt}}\\selectfont Trang \\thepage\\ / \\pageref{{LastPage}}}}")
-    tex.append("\\renewcommand{\\headrulewidth}{0pt}")
     tex.append("\\setlength{\\parindent}{0pt}")
     tex.append("\\setlength{\\parskip}{3pt plus 1pt minus 1pt}")
     tex.append(f"\\setlength{{\\abovedisplayskip}}{{{math_skip}pt plus 2pt minus 2pt}}")
@@ -104,15 +83,6 @@ def generate_latex_source(
     # Common Vietnamese Math Macros
     tex.append("\\newcommand{\\heva}[1]{\\left\\{\\begin{aligned}#1\\end{aligned}\\right.}")
     tex.append("\\newcommand{\\hoac}[1]{\\left[\\begin{aligned}#1\\end{aligned}\\right.}")
-    tex.append("\\newcommand{\\vect}[1]{\\overrightarrow{#1}}")
-    tex.append("\\newcommand{\\dx}{\\,\\mathrm{d}x}")
-    tex.append("\\newcommand{\\dy}{\\,\\mathrm{d}y}")
-    tex.append("\\newcommand{\\dt}{\\,\\mathrm{d}t}")
-    tex.append("\\newcommand{\\C}{\\mathbb{C}}")
-    tex.append("\\newcommand{\\R}{\\mathbb{R}}")
-    tex.append("\\newcommand{\\Z}{\\mathbb{Z}}")
-    tex.append("\\newcommand{\\N}{\\mathbb{N}}")
-    tex.append("\\newcommand{\\parallelslant}{\\mathbin{/\\!/}}")
 
     tex.append("\\begin{document}")
 
@@ -290,8 +260,8 @@ def compile_latex_to_preview(
         with open(tex_file, "w", encoding="utf-8") as f:
             f.write(tex_source)
 
-        # Chạy pdflatex (non-stop, no shell escape for security)
-        cmd = ["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "document.tex"]
+        # Chạy pdflatex (non-stop)
+        cmd = ["pdflatex", "-interaction=nonstopmode", "document.tex"]
         run_res = subprocess.run(cmd, cwd=temp_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace", timeout=30)
 
         pdf_file = os.path.join(temp_dir, "document.pdf")
@@ -353,7 +323,7 @@ def compile_raw_latex_to_preview(
         with open(tex_file, "w", encoding="utf-8") as f:
             f.write(latex_source)
 
-        cmd = ["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "document.tex"]
+        cmd = ["pdflatex", "-interaction=nonstopmode", "document.tex"]
         run_res = subprocess.run(cmd, cwd=temp_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
 
         pdf_file = os.path.join(temp_dir, "document.pdf")

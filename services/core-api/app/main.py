@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import os
@@ -11,31 +11,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
-allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
-allowed_origins = [
-    origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()
-] if allowed_origins_env else [
-    "https://dethi.ttgdvinhphat.com",
-    "http://localhost:3000",
-    "http://localhost:8000",
-    "http://127.0.0.1:3000"
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    return response
 
 app.include_router(exams_router)
 app.include_router(questions_router)

@@ -12,7 +12,6 @@ engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def update_exam_status(exam_id: str, status: str, page_images: list[str] = None, log_entry: str = None):
-    import json
     with engine.begin() as conn:
         if page_images is not None:
             conn.execute(
@@ -21,7 +20,7 @@ def update_exam_status(exam_id: str, status: str, page_images: list[str] = None,
                     SET status = :status, page_image_keys = CAST(:page_images AS jsonb), updated_at = CURRENT_TIMESTAMP
                     WHERE id = :exam_id
                 """),
-                {"status": status, "page_images": json.dumps(page_images), "exam_id": exam_id}
+                {"status": status, "page_images": str(page_images).replace("'", '"'), "exam_id": exam_id}
             )
         else:
             conn.execute(
@@ -62,23 +61,10 @@ def insert_extracted_question(
     solution_methods: list,
     difficulty: str,
     semantic_summary: str,
-    embedding: list,
-    is_verified: bool = False,
-    tenant_id: str = "default_school",
-    user_id: str = "",
-    scope: str = "PRIVATE",
-    is_public: bool = False
+    embedding: list
 ):
     import json
     with engine.begin() as conn:
-        # DB-level deduplication check
-        existing = conn.execute(
-            text("SELECT id FROM questions WHERE normalized_hash = :hash LIMIT 1"),
-            {"hash": normalized_hash}
-        ).fetchone()
-        if existing:
-            return str(existing[0])
-
         conn.execute(
             text("""
                 INSERT INTO questions (
@@ -86,13 +72,13 @@ def insert_extracted_question(
                     default_points, content_latex, normalized_hash, sub_questions,
                     solution_latex, final_answer, has_figure, figures_meta, grade,
                     main_topic, sub_topics, solution_methods, difficulty,
-                    semantic_summary, embedding, is_verified, tenant_id, user_id, scope, is_public
+                    semantic_summary, embedding, is_verified, scope, is_public
                 ) VALUES (
                     :source_exam_id, :original_question_number, :section_type, :structure_type,
                     :default_points, :content_latex, :normalized_hash, CAST(:sub_questions AS jsonb),
                     :solution_latex, :final_answer, :has_figure, CAST(:figures_meta AS jsonb), :grade,
                     :main_topic, CAST(:sub_topics AS jsonb), CAST(:solution_methods AS jsonb), :difficulty,
-                    :semantic_summary, CAST(:embedding AS vector), :is_verified, :tenant_id, :user_id, :scope, :is_public
+                    :semantic_summary, CAST(:embedding AS vector), FALSE, 'PRIVATE', FALSE
                 )
             """),
             {
@@ -114,11 +100,6 @@ def insert_extracted_question(
                 "solution_methods": json.dumps(solution_methods),
                 "difficulty": difficulty,
                 "semantic_summary": semantic_summary,
-                "embedding": str(embedding),
-                "is_verified": is_verified,
-                "tenant_id": tenant_id,
-                "user_id": user_id if user_id else None,
-                "scope": scope,
-                "is_public": is_public
+                "embedding": str(embedding)
             }
         )

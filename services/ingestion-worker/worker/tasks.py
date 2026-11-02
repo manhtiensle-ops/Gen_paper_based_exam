@@ -184,8 +184,7 @@ def process_exam_document(self, source_exam_id: str, original_file_key: str):
                                 "placement_target": fig.placement_target.value if hasattr(fig.placement_target, "value") else str(fig.placement_target),
                                 "position": fig.position.value if hasattr(fig.position, "value") else str(fig.position),
                                 "caption": fig.caption,
-                                "box_2d": fig.box_2d,
-                                "svg_data": getattr(fig, "svg_data", None)
+                                "box_2d": fig.box_2d
                             })
 
                     main_topic_val = q.main_topic.value if hasattr(q.main_topic, "value") else str(q.main_topic)

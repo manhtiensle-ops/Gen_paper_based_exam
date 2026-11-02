@@ -12,17 +12,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from sqlalchemy.orm import Session
 from openai import OpenAI
 
-from sqlalchemy import or_, and_, cast, String
+from sqlalchemy import or_, and_
 from ..database import get_db
 from ..models import Question, User
-from ..services.quota_service import (
-    require_authenticated_user,
-    get_current_user_optional,
-    consume_ai_quota,
-    require_role,
-    require_teacher_or_admin,
-    require_admin,
-)
+from ..services.quota_service import require_authenticated_user, get_current_user_optional, consume_ai_quota
 from ..schemas import (
     QuestionResponse,
     PaginatedQuestionsResponse,
@@ -69,7 +62,6 @@ def get_questions_availability_stats(
 
 @router.get("", response_model=PaginatedQuestionsResponse)
 def list_questions(
-    search: Optional[str] = Query(None),
     grade: Optional[int] = Query(None),
     section_type: Optional[str] = Query(None),
     main_topic: Optional[str] = Query(None),
@@ -81,75 +73,59 @@ def list_questions(
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    try:
-        query = db.query(Question)
+    query = db.query(Question)
 
-        # Tìm kiếm theo từ khóa nội dung đề, lời giải hoặc chủ đề
-        if search and search.strip():
-            search_term = f"%{search.strip()}%"
+    # Lọc theo Scope (Cá nhân, Đơn vị, Mẫu chuẩn Vinh Phát)
+    if not current_user:
+        # Khách vãng lai chỉ xem được câu hỏi Mẫu chuẩn công khai
+        query = query.filter(Question.is_public == True)
+    else:
+        scope_upper = scope.upper()
+        if scope_upper == "MINE":
+            # Chỉ câu hỏi do chính tài khoản này tạo / số hóa
+            query = query.filter(Question.user_id == current_user.id)
+        elif scope_upper == "TENANT":
+            # Câu hỏi thuộc đơn vị / trường học của giáo viên
+            query = query.filter(
+                Question.tenant_id == current_user.tenant_id,
+                Question.scope.in_(["TENANT", "PUBLIC"])
+            )
+        elif scope_upper == "SYSTEM":
+            # Kho chuẩn Vinh Phát
+            query = query.filter(Question.is_public == True, Question.user_id.is_(None))
+        else: # "ALL"
+            # Kết hợp: Của tôi + Của đơn vị + Kho chuẩn hệ thống
             query = query.filter(
                 or_(
-                    Question.content_latex.ilike(search_term),
-                    Question.solution_latex.ilike(search_term),
-                    cast(Question.main_topic, String).ilike(search_term)
+                    Question.user_id == current_user.id,
+                    and_(Question.tenant_id == current_user.tenant_id, Question.scope == "TENANT"),
+                    Question.is_public == True
                 )
             )
 
-        # Lọc theo Scope (Cá nhân, Đơn vị, Mẫu chuẩn Vinh Phát)
-        if not current_user:
-            # Khách vãng lai chỉ xem được câu hỏi Mẫu chuẩn công khai
-            query = query.filter(Question.is_public == True)
-        else:
-            scope_upper = scope.upper()
-            if scope_upper == "MINE":
-                # Chỉ câu hỏi do chính tài khoản này tạo / số hóa
-                query = query.filter(Question.user_id == current_user.id)
-            elif scope_upper == "TENANT":
-                # Câu hỏi thuộc đơn vị / trường học của giáo viên
-                query = query.filter(
-                    Question.tenant_id == current_user.tenant_id,
-                    Question.scope.in_(["TENANT", "PUBLIC"])
-                )
-            elif scope_upper == "SYSTEM":
-                # Kho chuẩn Vinh Phát
-                query = query.filter(Question.is_public == True, Question.user_id.is_(None))
-            else: # "ALL"
-                # Kết hợp: Của tôi + Của đơn vị + Kho chuẩn hệ thống
-                query = query.filter(
-                    or_(
-                        Question.user_id == current_user.id,
-                        and_(Question.tenant_id == current_user.tenant_id, Question.scope == "TENANT"),
-                        Question.is_public == True
-                    )
-                )
+    if grade is not None:
+        query = query.filter(Question.grade == grade)
+    if section_type:
+        query = query.filter(Question.section_type == section_type)
+    if main_topic:
+        query = query.filter(Question.main_topic == main_topic)
+    if difficulty:
+        query = query.filter(Question.difficulty == difficulty)
+    if is_verified is not None:
+        query = query.filter(Question.is_verified == is_verified)
 
-        if grade is not None:
-            query = query.filter(Question.grade == grade)
-        if section_type:
-            query = query.filter(Question.section_type == section_type)
-        if main_topic:
-            query = query.filter(Question.main_topic == main_topic)
-        if difficulty:
-            query = query.filter(Question.difficulty == difficulty)
-        if is_verified is not None:
-            query = query.filter(Question.is_verified == is_verified)
+    total = query.count()
+    offset = (page - 1) * page_size
+    items = query.order_by(Question.created_at.desc()).offset(offset).limit(page_size).all()
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
 
-        total = query.count()
-        offset = (page - 1) * page_size
-        items = query.order_by(Question.created_at.desc()).offset(offset).limit(page_size).all()
-        total_pages = (total + page_size - 1) // page_size if total > 0 else 1
-
-        return {
-            "items": items,
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-            "total_pages": total_pages
-        }
-    except Exception as e:
-        import logging, traceback
-        logging.error(f"Error in list_questions: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"ERR: {type(e).__name__}: {str(e)}")
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages
+    }
 
 @router.get("/{question_id}", response_model=QuestionResponse)
 def get_question(question_id: UUID, db: Session = Depends(get_db)):
@@ -332,26 +308,11 @@ def revert_question_content(question_id: UUID, db: Session = Depends(get_db)):
 def toggle_verify_question(
     question_id: UUID,
     payload: QuestionVerifyToggle,
-    current_user: User = Depends(require_teacher_or_admin),
     db: Session = Depends(get_db)
 ):
-    """
-    Kiểm duyệt / Xác thực câu hỏi.
-    - Cấp độ Vận dụng cao (VDC - Level 4): Yêu cầu vai trò ADMIN hoặc TEACHER thâm niên / tổ trưởng.
-    - Các cấp độ khác (NB, TH, VD): Mở cho toàn thể TEACHER, PRO, ADMIN.
-    """
     q = db.query(Question).filter(Question.id == question_id).first()
     if not q:
         raise HTTPException(status_code=404, detail="Question not found")
-
-    # Kiểm tra phân quyền chuyên môn sâu: Câu hỏi VDC (difficulty == 4 hoặc contains 'VDC')
-    is_vdc = q.difficulty == 4 or (q.topic and "VDC" in q.topic.upper())
-    if is_vdc and current_user.role not in ["ADMIN", "TEACHER"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Câu hỏi Vận dụng cao (VDC) yêu cầu Quản trị viên hoặc Giáo viên chuyên môn thẩm định"
-        )
-
     q.is_verified = payload.is_verified
     db.commit()
     db.refresh(q)
@@ -402,77 +363,4 @@ def clone_question_to_my_vault(
     db.commit()
     db.refresh(cloned)
     return cloned
-
-@router.delete("/{question_id}")
-def delete_question(
-    question_id: UUID,
-    current_user: User = Depends(require_authenticated_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Xóa vĩnh viễn câu hỏi khỏi hệ thống.
-    Chỉ tác giả sở hữu hoặc Quản trị viên/Giáo viên mới có quyền thực hiện.
-    """
-    q = db.query(Question).filter(Question.id == question_id).first()
-    if not q:
-        raise HTTPException(status_code=404, detail="Question not found")
-        
-    if current_user.role not in ["ADMIN", "TEACHER"] and q.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this question")
-        
-    db.delete(q)
-    db.commit()
-    return {"status": "success", "message": f"Question {question_id} deleted successfully"}
-
-
-@router.post("/batch-import", status_code=status.HTTP_201_CREATED)
-def bulk_import_questions(
-    payload: dict,
-    current_user: User = Depends(require_authenticated_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Nhập danh sách câu hỏi hàng loạt vào Ngân hàng Khảo thí.
-    Ràng buộc phân quyền: Chỉ ADMIN hoặc TEACHER của đơn vị mới có quyền nạp dữ liệu hàng loạt.
-    """
-    if current_user.role not in ["ADMIN", "TEACHER"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Chỉ Giáo viên (TEACHER) hoặc Quản trị viên (ADMIN) mới có quyền nhập câu hỏi hàng loạt"
-        )
-
-    questions_data = payload.get("questions", [])
-    if not isinstance(questions_data, list) or len(questions_data) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Danh sách câu hỏi 'questions' không được để trống"
-        )
-
-    imported_ids = []
-    for item in questions_data:
-        content_latex = item.get("content_latex", "").strip()
-        if not content_latex:
-            continue
-        new_q = Question(
-            id=uuid.uuid4(),
-            user_id=current_user.id,
-            tenant_id=current_user.tenant_id,
-            topic=item.get("topic", "TOAN_THPT"),
-            difficulty=item.get("difficulty", 2),
-            content_latex=content_latex,
-            solution_latex=item.get("solution_latex"),
-            options=item.get("options"),
-            correct_answer=item.get("correct_answer"),
-            is_verified=(current_user.role == "ADMIN"),
-            created_at=datetime.now(timezone.utc)
-        )
-        db.add(new_q)
-        imported_ids.append(str(new_q.id))
-
-    db.commit()
-    return {
-        "status": "success",
-        "imported_count": len(imported_ids),
-        "question_ids": imported_ids,
-        "message": f"Đã nhập thành công {len(imported_ids)} câu hỏi vào ngân hàng khảo thí"
-    }
+    return None

@@ -13,7 +13,6 @@ from ..services.quota_service import (
     require_authenticated_user,
     get_user_ai_quota_info,
     consume_ai_quota,
-    require_admin,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication & Multi-tenancy"])
@@ -33,10 +32,6 @@ class UserProfileResponse(BaseModel):
 
 class SwitchTenantRequest(BaseModel):
     tenant_id: str
-
-class UserRoleUpdateRequest(BaseModel):
-    user_id: str
-    role: str
 
 @router.get("/me", response_model=UserProfileResponse)
 def get_current_user_profile(
@@ -127,40 +122,6 @@ def switch_tenant(
     user.tenant_id = payload.tenant_id
     db.commit()
     return {"status": "SUCCESS", "current_tenant": user.tenant_id}
-
-@router.put("/users/role")
-def update_user_role_by_admin(
-    payload: UserRoleUpdateRequest,
-    current_admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
-):
-    """API đặc quyền dành cho ADMIN: Phân quyền vai trò cho giáo viên hoặc người dùng."""
-    target_role = payload.role.strip().upper()
-    valid_roles = ["ADMIN", "TEACHER", "PRO", "VIP", "NORMAL"]
-    if target_role not in valid_roles:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Vai trò không hợp lệ. Danh sách hợp lệ: {', '.join(valid_roles)}"
-        )
-
-    user = db.query(User).filter(User.id == payload.user_id).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy người dùng chỉ định")
-
-    user.role = target_role
-    db.commit()
-    db.refresh(user)
-
-    return {
-        "status": "SUCCESS",
-        "message": f"Đã cập nhật vai trò người dùng {user.email} thành công",
-        "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "role": user.role,
-            "full_name": user.full_name
-        }
-    }
 
 @router.get("/google-login")
 def redirect_to_google_oauth():

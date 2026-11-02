@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import MathRenderer from "@/components/MathRenderer";
-import MathSymbolToolbar from "@/components/MathSymbolToolbar";
 import {
   X,
   Save,
@@ -47,10 +46,6 @@ export default function QuestionEditModal({
   const [subQuestions, setSubQuestions] = useState<any[]>(
     Array.isArray(question.sub_questions) ? [...question.sub_questions] : []
   );
-
-  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const solutionTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const [activeTarget, setActiveTarget] = useState<"content" | "solution">("content");
 
   // OCR state
   const [solutionFile, setSolutionFile] = useState<File | null>(null);
@@ -116,35 +111,6 @@ export default function QuestionEditModal({
 
   const handleRemoveSubQuestion = (idx: number) => {
     setSubQuestions(subQuestions.filter((_, i) => i !== idx));
-  };
-
-  const handleInsertSymbol = (snippet: string) => {
-    const isSolution = activeTarget === "solution";
-    const ref = isSolution ? solutionTextareaRef.current : contentTextareaRef.current;
-    const currentVal = isSolution ? solutionLatex : contentLatex;
-    const setVal = isSolution ? setSolutionLatex : setContentLatex;
-
-    if (ref) {
-      const start = ref.selectionStart ?? currentVal.length;
-      const end = ref.selectionEnd ?? currentVal.length;
-      const selected = currentVal.substring(start, end);
-
-      let inserted = snippet;
-      if (selected && snippet.includes("{x}")) {
-        inserted = snippet.replace("{x}", `{${selected}}`);
-      }
-
-      const nextVal = currentVal.substring(0, start) + inserted + currentVal.substring(end);
-      setVal(nextVal);
-
-      setTimeout(() => {
-        ref.focus();
-        const newCursor = start + inserted.length;
-        ref.setSelectionRange(newCursor, newCursor);
-      }, 20);
-    } else {
-      setVal((prev: string) => (prev ? `${prev} ${snippet}` : snippet));
-    }
   };
 
   // Save changes
@@ -376,18 +342,9 @@ export default function QuestionEditModal({
                       </span>
                     )}
                   </div>
-                  <MathSymbolToolbar 
-                    onInsert={(snip) => {
-                      setActiveTarget("content");
-                      handleInsertSymbol(snip);
-                    }} 
-                    className="mb-2" 
-                  />
                   <textarea
-                    ref={contentTextareaRef}
                     rows={4}
                     value={contentLatex}
-                    onFocus={() => setActiveTarget("content")}
                     onChange={(e) => setContentLatex(e.target.value)}
                     className="w-full text-xs font-mono p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed bg-slate-50/30"
                     placeholder="Nhập nội dung đề bài (đặt công thức trong $...$ hoặc $$...$$)"
@@ -461,18 +418,9 @@ export default function QuestionEditModal({
                     <label className="block text-xs font-bold text-slate-800 mb-1">
                       Lời giải chi tiết (LaTeX)
                     </label>
-                    <MathSymbolToolbar 
-                      onInsert={(snip) => {
-                        setActiveTarget("solution");
-                        handleInsertSymbol(snip);
-                      }} 
-                      className="mb-2" 
-                    />
                     <textarea
-                      ref={solutionTextareaRef}
                       rows={4}
                       value={solutionLatex}
-                      onFocus={() => setActiveTarget("solution")}
                       onChange={(e) => setSolutionLatex(e.target.value)}
                       className="w-full text-xs font-mono p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed bg-slate-50/30"
                       placeholder="Nhập các bước chứng minh và giải chi tiết..."

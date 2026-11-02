@@ -5,7 +5,6 @@ import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
 import ExamStudioView from "@/components/ExamStudioView";
 import BlueprintBuilderModal from "@/components/BlueprintBuilderModal";
-import ExamMatrixHeatmap from "@/components/ExamMatrixHeatmap";
 import CreativeEmptyState from "@/components/CreativeEmptyState";
 import ExamWorkspaceRail from "@/components/ExamWorkspaceRail";
 import {
@@ -24,7 +23,6 @@ import {
   BookOpen,
   Shuffle,
   ShieldCheck,
-  Trash2,
   ChevronRight,
   Eye,
   AlertCircle,
@@ -66,17 +64,7 @@ export default function Dashboard() {
   const [filterTopic, setFilterTopic] = useState("");
   const [filterDifficulty, setFilterDifficulty] = useState("");
   const [filterSection, setFilterSection] = useState("");
-  const [filterVerified, setFilterVerified] = useState("");
   const [filterScope, setFilterScope] = useState<"ALL" | "MINE" | "TENANT" | "SYSTEM">("ALL");
-  const [filterSearch, setFilterSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  // Review Queue State (Phê duyệt và chuẩn hóa câu hỏi Ingest)
-  const [reviewQuestions, setReviewQuestions] = useState<any[]>([]);
-  const [loadingReview, setLoadingReview] = useState<boolean>(false);
-  const [pendingReviewCount, setPendingReviewCount] = useState<number>(0);
-  const [reviewStatusFilter, setReviewStatusFilter] = useState<"pending" | "approved" | "all">("pending");
-  const [approvingAll, setApprovingAll] = useState(false);
 
   // Source Exams State
   const [sourceExams, setSourceExams] = useState<any[]>([]);
@@ -97,18 +85,13 @@ export default function Dashboard() {
   const [blueprintModalOpen, setBlueprintModalOpen] = useState(false);
   const [examTitle, setExamTitle] = useState("Đề thi chọn HSG Toán 9 - Đề số 01");
   const [generating, setGenerating] = useState(false);
-  const [exporting, setExporting] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<"docx" | "pdf" | null>(null);
 
   // Handle tab navigation with URL Query string & Session persistence
   const handleTabChange = (tab: "generator" | "questions" | "ingestion" | "review" | "studio") => {
     setActiveTab(tab);
     const examId = generatedExam?.id;
     saveWorkspaceSession(tab, examId, generatedExam);
-
-    if (examId && (tab === "generator" || tab === "studio")) {
-      // Làm mới dữ liệu từ server để đồng bộ 2 chiều Generator <-> Exam Studio
-      fetchExamById(examId, tab);
-    }
 
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -205,23 +188,6 @@ export default function Dashboard() {
     REAL_WORLD_MATH: "Toán thực tế",
   };
 
-  // Ánh xạ cấp độ tư duy / độ khó chuẩn sư phạm Việt Nam
-  const DIFFICULTY_VI_MAP: Record<string, string> = {
-    EASY: "Nhận biết (Dễ)",
-    MEDIUM: "Thông hiểu - Vận dụng",
-    HARD: "Vận dụng cao",
-    OLYMPIAD: "HSG / Chuyên sâu",
-  };
-
-  // Ánh xạ trạng thái xử lý đề thi nguồn (Source Exam Status)
-  const STATUS_VI_MAP: Record<string, { label: string; badge: string }> = {
-    REVIEW_NEEDED: { label: "Chờ kiểm duyệt", badge: "bg-amber-50 text-amber-700 border border-amber-200" },
-    PUBLISHED: { label: "Đã hoàn thành", badge: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
-    PROCESSING: { label: "Đang nhận diện", badge: "bg-blue-50 text-blue-700 border border-blue-200 animate-pulse" },
-    EXTRACTING: { label: "Đang bóc tách", badge: "bg-purple-50 text-purple-700 border border-purple-200 animate-pulse" },
-    FAILED: { label: "Lỗi xử lý", badge: "bg-rose-50 text-rose-700 border border-rose-200" },
-  };
-
   // Helper trả về style màu Pastel theo chuyên đề Toán THCS
   const getTopicBadgeStyle = (topic: string) => {
     switch (topic) {
@@ -291,26 +257,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleQuickTopicChange = async (questionId: string, newTopic: string) => {
-    try {
-      const res = await fetch(`/api/questions/${questionId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ main_topic: newTopic }),
-      });
-      if (res.ok) {
-        setQuestions((prev) =>
-          prev.map((q) => (q.id === questionId ? { ...q, main_topic: newTopic } : q))
-        );
-        setReviewQuestions((prev) =>
-          prev.map((q) => (q.id === questionId ? { ...q, main_topic: newTopic } : q))
-        );
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   // Fetch Questions with Pagination & Scope support
   const fetchQuestions = async (pageOverride?: number, scopeOverride?: string) => {
     setLoadingQuestions(true);
@@ -318,11 +264,9 @@ export default function Dashboard() {
       const pageToFetch = pageOverride !== undefined ? pageOverride : currentPage;
       const effectiveScope = scopeOverride !== undefined ? scopeOverride : filterScope;
       const params = new URLSearchParams();
-      if (debouncedSearch && debouncedSearch.trim()) params.append("search", debouncedSearch.trim());
       if (filterTopic) params.append("main_topic", filterTopic);
       if (filterDifficulty) params.append("difficulty", filterDifficulty);
       if (filterSection) params.append("section_type", filterSection);
-      if (filterVerified !== "") params.append("is_verified", filterVerified);
       if (effectiveScope) params.append("scope", effectiveScope);
       params.append("page", pageToFetch.toString());
       params.append("page_size", pageSize.toString());
@@ -346,50 +290,6 @@ export default function Dashboard() {
       console.error(e);
     } finally {
       setLoadingQuestions(false);
-    }
-  };
-
-  // Fetch pending review count for badge
-  const fetchPendingCount = async () => {
-    try {
-      const res = await fetch("/api/questions?is_verified=false&page_size=1");
-      if (res.ok) {
-        const data = await res.json();
-        setPendingReviewCount(data.total ?? 0);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Fetch Review Queue Questions with Filter (Pending / Approved / All)
-  const fetchReviewQuestions = async () => {
-    setLoadingReview(true);
-    try {
-      const params = new URLSearchParams();
-      if (reviewStatusFilter === "pending") params.append("is_verified", "false");
-      else if (reviewStatusFilter === "approved") params.append("is_verified", "true");
-      params.append("page_size", "50");
-
-      const res = await fetch(`/api/questions?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && Array.isArray(data.items)) {
-          setReviewQuestions(data.items);
-          if (reviewStatusFilter === "pending") {
-            setPendingReviewCount(data.total || data.items.length);
-          }
-        } else if (Array.isArray(data)) {
-          setReviewQuestions(data);
-          if (reviewStatusFilter === "pending") {
-            setPendingReviewCount(data.length);
-          }
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingReview(false);
     }
   };
 
@@ -483,31 +383,17 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(filterSearch);
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [filterSearch]);
-
-  useEffect(() => {
     fetchQuestions();
     fetchSourceExams();
     fetchBlueprints();
     fetchSavedExamsAndFolders();
-    fetchPendingCount();
   }, []);
 
   useEffect(() => {
-    if (activeTab === "review") {
-      fetchReviewQuestions();
-    }
-  }, [activeTab, reviewStatusFilter]);
-
-  useEffect(() => {
-    // Reset về trang 1 khi người dùng đổi bộ lọc, scope hoặc từ khóa tìm kiếm
+    // Reset về trang 1 khi người dùng đổi bộ lọc hoặc scope
     setCurrentPage(1);
     fetchQuestions(1, filterScope);
-  }, [filterTopic, filterDifficulty, filterSection, filterVerified, filterScope, debouncedSearch, pageSize]);
+  }, [filterTopic, filterDifficulty, filterSection, filterScope, pageSize]);
 
   // Quick Preset Selection Handler from Creative Empty State
   const handleSelectPresetFromEmptyState = async (keyword: string) => {
@@ -650,27 +536,6 @@ export default function Dashboard() {
     } finally {
       setUploading(false);
       setUploadProgress(null);
-    }
-  };
-
-  // Xóa tài liệu đề thi nguồn
-  const handleDeleteSourceExam = async (examId: string, examTitle: string) => {
-    if (!window.confirm(`Thầy/Cô có chắc chắn muốn xóa tài liệu: "${examTitle}" không? Các câu hỏi đã trích xuất vào Ngân hàng sẽ vẫn được bảo lưu an toàn.`)) {
-      return;
-    }
-    try {
-      const res = await fetch(`/api/exams/${examId}`, {
-        method: "DELETE"
-      });
-      if (res.ok) {
-        await fetchSourceExams();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        alert(data.detail || "Không thể xóa tài liệu đề thi");
-      }
-    } catch (err) {
-      console.error("Lỗi khi xóa source exam:", err);
-      alert("Đã xảy ra lỗi kết nối khi xóa tài liệu");
     }
   };
 
@@ -852,12 +717,12 @@ export default function Dashboard() {
   };
 
   // Replace Question in Slot
-  const handleSelectReplacement = async (replacement: any) => {
+  const handleSelectReplacement = (replacement: any) => {
     if (activeSlotIdx === null || !generatedExam) return;
     const updatedSlots = [...generatedExam.slots_state];
     const targetSlot = updatedSlots.find(s => s.slot_index === activeSlotIdx);
     if (targetSlot) {
-      const repQ = {
+      targetSlot.question = {
         id: replacement.id,
         content_latex: replacement.content_latex,
         solution_latex: replacement.solution_latex,
@@ -866,46 +731,22 @@ export default function Dashboard() {
         has_figure: replacement.has_figure,
         figures_meta: replacement.figures_meta,
         main_topic: replacement.main_topic,
-        difficulty: replacement.difficulty,
-        points: targetSlot.points || 0.5
+        difficulty: replacement.difficulty
       };
-      targetSlot.question = repQ;
       const updatedExam = { ...generatedExam, slots_state: updatedSlots };
       setGeneratedExam(updatedExam);
       saveWorkspaceSession(activeTab, updatedExam.id, updatedExam);
-
-      // Xóa bản nháp cũ của Studio để Studio nhận câu hỏi mới
-      try {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem(`exam_draft_${updatedExam.id}`);
-        }
-      } catch (e) {}
-
-      // Đồng bộ vĩnh viễn xuống Database và bảng items của Exam Studio
-      try {
-        await fetch(`/api/generator/exams/${updatedExam.id}/slots/${activeSlotIdx}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(repQ)
-        });
-        await fetch(`/api/studio/exams/${updatedExam.id}/sync-items?force=true`, {
-          method: "POST"
-        });
-      } catch (err) {
-        console.error("Lỗi đồng bộ slot lên server:", err);
-      }
     }
     setSwapModalOpen(false);
   };
 
   // Export & Download Exam directly to Client (Option B - Direct Streaming)
-  const handleExport = (type: "docx" | "pdf", mode: "EXAM" | "RUBRIC" = "EXAM") => {
+  const handleExport = (type: "docx" | "pdf") => {
     if (!generatedExam) return;
-    const exportKey = `${type}_${mode}`;
-    setExporting(exportKey);
+    setExporting(type);
     
     // Direct browser download without alert
-    const downloadUrl = `/api/generator/exams/${generatedExam.id}/download?format=${type}&mode=${mode}`;
+    const downloadUrl = `/api/generator/exams/${generatedExam.id}/download?format=${type}`;
     const link = document.createElement("a");
     link.href = downloadUrl;
     link.setAttribute("download", "");
@@ -915,7 +756,7 @@ export default function Dashboard() {
 
     setTimeout(() => {
       setExporting(null);
-    }, 2000);
+    }, 1500);
   };
 
   // Toggle Verification State
@@ -927,70 +768,10 @@ export default function Dashboard() {
         body: JSON.stringify({ is_verified: !currentStatus })
       });
       if (res.ok) {
-        fetchReviewQuestions();
-        fetchPendingCount();
         fetchQuestions();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(`Không thể thay đổi trạng thái phê duyệt: ${err.detail || "Yêu cầu quyền Giáo viên hoặc Quản trị viên (403 Forbidden)"}`);
       }
     } catch (e) {
       console.error(e);
-    }
-  };
-
-  // Xóa câu hỏi khỏi Ngân hàng / Hàng đợi kiểm duyệt
-  const handleDeleteQuestion = async (questionId: string) => {
-    if (!window.confirm("Thầy/Cô có chắc chắn muốn xóa câu hỏi này khỏi hệ thống không? Hành động này không thể hoàn tác.")) {
-      return;
-    }
-    try {
-      const res = await fetch(`/api/questions/${questionId}`, {
-        method: "DELETE"
-      });
-      if (res.ok) {
-        fetchReviewQuestions();
-        fetchPendingCount();
-        fetchQuestions();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(`Không thể xóa câu hỏi: ${err.detail || "Có lỗi xảy ra"}`);
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Lỗi kết nối khi gửi yêu cầu xóa câu hỏi.");
-    }
-  };
-
-  // Phê duyệt đồng loạt tất cả câu hỏi chờ duyệt
-  const handleBatchApprove = async () => {
-    const unapproved = reviewQuestions.filter((q) => !q.is_verified);
-    if (unapproved.length === 0) return;
-
-    if (!confirm(`Bạn có chắc muốn phê duyệt đồng loạt ${unapproved.length} câu hỏi vào Ngân hàng chính thức?`)) {
-      return;
-    }
-
-    setApprovingAll(true);
-    try {
-      const results = await Promise.all(
-        unapproved.map((q) =>
-          fetch(`/api/questions/${q.id}/verify`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ is_verified: true }),
-          })
-        )
-      );
-      const hasForbidden = results.some((r) => r.status === 403);
-      if (hasForbidden) {
-        alert("Một số hoặc toàn bộ câu hỏi không thể phê duyệt do tài khoản không có thẩm quyền Giáo viên/Quản trị viên (403 Forbidden).");
-      }
-      await Promise.all([fetchReviewQuestions(), fetchPendingCount(), fetchQuestions()]);
-    } catch (e) {
-      console.error("Batch approve failed:", e);
-    } finally {
-      setApprovingAll(false);
     }
   };
 
@@ -1045,13 +826,12 @@ export default function Dashboard() {
   return (
     <div className="space-y-4">
       {/* Unified Glassmorphic Segmented Navigation Bar */}
-      {/* TAB NAVIGATION: MODERN SEGMENTED PILLS WITH BACKDROP BLUR */}
-      <div className="flex bg-slate-200/60 p-1.5 rounded-2xl border border-slate-300/70 shadow-inner space-x-1 overflow-x-auto backdrop-blur-md">
+      <div className="flex bg-slate-200/50 p-1 rounded-2xl border border-slate-200/80 shadow-2xs space-x-1 overflow-x-auto backdrop-blur-sm">
         <button
           onClick={() => handleTabChange("generator")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === "generator"
-              ? "bg-white text-indigo-700 shadow-md ring-1 ring-slate-900/5 scale-[1.02]"
+              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
@@ -1061,24 +841,24 @@ export default function Dashboard() {
 
         <button
           onClick={() => handleTabChange("questions")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === "questions"
-              ? "bg-white text-indigo-700 shadow-md ring-1 ring-slate-900/5 scale-[1.02]"
+              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
           <BookOpen className="w-4 h-4 text-indigo-600" />
           <span>Ngân hàng câu hỏi</span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/70 font-mono font-bold shadow-2xs">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-mono font-bold">
             {totalQuestions || questions.length}
           </span>
         </button>
 
         <button
           onClick={() => handleTabChange("ingestion")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === "ingestion"
-              ? "bg-white text-indigo-700 shadow-md ring-1 ring-slate-900/5 scale-[1.02]"
+              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
@@ -1088,26 +868,21 @@ export default function Dashboard() {
 
         <button
           onClick={() => handleTabChange("review")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === "review"
-              ? "bg-white text-indigo-700 shadow-md ring-1 ring-slate-900/5 scale-[1.02]"
+              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
           <ShieldCheck className="w-4 h-4 text-indigo-600" />
           <span>Hàng đợi kiểm duyệt</span>
-          {pendingReviewCount > 0 && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-mono font-bold animate-pulse shadow-sm shadow-amber-500/30">
-              {pendingReviewCount}
-            </span>
-          )}
         </button>
 
         <button
           onClick={() => handleTabChange("studio")}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer ${
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === "studio"
-              ? "bg-white text-indigo-700 shadow-md ring-1 ring-slate-900/5 scale-[1.02]"
+              ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
           }`}
         >
@@ -1200,14 +975,6 @@ export default function Dashboard() {
                     <Sliders className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Xem & Sửa chi tiết ma trận</span>
                   </button>
-
-                  {/* Bản đồ nhiệt ma trận kiến thức (Exam Matrix Heatmap) */}
-                  {selectedBlueprintId && (
-                    <ExamMatrixHeatmap
-                      blueprint={blueprints.find((b) => b.id === selectedBlueprintId) || null}
-                      className="mt-2"
-                    />
-                  )}
                 </div>
               ) : (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-2">
@@ -1226,18 +993,17 @@ export default function Dashboard() {
               <button
                 onClick={() => handleGenerateExam()}
                 disabled={generating}
-                className="w-full py-3.5 px-4 shimmer-btn text-white font-extrabold rounded-2xl text-xs sm:text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 disabled:opacity-50 group cursor-pointer border border-indigo-400/30"
+                className="w-full py-3 px-4 bg-gradient-to-b from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl text-xs sm:text-sm shadow-[0_4px_14px_0_rgba(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.45)] active:scale-[0.98] transition-all flex items-center justify-center space-x-2.5 disabled:opacity-50 group cursor-pointer"
               >
                 {generating ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin text-indigo-200" />
-                    <span className="tracking-wide">Đang phân tích ma trận & xếp slot...</span>
+                    <span>Đang tìm kiếm & xếp slot...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-amber-300 animate-bounce" />
-                    <Shuffle className="w-4 h-4 text-indigo-100 group-hover:rotate-90 transition-transform duration-500" />
-                    <span className="tracking-wide">Tổ hợp Đề thi AI (Zero-Hallucination)</span>
+                    <Shuffle className="w-4 h-4 text-indigo-200 group-hover:rotate-45 transition-transform duration-300" />
+                    <span>Tổ hợp Đề thi Mới (Zero-Hallucination)</span>
                   </>
                 )}
               </button>
@@ -1245,67 +1011,30 @@ export default function Dashboard() {
 
             {generatedExam && (
               <div className="pt-4 border-t border-slate-200/80 space-y-3">
-                {/* 1. Đề thi học sinh */}
-                <div className="space-y-1.5">
-                  <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Xuất bản Đề thi (Học sinh)
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleExport("docx", "EXAM")}
-                      disabled={exporting !== null}
-                      className="py-2 px-2.5 bg-blue-50 border border-blue-200/80 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 flex items-center justify-center space-x-1 cursor-pointer transition-all disabled:opacity-60"
-                      title="Tải file Word .docx câu hỏi không kèm đáp án"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span className="truncate">{exporting === "docx_EXAM" ? "Đang xuất..." : "Word Đề thi (.docx)"}</span>
-                    </button>
-                    <button
-                      onClick={() => handleExport("pdf", "EXAM")}
-                      disabled={exporting !== null}
-                      className="py-2 px-2.5 bg-rose-50 border border-rose-200/80 text-rose-700 rounded-xl text-xs font-bold hover:bg-rose-100 flex items-center justify-center space-x-1 cursor-pointer transition-all disabled:opacity-60"
-                      title="Tải file PDF câu hỏi sẵn sàng in ấn A4"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span className="truncate">{exporting === "pdf_EXAM" ? "Đang xuất..." : "PDF Đề thi In ấn"}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* 2. Hướng dẫn chấm & Barem */}
-                <div className="space-y-1.5 pt-1">
-                  <span className="block text-[11px] font-bold text-emerald-600 uppercase tracking-wider flex items-center space-x-1">
-                    <span>Hướng dẫn chấm & Barem điểm</span>
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleExport("docx", "RUBRIC")}
-                      disabled={exporting !== null}
-                      className="py-2 px-2.5 bg-emerald-50 border border-emerald-200/80 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 flex items-center justify-center space-x-1 cursor-pointer transition-all disabled:opacity-60"
-                      title="Tải file Word .docx kèm lời giải chi tiết và barem điểm"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span className="truncate">{exporting === "docx_RUBRIC" ? "Đang xuất..." : "Word Barem (.docx)"}</span>
-                    </button>
-                    <button
-                      onClick={() => handleExport("pdf", "RUBRIC")}
-                      disabled={exporting !== null}
-                      className="py-2 px-2.5 bg-amber-50 border border-amber-200/80 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-100 flex items-center justify-center space-x-1 cursor-pointer transition-all disabled:opacity-60"
-                      title="Tải file PDF Hướng dẫn chấm và barem điểm 0.25đ"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span className="truncate">{exporting === "pdf_RUBRIC" ? "Đang xuất..." : "PDF Đáp án & Barem"}</span>
-                    </button>
-                  </div>
+                <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Xuất bản đề thi (Word & PDF)
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleExport("docx")}
+                    disabled={exporting !== null}
+                    className="py-2 px-2.5 bg-blue-50 border border-blue-200/80 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 flex items-center justify-center space-x-1 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span className="truncate">{exporting === "docx" ? "Đang xuất..." : "Tải Word (.docx)"}</span>
+                  </button>
+                  <button
+                    onClick={() => handleExport("pdf")}
+                    disabled={exporting !== null}
+                    className="py-2 px-2.5 bg-rose-50 border border-rose-200/80 text-rose-700 rounded-xl text-xs font-bold hover:bg-rose-100 flex items-center justify-center space-x-1 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span className="truncate">{exporting === "pdf" ? "Đang xuất..." : "Tải PDF In ấn"}</span>
+                  </button>
                 </div>
 
                 <button
-                  onClick={() => {
-                    if (generatedExam?.id) {
-                      saveWorkspaceSession("studio", generatedExam.id, generatedExam);
-                    }
-                    handleTabChange("studio");
-                  }}
+                  onClick={() => handleTabChange("studio")}
                   className="w-full mt-2 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-md transition-all cursor-pointer"
                 >
                   <Scale className="w-4 h-4" />
@@ -1316,14 +1045,11 @@ export default function Dashboard() {
           </div>
 
           {/* CỘT 3: CANVAS XEM TRƯỚC VÀ DUYỆT ĐỀ THI (Flex-1, Cuộn dọc tự nhiên, CHỐNG TRÀN NGANG) */}
-          <div className="flex-1 overflow-x-hidden p-5 sm:p-7 bg-slate-100/60 flex flex-col items-center">
+          <div className="flex-1 overflow-x-hidden p-5 sm:p-7 bg-slate-100/50 flex flex-col items-center">
             {generatedExam ? (
-              <div className="w-full max-w-3xl bg-white p-7 sm:p-10 rounded-2xl paper-sheet-elevation border border-slate-200/90 space-y-7 relative">
-                <div className="text-center border-b border-slate-200/90 pb-5 space-y-1.5">
-                  <span className="inline-block px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200/70 mb-1">
-                    Bản thảo khảo thí chính thức
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">{generatedExam.title.toUpperCase()}</h2>
+              <div className="w-full max-w-3xl bg-white p-7 sm:p-9 rounded-2xl border border-slate-200/90 shadow-sm space-y-7">
+                <div className="text-center border-b border-slate-200 pb-5 space-y-1">
+                  <h2 className="text-xl font-bold tracking-tight text-slate-900">{generatedExam.title.toUpperCase()}</h2>
                   <p className="text-xs text-slate-500 font-semibold tracking-wide">
                     KỲ THI CHỌN HỌC SINH GIỎI TOÁN THCS - THỜI GIAN LÀM BÀI: 120 PHÚT
                   </p>
@@ -1334,14 +1060,14 @@ export default function Dashboard() {
                     <div key={slot.slot_index} className="pt-6 first:pt-0 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <span className="font-extrabold text-slate-900 text-sm">
+                          <span className="font-bold text-slate-900 text-sm">
                             Câu {slot.slot_index}. ({slot.points} điểm)
                           </span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getTopicBadgeStyle(slot.main_topic)}`}>
                             {TOPIC_VI_MAP[slot.main_topic] || slot.main_topic}
                           </span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${getDifficultyBadgeStyle(slot.difficulty)}`}>
-                            {DIFFICULTY_VI_MAP[slot.difficulty] || slot.difficulty}
+                            {slot.difficulty}
                           </span>
                         </div>
                         {slot.question && (
@@ -1349,7 +1075,7 @@ export default function Dashboard() {
                             {slot.question && (
                               <button
                                 onClick={() => setEditingQuestion(slot.question)}
-                                className="text-xs text-slate-500 hover:text-slate-800 font-semibold flex items-center space-x-1 py-1 px-2.5 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
+                                className="text-xs text-slate-500 hover:text-slate-800 font-semibold flex items-center space-x-1 py-1 px-2.5 rounded-lg hover:bg-slate-100 cursor-pointer"
                               >
                                 <Edit3 className="w-3 h-3" />
                                 <span>Sửa</span>
@@ -1357,7 +1083,7 @@ export default function Dashboard() {
                             )}
                             <button
                               onClick={() => openSwapModal(slot.slot_index, slot.question?.id, slot.main_topic, slot.difficulty)}
-                              className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1 py-1 px-2.5 rounded-lg hover:bg-indigo-50 cursor-pointer transition-colors"
+                              className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1 py-1 px-2.5 rounded-lg hover:bg-indigo-50 cursor-pointer"
                             >
                               <Shuffle className="w-3 h-3" />
                               <span>{slot.question ? "Đổi câu khác" : "Chọn câu lấp slot này"}</span>
@@ -1367,7 +1093,7 @@ export default function Dashboard() {
                       </div>
 
                       {slot.question ? (
-                        <div className="text-[15px] font-serif leading-[1.8] text-slate-800 bg-[#FCFBF9] p-4.5 rounded-xl border border-amber-900/10 shadow-[inset_0_1px_3px_rgba(15,23,42,0.03)] hover:border-indigo-300/60 transition-colors">
+                        <div className="text-[15px] font-serif leading-[1.75] text-slate-800 bg-[#FCFBF9] p-4 rounded-xl border border-slate-200/70 shadow-[inset_0_1px_2px_rgba(15,23,42,0.02)]">
                           {renderQuestionContent(slot.question)}
                         </div>
                       ) : (
@@ -1412,13 +1138,13 @@ export default function Dashboard() {
               </h2>
 
               {/* Scope Segmented Switch: Của tôi / Đơn vị / Mẫu Vinh Phát / Tất cả */}
-              <div className="inline-flex bg-slate-100/90 p-1 rounded-xl border border-slate-200/90 space-x-1 shadow-inner">
+              <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/80 space-x-1">
                 <button
                   type="button"
                   onClick={() => setFilterScope("ALL")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     filterScope === "ALL"
-                      ? "bg-white text-indigo-600 shadow-sm"
+                      ? "bg-white text-indigo-600 shadow-2xs"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -1428,9 +1154,9 @@ export default function Dashboard() {
                   <button
                     type="button"
                     onClick={() => setFilterScope("MINE")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
                       filterScope === "MINE"
-                        ? "bg-white text-indigo-600 shadow-sm"
+                        ? "bg-white text-indigo-600 shadow-2xs"
                         : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -1440,9 +1166,9 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setFilterScope("SYSTEM")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
                     filterScope === "SYSTEM"
-                      ? "bg-white text-indigo-600 shadow-sm"
+                      ? "bg-white text-indigo-600 shadow-2xs"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -1453,27 +1179,6 @@ export default function Dashboard() {
 
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Search input with live debounce */}
-              <div className="relative flex-1 min-w-[220px] max-w-sm">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={filterSearch}
-                  onChange={(e) => setFilterSearch(e.target.value)}
-                  placeholder="Tìm theo từ khóa đề bài, LaTeX, lời giải..."
-                  className="w-full pl-8 pr-7 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
-                />
-                {filterSearch && (
-                  <button
-                    onClick={() => setFilterSearch("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                    title="Xóa tìm kiếm"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
               <select
                 value={filterTopic}
                 onChange={(e) => setFilterTopic(e.target.value)}
@@ -1495,10 +1200,10 @@ export default function Dashboard() {
                 className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none"
               >
                 <option value="">Mọi độ khó</option>
-                <option value="EASY">Nhận biết (Dễ)</option>
-                <option value="MEDIUM">Thông hiểu - Vận dụng</option>
+                <option value="EASY">Cơ bản</option>
+                <option value="MEDIUM">Vận dụng</option>
                 <option value="HARD">Vận dụng cao</option>
-                <option value="OLYMPIAD">HSG / Chuyên sâu</option>
+                <option value="OLYMPIAD">Học sinh giỏi (Olympiad)</option>
               </select>
 
               <select
@@ -1509,16 +1214,6 @@ export default function Dashboard() {
                 <option value="">Mọi hình thức</option>
                 <option value="SHORT_ANSWER">Điền đáp số</option>
                 <option value="ESSAY">Tự luận</option>
-              </select>
-
-              <select
-                value={filterVerified}
-                onChange={(e) => setFilterVerified(e.target.value)}
-                className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none font-medium"
-              >
-                <option value="">Mọi trạng thái kiểm duyệt</option>
-                <option value="true">✅ Đã kiểm duyệt</option>
-                <option value="false">⏳ Chờ duyệt (Mới)</option>
               </select>
             </div>
           </div>
@@ -1569,15 +1264,15 @@ export default function Dashboard() {
                         className={`text-xs font-bold px-2 py-0.5 rounded border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer ${getDifficultyBadgeStyle(q.difficulty)}`}
                         title="Bấm để đổi nhanh độ khó"
                       >
-                        <option value="EASY">Nhận biết (Dễ)</option>
-                        <option value="MEDIUM">Thông hiểu - Vận dụng</option>
-                        <option value="HARD">Vận dụng cao</option>
-                        <option value="OLYMPIAD">HSG / Chuyên sâu</option>
+                        <option value="EASY">Cơ bản (EASY)</option>
+                        <option value="MEDIUM">Vận dụng (MEDIUM)</option>
+                        <option value="HARD">Vận dụng cao (HARD)</option>
+                        <option value="OLYMPIAD">Học sinh giỏi (OLYMPIAD)</option>
                       </select>
                     ) : (
                       /* Badge tĩnh cho Khách vãng lai (GUEST) */
                       <span className={`text-xs font-bold px-2.5 py-0.5 rounded select-none ${getDifficultyBadgeStyle(q.difficulty)}`}>
-                        {DIFFICULTY_VI_MAP[q.difficulty] || q.difficulty}
+                        {q.difficulty}
                       </span>
                     )}
                     {q.user_difficulty && (
@@ -1622,16 +1317,6 @@ export default function Dashboard() {
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>Sửa & Gắn nhãn</span>
-                      </button>
-                    )}
-                    {currentUser && (currentUser.role === "ADMIN" || currentUser.role === "TEACHER" || q.user_id === currentUser.id) && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteQuestion(q.id)}
-                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
-                        title="Xóa câu hỏi khỏi Ngân hàng"
-                      >
-                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
@@ -1770,9 +1455,9 @@ export default function Dashboard() {
       {activeTab === "ingestion" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Upload card */}
-          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-sm space-y-5 h-fit relative">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5 h-fit">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-extrabold text-slate-900 flex items-center space-x-2">
+              <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
                 <UploadCloud className="w-5 h-5 text-indigo-600" />
                 <span>Số Hóa Đề Thi (.docx / .pdf)</span>
               </h2>
@@ -1780,7 +1465,7 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setBatchFiles([])}
-                  className="text-xs text-rose-600 hover:text-rose-700 font-bold transition-colors cursor-pointer"
+                  className="text-xs text-rose-600 hover:text-rose-700 font-semibold"
                 >
                   Xóa tất cả ({batchFiles.length})
                 </button>
@@ -1793,7 +1478,7 @@ export default function Dashboard() {
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Chọn một hoặc nhiều tệp đề thi (Batch Upload)
                 </label>
-                <div className="relative border-2 border-dashed border-indigo-200/90 hover:border-indigo-500 bg-indigo-50/20 hover:bg-indigo-50/50 rounded-2xl p-6 text-center transition-all cursor-pointer group shadow-inner">
+                <div className="relative border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/30 hover:bg-indigo-50/60 rounded-xl p-5 text-center transition-all cursor-pointer group">
                   <input
                     type="file"
                     multiple
@@ -1806,14 +1491,12 @@ export default function Dashboard() {
                     }}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
-                  <div className="flex flex-col items-center justify-center space-y-2.5 pointer-events-none">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-100/70 flex items-center justify-center text-indigo-600 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-xs">
-                      <UploadCloud className="w-6 h-6" />
-                    </div>
-                    <p className="text-xs font-extrabold text-indigo-950">
+                  <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+                    <UploadCloud className="w-8 h-8 text-indigo-500 group-hover:scale-110 transition-transform" />
+                    <p className="text-xs font-bold text-indigo-900">
                       Kéo thả hoặc nhấn để chọn nhiều file cùng lúc
                     </p>
-                    <p className="text-[11px] text-slate-400 font-medium">
+                    <p className="text-[11px] text-slate-400">
                       Hỗ trợ hàng loạt định dạng .DOCX và .PDF (Tối đa 50MB/file)
                     </p>
                   </div>
@@ -1898,7 +1581,7 @@ export default function Dashboard() {
               <button
                 type="submit"
                 disabled={uploading || (batchFiles.length === 0 && (!uploadFile || !uploadTitle))}
-                className="w-full py-3.5 px-4 shimmer-btn text-white font-extrabold rounded-2xl text-xs sm:text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 active:scale-[0.98] transition-all flex flex-col items-center justify-center space-y-1.5 disabled:opacity-50 cursor-pointer border border-indigo-400/30"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition-all flex flex-col items-center justify-center space-y-1 disabled:opacity-50"
               >
                 {uploading ? (
                   <>
@@ -2007,35 +1690,15 @@ export default function Dashboard() {
                         <p className="text-xs text-slate-400">Mã file: {exam.original_file_key}</p>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-                          STATUS_VI_MAP[exam.status]?.badge || "bg-slate-100 text-slate-700"
-                        }`}>
-                          {STATUS_VI_MAP[exam.status]?.label || exam.status}
-                        </span>
-
-                        {exam.status === "REVIEW_NEEDED" && (
-                          <button
-                            type="button"
-                            onClick={() => handleTabChange("review")}
-                            className="text-xs font-bold px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all flex items-center space-x-1 shadow-xs"
-                            title="Chuyển đến Hàng đợi kiểm duyệt để thẩm định câu hỏi"
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            <span>Duyệt câu hỏi ➔</span>
-                          </button>
-                        )}
-
-                        {/* Nút xóa tài liệu đề thi nguồn */}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteSourceExam(exam.id, exam.title)}
-                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Xóa tài liệu này khỏi danh sách tiến trình"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+                        exam.status === "REVIEW_NEEDED"
+                          ? "bg-amber-100 text-amber-800"
+                          : exam.status === "PUBLISHED"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-blue-100 text-blue-800 animate-pulse"
+                      }`}>
+                        {exam.status}
+                      </span>
                     </div>
 
                     {exam.page_image_keys && exam.page_image_keys.length > 0 && (
@@ -2054,187 +1717,75 @@ export default function Dashboard() {
       {/* TAB 4: REVIEW QUEUE */}
       {activeTab === "review" && (
         <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm space-y-6 max-w-5xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-                <ShieldCheck className="w-5 h-5 text-indigo-600" />
-                <span>Hàng Đợi Kiểm Duyệt & Chuẩn Hóa Câu Hỏi</span>
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Thẩm định công thức toán học, cấu trúc và phân loại độ khó trước khi đưa vào Ngân hàng chính thức.
-              </p>
-            </div>
+          <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+            <ShieldCheck className="w-5 h-5 text-emerald-600" />
+            <span>Hàng Đợi Kiểm Duyệt Câu Hỏi Mới Ingest</span>
+          </h2>
 
-            {/* Sub-tabs / Filter Buttons & Batch Approve */}
-            <div className="flex items-center flex-wrap gap-2.5">
-              <div className="flex items-center space-x-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/90 shadow-inner">
-                <button
-                  onClick={() => setReviewStatusFilter("pending")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
-                    reviewStatusFilter === "pending"
-                      ? "bg-white text-indigo-700 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <span>Chờ kiểm duyệt</span>
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
-                    pendingReviewCount > 0 ? "bg-amber-100 text-amber-800 font-bold" : "bg-slate-200 text-slate-700"
-                  }`}>
-                    {pendingReviewCount}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setReviewStatusFilter("approved")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    reviewStatusFilter === "approved"
-                      ? "bg-white text-indigo-700 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <span>Đã phê duyệt</span>
-                </button>
-
-                <button
-                  onClick={() => setReviewStatusFilter("all")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    reviewStatusFilter === "all"
-                      ? "bg-white text-indigo-700 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <span>Tất cả</span>
-                </button>
-              </div>
-
-              {pendingReviewCount > 0 && reviewStatusFilter === "pending" && (
-                <button
-                  type="button"
-                  disabled={approvingAll}
-                  onClick={handleBatchApprove}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
-                  title="Phê duyệt toàn bộ các câu hỏi đang chờ duyệt vào Ngân hàng chính thức"
-                >
-                  {approvingAll ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <CheckCircle className="w-3.5 h-3.5" />
-                  )}
-                  <span>Phê duyệt tất cả ({pendingReviewCount} câu)</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {loadingReview ? (
-            <div className="py-16 text-center space-y-3">
-              <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto" />
-              <p className="text-xs text-slate-500 font-medium">Đang tải danh sách câu hỏi kiểm duyệt...</p>
-            </div>
-          ) : reviewQuestions.length === 0 ? (
-            <div className="text-center py-16 space-y-3 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-              <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto" />
-              <h3 className="text-base font-bold text-slate-800">
-                {reviewStatusFilter === "pending"
-                  ? "Tuyệt vời! Không còn câu hỏi nào đang chờ duyệt"
-                  : "Không tìm thấy câu hỏi nào phù hợp"}
-              </h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                {reviewStatusFilter === "pending"
-                  ? "Toàn bộ tài liệu số hóa đã được thẩm định chất lượng và sẵn sàng đưa vào đề thi."
-                  : "Vui lòng chọn bộ lọc khác hoặc tải thêm tài liệu đề thi mới vào hệ thống."}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {reviewQuestions.map((q) => (
-                <div
-                  key={q.id}
-                  className="p-5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 space-y-4 shadow-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <select
-                        value={q.main_topic}
-                        onChange={(e) => handleQuickTopicChange(q.id, e.target.value)}
-                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full border cursor-pointer ${getTopicBadgeStyle(q.main_topic)}`}
-                        title="Đổi nhanh chuyên đề"
-                      >
-                        {Object.entries(TOPIC_VI_MAP).map(([key, label]) => (
-                          <option key={key} value={key} className="bg-white text-slate-800">
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={q.difficulty}
-                        onChange={(e) => handleQuickDifficultyChange(q.id, e.target.value)}
-                        className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                      >
-                        <option value="EASY">Nhận biết (Dễ)</option>
-                        <option value="MEDIUM">Thông hiểu - Vận dụng</option>
-                        <option value="HARD">Vận dụng cao</option>
-                        <option value="OLYMPIAD">HSG / Chuyên sâu</option>
-                      </select>
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
-                        q.is_verified
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-amber-50 text-amber-700 border-amber-200"
-                      }`}>
-                        {q.is_verified ? "Đã duyệt" : "Chờ duyệt"}
+          <div className="space-y-4">
+            {questions.map((q) => (
+              <div
+                key={q.id}
+                className="p-5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 space-y-4 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800">
+                      {TOPIC_VI_MAP[q.main_topic] || q.main_topic}
+                    </span>
+                    <select
+                      value={q.difficulty}
+                      onChange={(e) => handleQuickDifficultyChange(q.id, e.target.value)}
+                      className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      <option value="EASY">Cơ bản (EASY)</option>
+                      <option value="MEDIUM">Vận dụng (MEDIUM)</option>
+                      <option value="HARD">Vận dụng cao (HARD)</option>
+                      <option value="OLYMPIAD">Học sinh giỏi (OLYMPIAD)</option>
+                    </select>
+                    {q.user_difficulty && (
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                        {q.user_difficulty}
                       </span>
-                      {q.user_difficulty && (
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                          {q.user_difficulty}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => setEditingQuestion(q)}
-                        className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 transition-all flex items-center space-x-1"
-                        title="Sửa nội dung hoặc lời giải"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>Sửa</span>
-                      </button>
-                      <button
-                        onClick={() => handleToggleVerify(q.id, q.is_verified)}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1 ${
-                          q.is_verified
-                            ? "bg-rose-50 text-rose-700 hover:bg-rose-100"
-                            : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                        }`}
-                      >
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        <span>{q.is_verified ? "Thu hồi duyệt" : "Phê duyệt đưa vào Ngân hàng"}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteQuestion(q.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
-                        title="Xóa câu hỏi này khỏi hệ thống"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    )}
                   </div>
 
-                  <div className="text-sm">
-                    {renderQuestionContent(q)}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setEditingQuestion(q)}
+                      className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 transition-all flex items-center space-x-1"
+                      title="Sửa nội dung hoặc lời giải"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Sửa</span>
+                    </button>
+                    <button
+                      onClick={() => handleToggleVerify(q.id, q.is_verified)}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1 ${
+                        q.is_verified
+                          ? "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                          : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                      }`}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>{q.is_verified ? "Thu hồi duyệt" : "Phê duyệt đưa vào Ngân hàng"}</span>
+                    </button>
                   </div>
-
-                  {q.solution_latex && (
-                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-xs space-y-1">
-                      <span className="font-bold text-slate-700">Lời giải chi tiết:</span>
-                      <MathRenderer content={q.solution_latex} />
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
-          )}
+
+                <div className="text-sm">
+                  {renderQuestionContent(q)}
+                </div>
+
+                {q.solution_latex && (
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-xs space-y-1">
+                    <span className="font-bold text-slate-700">Lời giải chi tiết:</span>
+                    <MathRenderer content={q.solution_latex} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -2353,10 +1904,10 @@ export default function Dashboard() {
                   className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">Tất cả Độ khó</option>
-                  <option value="EASY">Nhận biết (Dễ)</option>
-                  <option value="MEDIUM">Thông hiểu - Vận dụng</option>
-                  <option value="HARD">Vận dụng cao</option>
-                  <option value="OLYMPIAD">HSG / Chuyên sâu</option>
+                  <option value="EASY">Cơ bản (EASY)</option>
+                  <option value="MEDIUM">Vận dụng (MEDIUM)</option>
+                  <option value="HARD">Vận dụng cao (HARD)</option>
+                  <option value="OLYMPIAD">Học sinh giỏi (OLYMPIAD)</option>
                 </select>
 
                 <select
@@ -2390,35 +1941,21 @@ export default function Dashboard() {
                   <p className="text-xs">Đang tìm các câu hỏi khả dụng từ kho...</p>
                 </div>
               ) : swapCandidates.length === 0 ? (
-                <div className="py-16 text-center text-slate-400 text-xs space-y-3">
-                  <p className="font-semibold text-slate-600">Không tìm thấy câu hỏi phù hợp với bộ lọc hiện tại.</p>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-                    {swapMode === "smart" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSwapMode("bank");
-                          fetchSwapCandidates({ mode: "bank" });
-                        }}
-                        className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg font-bold border border-indigo-200 transition-all cursor-pointer"
-                      >
-                        Chuyển sang Duyệt Toàn Bộ Ngân Hàng (1983 câu)
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSwapFilterTopic("ALL");
-                        setSwapFilterDifficulty("ALL");
-                        setSwapFilterSection("ALL");
-                        setSwapSearchQuery("");
-                        fetchSwapCandidates({ main_topic: "ALL", difficulty: "ALL", section_type: "ALL", keyword: "" });
-                      }}
-                      className="px-3 py-1.5 text-slate-500 hover:text-slate-800 font-bold hover:underline cursor-pointer"
-                    >
-                      Xóa bộ lọc để xem toàn bộ
-                    </button>
-                  </div>
+                <div className="py-16 text-center text-slate-400 text-xs space-y-2">
+                  <p>Không tìm thấy câu hỏi phù hợp với bộ lọc hiện tại.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSwapFilterTopic("ALL");
+                      setSwapFilterDifficulty("ALL");
+                      setSwapFilterSection("ALL");
+                      setSwapSearchQuery("");
+                      fetchSwapCandidates({ main_topic: "ALL", difficulty: "ALL", section_type: "ALL", keyword: "" });
+                    }}
+                    className="text-indigo-600 font-bold hover:underline cursor-pointer"
+                  >
+                    Xóa bộ lọc để xem toàn bộ câu hỏi
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -2433,8 +1970,8 @@ export default function Dashboard() {
                           <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
                             {TOPIC_VI_MAP[c.main_topic] || c.main_topic}
                           </span>
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${getDifficultyBadgeStyle(c.difficulty)}`}>
-                            {DIFFICULTY_VI_MAP[c.difficulty] || c.difficulty}
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                            {c.difficulty}
                           </span>
                           <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700">
                             {c.section_type === "SHORT_ANSWER" ? "Điền đáp số" : "Tự luận"}
@@ -2467,10 +2004,6 @@ export default function Dashboard() {
         <ExamStudioView
           examId={generatedExam?.id || "6122d749-249f-496b-9e41-ffbe43d420a9"}
           onBack={() => handleTabChange("generator")}
-          onExamUpdated={() => {
-            const exId = generatedExam?.id;
-            if (exId) fetchExamById(exId, "studio");
-          }}
         />
       )}
 
@@ -2479,40 +2012,17 @@ export default function Dashboard() {
         question={editingQuestion}
         isOpen={Boolean(editingQuestion)}
         onClose={() => setEditingQuestion(null)}
-        onSaveSuccess={async (updatedQ) => {
+        onSaveSuccess={(updatedQ) => {
           setQuestions((prev) =>
             prev.map((item) => (item.id === updatedQ.id ? updatedQ : item))
           );
           if (generatedExam && Array.isArray(generatedExam.slots_state)) {
-            let changedSlotIdx: number | null = null;
-            const updatedSlots = generatedExam.slots_state.map((s: any) => {
-              if (s.question && s.question.id === updatedQ.id) {
-                changedSlotIdx = s.slot_index;
-                return { ...s, question: updatedQ };
-              }
-              return s;
-            });
-            const updatedExam = { ...generatedExam, slots_state: updatedSlots };
-            setGeneratedExam(updatedExam);
-            saveWorkspaceSession(activeTab, updatedExam.id, updatedExam);
-
-            if (changedSlotIdx !== null) {
-              try {
-                if (typeof window !== "undefined") {
-                  localStorage.removeItem(`exam_draft_${updatedExam.id}`);
-                }
-                await fetch(`/api/generator/exams/${updatedExam.id}/slots/${changedSlotIdx}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(updatedQ)
-                });
-                await fetch(`/api/studio/exams/${updatedExam.id}/sync-items?force=true`, {
-                  method: "POST"
-                });
-              } catch (err) {
-                console.error("Lỗi đồng bộ câu hỏi vừa sửa lên server:", err);
-              }
-            }
+            const updatedSlots = generatedExam.slots_state.map((s: any) =>
+              s.question && s.question.id === updatedQ.id
+                ? { ...s, question: updatedQ }
+                : s
+            );
+            setGeneratedExam({ ...generatedExam, slots_state: updatedSlots });
           }
         }}
       />

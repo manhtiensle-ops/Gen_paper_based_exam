@@ -77,36 +77,13 @@ def get_current_user_optional(
 def require_authenticated_user(
     user: Optional[User] = Depends(get_current_user_optional)
 ) -> User:
-    """Bắt buộc người dùng phải đăng nhập Google qua Cloudflare Access hoặc Cookie."""
+    """Bắt buộc người dùng phải đăng nhập Google qua Cloudflare Access."""
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Tính năng này yêu cầu đăng nhập tài khoản Google."
         )
     return user
-
-def require_role(*allowed_roles: str):
-    """Dependency kiểm tra phân quyền RBAC: người dùng phải có vai trò thuộc allowed_roles."""
-    def role_checker(user: User = Depends(require_authenticated_user)) -> User:
-        user_role = (user.role or "NORMAL").upper()
-        allowed_upper = [r.upper() for r in allowed_roles]
-        if "ADMIN" not in allowed_upper:
-            allowed_upper.append("ADMIN")  # ADMIN luôn có đặc quyền tối cao
-        if user_role not in allowed_upper:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Quyền hạn không đủ ({user_role}). Tính năng này yêu cầu vai trò: {', '.join(allowed_roles)}."
-            )
-        return user
-    return role_checker
-
-def require_teacher_or_admin(user: User = Depends(require_authenticated_user)) -> User:
-    """Yêu cầu vai trò Tác giả / Giáo viên (TEACHER, PRO, ADMIN)."""
-    return require_role("TEACHER", "PRO", "ADMIN")(user)
-
-def require_admin(user: User = Depends(require_authenticated_user)) -> User:
-    """Yêu cầu vai trò Quản trị viên hệ thống (ADMIN)."""
-    return require_role("ADMIN")(user)
 
 def get_user_ai_quota_info(user: Optional[User]) -> Dict[str, Any]:
     """Tính toán hạn mức sử dụng AI trong ngày của User theo giờ Việt Nam (UTC+7)."""

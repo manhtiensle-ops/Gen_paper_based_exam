@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
 import RubricTablePreview from "@/components/RubricTablePreview";
-import ExamSettingsModal from "@/components/ExamSettingsModal";
 import {
   saveExamDraft,
   getExamDraft,
@@ -19,8 +18,6 @@ import {
   AlertTriangle,
   ArrowUp,
   ArrowDown,
-  ChevronsUp,
-  ChevronsDown,
   RefreshCw,
   Send,
   ZoomIn,
@@ -39,27 +36,15 @@ import {
   Code2,
   Play,
   Bot,
-  ChevronDown,
-  HelpCircle,
-  Command,
-  Search,
-  Filter,
-  BarChart3,
-  Copy,
-  Check,
-  ShieldAlert,
-  ShieldCheck,
-  Clock,
-  Printer
+  ChevronDown
 } from "lucide-react";
 
 interface Props {
   examId: string;
   onBack?: () => void;
-  onExamUpdated?: () => void;
 }
 
-export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props) {
+export default function ExamStudioView({ examId, onBack }: Props) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeMode, setActiveMode] = useState<"EXAM" | "RUBRIC">("EXAM");
@@ -70,17 +55,14 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
   const containerRef = useRef<HTMLDivElement>(null);
   const activePointerIdRef = useRef<number | null>(null);
 
-  // Left Sidebar Tab: "items" | "rubric-table" | "editor" | "knobs" | "spec-matrix" | "integrity"
-  const [sidebarTab, setSidebarTab] = useState<"editor" | "rubric-table" | "items" | "knobs" | "spec-matrix" | "integrity">("items");
+  // Left Sidebar Tab: "editor" | "rubric-table" | "items" | "knobs"
+  const [sidebarTab, setSidebarTab] = useState<"editor" | "rubric-table" | "items" | "knobs">("editor");
   const [templateDoc, setTemplateDoc] = useState<any | null>(null);
 
   // Raw LaTeX Code State for Live Editor
   const [rawLatexCode, setRawLatexCode] = useState<string>("");
   const [isPreambleFolded, setIsPreambleFolded] = useState<boolean>(true);
   const [isDirty, setIsDirty] = useState<boolean>(false);
-  const [lastSavedTime, setLastSavedTime] = useState<string>("Vừa xong");
-  const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
-  const [auditReportCopied, setAuditReportCopied] = useState<boolean>(false);
   const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
 
   // Restore draft from local storage on mount (Disaster Recovery)
@@ -90,10 +72,7 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
     if (draft) {
       if (draft.split_ratio) setSplitRatio(draft.split_ratio);
       if (draft.active_mode) setActiveMode(draft.active_mode);
-      if (draft.active_sidebar_tab) {
-        // Nếu bản nháp lưu editor rỗng thì ưu tiên mở items
-        setSidebarTab(draft.active_sidebar_tab === "editor" && !draft.unsaved_latex ? "items" : (draft.active_sidebar_tab as any));
-      }
+      if (draft.active_sidebar_tab) setSidebarTab(draft.active_sidebar_tab as any);
       if (draft.unsaved_latex && draft.is_dirty) {
         setRawLatexCode(draft.unsaved_latex);
         setIsDirty(true);
@@ -117,13 +96,10 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
     duration_minutes: 150,
     show_sbd_box: true,
   });
-  const [isHeaderModalOpen, setIsHeaderModalOpen] = useState(false);
-  const [headerForm, setHeaderForm] = useState(headerConfig);
 
   // Debounced auto-save draft to local storage
   useEffect(() => {
     if (!examId || !rawLatexCode) return;
-    setIsAutoSaving(true);
     const timer = setTimeout(() => {
       saveExamDraft({
         schema_version: 2,
@@ -137,13 +113,6 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
         last_modified_timestamp: Date.now(),
         server_sync_timestamp: Date.now(),
       });
-      setIsAutoSaving(false);
-      const now = new Date();
-      setLastSavedTime(
-        `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(
-          now.getSeconds()
-        ).padStart(2, "0")}`
-      );
     }, 500);
     return () => clearTimeout(timer);
   }, [rawLatexCode, isDirty, splitRatio, activeMode, sidebarTab, examId, headerConfig.exam_name]);
@@ -192,11 +161,6 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
 
   // AI Multimodal Drawer State
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
-  const [showShortcutModal, setShowShortcutModal] = useState(false);
-  const [itemTopicFilter, setItemTopicFilter] = useState<string>("ALL");
-  const [itemDifficultyFilter, setItemDifficultyFilter] = useState<string>("ALL");
-  const [itemSearchQuery, setItemSearchQuery] = useState<string>("");
-  const [matrixCopied, setMatrixCopied] = useState(false);
   const [agentInput, setAgentInput] = useState("");
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
@@ -211,7 +175,6 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
 
   // Question editing modal
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
-  const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -346,45 +309,18 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
   };
 
   // Fetch Items & Compile Initial Live Preview
-  const loadExamItems = async (forceSync = false) => {
+  const loadExamItems = async () => {
     try {
       setLoading(true);
-      if (forceSync) {
-        try {
-          if (typeof window !== "undefined") {
-            localStorage.removeItem(`exam_draft_${examId}`);
-          }
-        } catch (e) {}
-        await fetch(`/api/studio/exams/${examId}/sync-items?force=true`, { method: "POST" });
-      }
       const res = await fetch(`/api/studio/exams/${examId}/items`);
       if (res.ok) {
         const data = await res.json();
         setItems(data);
-        
-        // Cố gắng tải header_config đã lưu
-        let currentHeader = headerConfig;
-        try {
-          const exRes = await fetch(`/api/generator/exams/${examId}`);
-          if (exRes.ok) {
-            const exData = await exRes.json();
-            if (exData.header_config && Object.keys(exData.header_config).length > 0) {
-              currentHeader = { ...headerConfig, ...exData.header_config };
-              setHeaderConfig(currentHeader);
-              setHeaderForm(currentHeader);
-            }
-          }
-        } catch (err) {}
-
-        compileLivePreview(data, layoutKnobs, activeMode, currentHeader);
+        compileLivePreview(data, layoutKnobs, activeMode);
         loadTemplateDoc();
-      } else {
-        // Nếu fetch items thất bại, vẫn gọi compile preview với items hiện có để không bị treo
-        compileLivePreview(items, layoutKnobs, activeMode, headerConfig);
       }
     } catch (e) {
       console.error(e);
-      compileLivePreview(items, layoutKnobs, activeMode, headerConfig);
     } finally {
       setLoading(false);
     }
@@ -400,24 +336,19 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
   const compileLivePreview = async (
     currentItems = items,
     knobs = layoutKnobs,
-    mode = activeMode,
-    customHeader: any = headerConfig
+    mode = activeMode
   ) => {
     setCompiling(true);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout phòng thủ
     try {
       const res = await fetch(`/api/studio/exams/${examId}/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
         body: JSON.stringify({
           layout_knobs: knobs,
-          header_config: customHeader,
+          header_config: headerConfig,
           mode: mode,
         }),
       });
-      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         setPreviewData(data);
@@ -425,74 +356,11 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
         if (data.latex_source) {
           setRawLatexCode(data.latex_source);
         }
-      } else {
-        console.warn("Compile preview failed with status:", res.status);
-        // Fallback: nếu chưa có previewData, tạo dummy fallback để không treo spinner vô tận
-        setPreviewData((prev) => prev || { page_keys: [], total_pages: 1, fallback_mode: true });
       }
-    } catch (e: any) {
-      if (e.name === "AbortError") {
-        console.warn("Compile preview timed out after 7s. Switching to fallback viewer.");
-      } else {
-        console.error("Compile preview error:", e);
-      }
-      setPreviewData((prev) => prev || { page_keys: [], total_pages: 1, fallback_mode: true });
+    } catch (e) {
+      console.error("Compile preview error:", e);
     } finally {
-      clearTimeout(timeoutId);
       setCompiling(false);
-    }
-  };
-
-  const handleSaveHeader = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setHeaderConfig(headerForm);
-    setIsHeaderModalOpen(false);
-    try {
-      await fetch(`/api/studio/exams/${examId}/header`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ header_config: headerForm }),
-      });
-      compileLivePreview(items, layoutKnobs, activeMode, headerForm);
-    } catch (err) {
-      console.error("Error saving header:", err);
-    }
-  };
-
-  const applyPresetHeader = (preset: "hanoi" | "hcm" | "vinhphat") => {
-    if (preset === "vinhphat") {
-      setHeaderForm({
-        governing_body: "TRUNG TÂM GIÁO DỤC VINH PHÁT",
-        department_or_school: "BAN KHẢO THÍ & BỒI DƯỠNG TOÁN",
-        exam_name: "KỲ THI KHẢO SÁT CHẤT LƯỢNG HỌC SINH GIỎI",
-        academic_year: "Năm học: 2026 - 2027",
-        subject_title: "Môn thi: TOÁN 9",
-        exam_code: "ĐỀ CHÍNH THỨC",
-        duration_minutes: 150,
-        show_sbd_box: true,
-      });
-    } else if (preset === "hcm") {
-      setHeaderForm({
-        governing_body: "SỞ GIÁO DỤC VÀ ĐÀO TẠO TP HỒ CHÍ MINH",
-        department_or_school: "TRƯỜNG THPT CHUYÊN LÊ HỒNG PHONG",
-        exam_name: "KỲ THI TUYỂN SINH VÀO LỚP 10 CHUYÊN",
-        academic_year: "Năm học: 2026 - 2027",
-        subject_title: "Môn thi: TOÁN CHUYÊN",
-        exam_code: "ĐỀ CHÍNH THỨC",
-        duration_minutes: 150,
-        show_sbd_box: true,
-      });
-    } else {
-      setHeaderForm({
-        governing_body: "SỞ GIÁO DỤC VÀ ĐÀO TẠO HÀ NỘI",
-        department_or_school: "TRƯỜNG THCS CHUYÊN HÀ NỘI - AMSTERDAM",
-        exam_name: "KỲ THI CHỌN ĐỘI TUYỂN HỌC SINH GIỎI LỚP 9",
-        academic_year: "Năm học: 2026 - 2027",
-        subject_title: "Môn thi: TOÁN 9",
-        exam_code: "ĐỀ CHÍNH THỨC",
-        duration_minutes: 150,
-        show_sbd_box: true,
-      });
     }
   };
 
@@ -546,7 +414,7 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
     }
   };
 
-  // Global Shortcuts: Ctrl + S (compile), Ctrl + K (toggle AI Drawer), Ctrl + P (export PDF), Ctrl + E (export Word)
+  // Global Shortcuts: Ctrl + S (compile), Ctrl + K (toggle AI Drawer)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -561,36 +429,21 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
         e.preventDefault();
         setAiDrawerOpen((prev) => !prev);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p") {
-        e.preventDefault();
-        handleDownload("pdf");
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
-        e.preventDefault();
-        handleDownload("docx");
-      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [sidebarTab, rawLatexCode, activeMode, compiling, items, layoutKnobs]);
+  }, [sidebarTab, rawLatexCode, activeMode, compiling]);
 
   // Reorder Item
-  const moveItem = async (index: number, direction: "up" | "down" | "top" | "bottom") => {
-    if ((direction === "up" || direction === "top") && index === 0) return;
-    if ((direction === "down" || direction === "bottom") && index === items.length - 1) return;
+  const moveItem = async (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === items.length - 1) return;
 
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
     const reordered = [...items];
-    const targetItem = reordered.splice(index, 1)[0];
-
-    if (direction === "up") {
-      reordered.splice(index - 1, 0, targetItem);
-    } else if (direction === "down") {
-      reordered.splice(index + 1, 0, targetItem);
-    } else if (direction === "top") {
-      reordered.unshift(targetItem);
-    } else if (direction === "bottom") {
-      reordered.push(targetItem);
-    }
+    const temp = reordered[index];
+    reordered[index] = reordered[targetIdx];
+    reordered[targetIdx] = temp;
 
     const payload = reordered.map((it, idx) => ({
       item_id: it.id,
@@ -651,47 +504,6 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
     }
   };
 
-  // Điều chỉnh tổng điểm của câu hỏi (+/- 0.25đ)
-  const adjustItemTotalPoint = async (itemId: string, delta: number) => {
-    const item = items.find((it) => it.id === itemId);
-    if (!item) return;
-
-    const currentPts = item.max_points || 1.0;
-    const newPts = Math.round(Math.max(0.25, currentPts + delta) * 100) / 100;
-    if (newPts === currentPts) return;
-
-    const rubric = { ...(item.rubric_data || {}) };
-    const steps = [...(rubric.steps || [])];
-
-    if (steps.length > 0) {
-      const lastStepIdx = steps.length - 1;
-      const lastStepPts = Math.max(0.25, (steps[lastStepIdx].points || 0.25) + delta);
-      steps[lastStepIdx].points = Math.round(lastStepPts * 100) / 100;
-      steps[lastStepIdx].allocated_quanta = Math.round(lastStepPts * 4);
-      rubric.steps = steps;
-    } else {
-      rubric.total_points = newPts;
-    }
-
-    const updatedItems = items.map((it) =>
-      it.id === itemId ? { ...it, rubric_data: rubric, max_points: newPts } : it
-    );
-    setItems(updatedItems);
-
-    try {
-      await fetch(`/api/studio/items/${itemId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rubric_data: rubric, max_points: newPts }),
-      });
-      if (activeMode === "RUBRIC") {
-        compileLivePreview(updatedItems, layoutKnobs, activeMode);
-      }
-    } catch (e) {
-      console.error("Failed to update item points:", e);
-    }
-  };
-
   // Switch Mode (Exam vs Rubric)
   const handleModeSwitch = async (mode: "EXAM" | "RUBRIC") => {
     setActiveMode(mode);
@@ -733,81 +545,87 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
     REAL_WORLD_MATH: "Toán thực tế",
   };
 
-  const DIFFICULTY_VI_MAP: Record<string, string> = {
-    EASY: "Nhận biết (Dễ)",
-    MEDIUM: "Thông hiểu - Vận dụng",
-    HARD: "Vận dụng cao",
-    OLYMPIAD: "HSG / Chuyên sâu",
-  };
-
   return (
     <div className="h-screen w-screen bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden select-none">
-      {/* 1. TOPBAR - LIGHT ACADEMIC THEME (FROSTED GLASS BOUTIQUE SAAS - COMPACT & CLEAN) */}
-      <header className="h-14 frosted-glass border-b border-slate-200/90 px-4 flex items-center justify-between shadow-xs shrink-0 z-30 transition-all">
-        {/* Left: Back & Exam Name */}
-        <div className="flex items-center space-x-3 min-w-0">
+      {/* 1. TOPBAR - LIGHT ACADEMIC THEME (TRẮNG NGÀ CHUẨN MỰC) */}
+      <header className="h-14 bg-white border-b border-slate-200 px-5 flex items-center justify-between shadow-sm shrink-0 z-30">
+        <div className="flex items-center space-x-3">
           {onBack && (
             <button
               onClick={onBack}
-              className="text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 shadow-2xs hover:shadow-xs transition-all flex items-center space-x-1 cursor-pointer shrink-0"
-              title="Quay lại danh sách đề thi"
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 transition-all flex items-center space-x-1"
             >
               <span>← Trở lại</span>
             </button>
           )}
-          <div className="flex items-center space-x-2 min-w-0">
-            <h1 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5 truncate">
-              <span className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-indigo-900 bg-clip-text text-transparent font-black tracking-tight shrink-0">VINH PHÁT Studio</span>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+              <span className="text-indigo-600 font-extrabold">Exam Studio</span>
               <span className="text-slate-300">/</span>
-              <span className="text-slate-700 truncate max-w-xs font-semibold">{headerConfig.exam_name}</span>
+              <span className="text-slate-700 truncate max-w-sm font-medium">{headerConfig.exam_name}</span>
             </h1>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-extrabold border border-indigo-200 shadow-2xs shrink-0 hidden md:inline">
-              {headerConfig.exam_code || "CHÍNH THỨC"}
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+              TeX Live & OMML
             </span>
           </div>
         </div>
 
         {/* Center: Mode Switcher & Score Badge */}
-        <div className="flex items-center space-x-2 shrink-0">
-          <div className="flex bg-slate-100/90 p-0.5 rounded-2xl text-xs font-bold border border-slate-200/90 shadow-inner">
+        <div className="flex items-center space-x-3">
+          <div className="flex bg-slate-100 p-0.5 rounded-xl text-xs font-bold border border-slate-200 shadow-inner">
             <button
               onClick={() => handleModeSwitch("EXAM")}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
                 activeMode === "EXAM"
-                  ? "bg-white text-indigo-700 shadow-sm font-extrabold"
+                  ? "bg-white text-indigo-700 shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>Đề Thi</span>
+              <span>Đề Thi Thí Sinh</span>
             </button>
             <button
               onClick={() => handleModeSwitch("RUBRIC")}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
                 activeMode === "RUBRIC"
-                  ? "bg-white text-indigo-700 shadow-sm font-extrabold"
+                  ? "bg-white text-indigo-700 shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <Scale className="w-3.5 h-3.5" />
-              <span>Barem Điểm</span>
+              <span>Barem Hướng Dẫn Chấm</span>
             </button>
           </div>
 
-          <div className="hidden lg:flex items-center space-x-1.5 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200/90 text-xs shadow-2xs">
-            <span className="text-slate-500 font-medium">Tổng:</span>
+          <div className="flex items-center space-x-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs shadow-sm">
+            <span className="text-slate-500 font-medium">Tổng điểm:</span>
             <span
               className={`font-black ${
                 currentTotalScore === 20.0 ? "text-emerald-600" : "text-amber-600"
               }`}
             >
-              {currentTotalScore.toFixed(2)} / 20đ
+              {currentTotalScore.toFixed(2)} / 20.00đ
             </span>
           </div>
         </div>
 
-        {/* Right: Actions, AI Drawer Toggle, Settings Modal & Exports */}
-        <div className="flex items-center space-x-2 shrink-0">
+        {/* Right: Actions, AI Drawer Toggle & Exports */}
+        <div className="flex items-center space-x-2">
+          {/* AI Drawer Button */}
+          <button
+            onClick={() => setAiDrawerOpen((prev) => !prev)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border shadow-sm ${
+              aiDrawerOpen
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
+            title="Mở trợ lý AI dàn trang & dán ảnh (Ctrl+K)"
+          >
+            <Bot className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Trợ Lý AI</span>
+            <kbd className="text-[9px] bg-slate-100 px-1 py-0.5 rounded text-slate-400 font-mono">⌘K</kbd>
+          </button>
+
           {/* Quick Recompile Button */}
           <button
             onClick={async () => {
@@ -815,6 +633,13 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                 handleCompileRawLatex();
               } else {
                 try {
+                  if (sidebarTab === "rubric-table" && templateDoc) {
+                    await fetch(`/api/studio/exams/${examId}/template-document`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(templateDoc),
+                    });
+                  }
                   const res = await fetch(`/api/studio/exams/${examId}/items`);
                   if (res.ok) {
                     const fresh = await res.json();
@@ -829,55 +654,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
               }
             }}
             disabled={compiling}
-            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center space-x-1 border border-slate-200 shadow-2xs cursor-pointer disabled:opacity-50"
-            title="Biên dịch lại TeX Live (< 0.3s) (Ctrl+S)"
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50"
+            title="Biên dịch lại (< 0.3s) (Ctrl+S)"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${compiling ? "animate-spin text-indigo-600" : ""}`} />
-            <span className="hidden sm:inline">{compiling ? "Đang dựng..." : "Biên dịch"}</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${compiling ? "animate-spin" : ""}`} />
+            <span>{compiling ? "Đang dựng..." : "Biên dịch"}</span>
+            <kbd className="text-[9px] bg-emerald-800 text-emerald-200 px-1 py-0.5 rounded font-mono">⌘S</kbd>
           </button>
 
-          {/* Unified Settings Modal Button */}
-          <button
-            onClick={() => setIsHeaderModalOpen(true)}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-2xs transition flex items-center space-x-1.5 cursor-pointer"
-            title="Mở toàn bộ cài đặt tiêu đề trường học, dàn trang in A4 và chuẩn khảo thí"
-          >
-            <Settings className="w-3.5 h-3.5 text-indigo-600" />
-            <span className="hidden sm:inline">Cài Đặt & Khảo Thí</span>
-          </button>
-
-          {/* Export Word */}
-          <button
-            onClick={() => handleDownload("docx")}
-            className="px-3 py-1.5 text-white bg-emerald-600 hover:bg-emerald-700 text-xs font-extrabold rounded-xl transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
-            title="Xuất file Word OMML chuẩn Bộ GD&ĐT (Ctrl+E)"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Word (.docx)</span>
-          </button>
-
-          {/* Export PDF */}
-          <button
-            onClick={() => handleDownload("pdf")}
-            className="px-3 py-1.5 text-white bg-indigo-600 hover:bg-indigo-700 text-xs font-extrabold rounded-xl transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
-            title="Tải bản in PDF TeX Live chuẩn A4 (Ctrl+P)"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>In / PDF</span>
-          </button>
-
-          {/* AI Drawer Button */}
-          <button
-            onClick={() => setAiDrawerOpen((prev) => !prev)}
-            className={`p-1.5 rounded-xl border transition cursor-pointer shadow-2xs ${
-              aiDrawerOpen
-                ? "bg-purple-100 border-purple-300 text-purple-700"
-                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-            }`}
-            title="Mở trợ lý AI khảo thí & dán ảnh (Ctrl+K)"
-          >
-            <Bot className="w-4 h-4 text-purple-600" />
-          </button>
+          {/* Export Buttons */}
+          <div className="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+            <button
+              onClick={() => handleDownload("docx")}
+              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-indigo-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
+              title="Xuất file Word OMML chuẩn Bộ GD&ĐT (không vỡ bảng, sửa công thức tự nhiên)"
+            >
+              <Download className="w-3.5 h-3.5 text-blue-600" />
+              <span>Word</span>
+            </button>
+            <button
+              onClick={() => handleDownload("pdf")}
+              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-rose-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
+              title="Tải bản in PDF TeX Live gốc"
+            >
+              <Download className="w-3.5 h-3.5 text-rose-600" />
+              <span>PDF In</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -982,31 +785,6 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
               >
                 <Sliders className="w-3.5 h-3.5" />
                 <span>Bố Cục (Sliders)</span>
-              </button>
-
-              <button
-                onClick={() => setSidebarTab("spec-matrix")}
-                className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
-                  sidebarTab === "spec-matrix"
-                    ? "border-indigo-600 text-indigo-700 bg-white"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <BarChart3 className="w-3.5 h-3.5" />
-                <span>Bảng Đặc Tả</span>
-              </button>
-
-              <button
-                onClick={() => setSidebarTab("integrity")}
-                className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
-                  sidebarTab === "integrity"
-                    ? "border-amber-600 text-amber-700 bg-white"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-                title="Trợ lý kiểm tra tính toàn vẹn sư phạm và toán học"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                <span>Kiểm Định</span>
               </button>
             </div>
 
@@ -1153,92 +931,7 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
           {/* TAB 2: QUESTION ITEMS & REORDER */}
           {sidebarTab === "items" && (
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
-              {/* Quick Filter & Search Bar */}
-              <div className="bg-white p-2.5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={itemSearchQuery}
-                    onChange={(e) => setItemSearchQuery(e.target.value)}
-                    placeholder="Tìm câu hỏi theo nội dung, nhãn..."
-                    className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white transition-all"
-                  />
-                  {itemSearchQuery && (
-                    <button
-                      onClick={() => setItemSearchQuery("")}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
-                  <span className="text-[10px] font-bold text-slate-400 flex items-center shrink-0">
-                    <Filter className="w-2.5 h-2.5 mr-0.5" /> Chủ đề:
-                  </span>
-                  {["ALL", "ALGEBRA", "PLANE_GEOMETRY", "NUMBER_THEORY", "INEQUALITY_EXTREMA"].map((topicKey) => (
-                    <button
-                      key={topicKey}
-                      type="button"
-                      onClick={() => setItemTopicFilter(topicKey)}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all shrink-0 cursor-pointer ${
-                        itemTopicFilter === topicKey
-                          ? "bg-indigo-600 text-white shadow-2xs"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      {topicKey === "ALL" ? "Tất cả" : TOPIC_VI_MAP[topicKey] || topicKey}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5 pt-1 border-t border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 flex items-center shrink-0">
-                    Độ khó:
-                  </span>
-                  {[
-                    { key: "ALL", label: "Tất cả" },
-                    { key: "EASY", label: "Nhận biết" },
-                    { key: "MEDIUM", label: "Vận dụng" },
-                    { key: "HARD", label: "VDC" },
-                    { key: "OLYMPIAD", label: "HSG" },
-                  ].map((diff) => (
-                    <button
-                      key={diff.key}
-                      type="button"
-                      onClick={() => setItemDifficultyFilter(diff.key)}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all shrink-0 cursor-pointer ${
-                        itemDifficultyFilter === diff.key
-                          ? "bg-amber-600 text-white shadow-2xs"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      {diff.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {items
-                .filter((it) => {
-                  const snap = it.problem_snapshot || {};
-                  if (itemTopicFilter !== "ALL" && snap.main_topic !== itemTopicFilter) {
-                    return false;
-                  }
-                  if (itemDifficultyFilter !== "ALL" && snap.difficulty !== itemDifficultyFilter) {
-                    return false;
-                  }
-                  if (itemSearchQuery.trim()) {
-                    const q = itemSearchQuery.toLowerCase();
-                    const labelMatch = (it.display_label || "").toLowerCase().includes(q);
-                    const contentMatch = (snap.content_latex || "").toLowerCase().includes(q);
-                    if (!labelMatch && !contentMatch) return false;
-                  }
-                  return true;
-                })
-                .map((it, idx) => {
+              {items.map((it, idx) => {
                 const snap = it.problem_snapshot || {};
                 const rubric = it.rubric_data || {};
                 const steps = rubric.steps || [];
@@ -1253,69 +946,27 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         <span className="font-extrabold text-sm text-indigo-900">
                           {it.display_label}
                         </span>
-                        <div className="flex items-center space-x-1 bg-indigo-50 border border-indigo-200 rounded-md px-1.5 py-0.5">
-                          <span className="text-[11px] font-bold text-indigo-700">
-                            {it.max_points} điểm
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => adjustItemTotalPoint(it.id, -0.25)}
-                            className="w-4 h-4 rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold flex items-center justify-center transition-all cursor-pointer leading-none"
-                            title="Giảm 0.25 điểm"
-                          >
-                            -
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => adjustItemTotalPoint(it.id, 0.25)}
-                            className="w-4 h-4 rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold flex items-center justify-center transition-all cursor-pointer leading-none"
-                            title="Tăng 0.25 điểm"
-                          >
-                            +
-                          </button>
-                        </div>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          {it.max_points} điểm
+                        </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
                           {TOPIC_VI_MAP[snap.main_topic] || snap.main_topic || "Đại số"}
                         </span>
-                        {snap.difficulty && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            snap.difficulty === "EASY"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : snap.difficulty === "HARD"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : snap.difficulty === "OLYMPIAD"
-                              ? "bg-rose-50 text-rose-700 border border-rose-200"
-                              : "bg-blue-50 text-blue-700 border border-blue-200"
-                          }`}>
-                            {DIFFICULTY_VI_MAP[snap.difficulty] || snap.difficulty}
-                          </span>
-                        )}
                       </div>
 
                       <div className="flex items-center space-x-1">
                         <button
-                          onClick={() => {
-                            setEditingQuestion(snap);
-                            setEditingSlotIndex(it.order_index !== undefined ? it.order_index + 1 : idx + 1);
-                          }}
+                          onClick={() => setEditingQuestion(snap)}
                           className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all"
                           title="Sửa nội dung câu hỏi"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => moveItem(idx, "top")}
-                          disabled={idx === 0}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg disabled:opacity-20 transition-all"
-                          title="Đưa lên đầu đề thi"
-                        >
-                          <ChevronsUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
                           onClick={() => moveItem(idx, "up")}
                           disabled={idx === 0}
                           className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-20 transition-all"
-                          title="Chuyển lên 1 nấc"
+                          title="Chuyển lên"
                         >
                           <ArrowUp className="w-3.5 h-3.5" />
                         </button>
@@ -1323,17 +974,9 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                           onClick={() => moveItem(idx, "down")}
                           disabled={idx === items.length - 1}
                           className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-20 transition-all"
-                          title="Chuyển xuống 1 nấc"
+                          title="Chuyển xuống"
                         >
                           <ArrowDown className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => moveItem(idx, "bottom")}
-                          disabled={idx === items.length - 1}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg disabled:opacity-20 transition-all"
-                          title="Đưa xuống cuối đề thi"
-                        >
-                          <ChevronsDown className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1342,8 +985,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       <MathRenderer content={snap.content_latex || "..."} />
                     </div>
 
-                    {/* Step Barem Steppers */}
-                    {steps.length > 0 && (
+                    {/* Step Barem Steppers if in Rubric mode */}
+                    {activeMode === "RUBRIC" && steps.length > 0 && (
                       <div className="pt-2 border-t border-slate-100 space-y-1.5">
                         <span className="text-[11px] font-bold text-slate-600 block">
                           Các mốc điểm Barem (0.25đ):
@@ -1468,85 +1111,12 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                     className="w-full accent-indigo-600 cursor-pointer"
                   />
                 </div>
-
-                <div>
-                  <div className="flex justify-between text-slate-600 mb-1">
-                    <span>Khoảng cách công thức toán:</span>
-                    <span className="font-bold text-slate-900">{layoutKnobs.math_skip_pt}pt</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="2"
-                    max="12"
-                    step="1"
-                    value={layoutKnobs.math_skip_pt}
-                    onChange={(e) => {
-                      const updated = { ...layoutKnobs, math_skip_pt: parseInt(e.target.value) };
-                      setLayoutKnobs(updated);
-                    }}
-                    onMouseUp={() => compileLivePreview(items, layoutKnobs, activeMode)}
-                    className="w-full accent-indigo-600 cursor-pointer"
-                  />
-                </div>
               </div>
 
               {/* Margins */}
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-800">Căn lề trang in A4 (cm)</h4>
-                  <span className="text-[10px] text-slate-400 font-medium">Khổ A4 tiêu chuẩn</span>
-                </div>
-
-                {/* Nút Preset Căn Lề Chuẩn */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = {
-                        ...layoutKnobs,
-                        margin_top_cm: 2.0,
-                        margin_bottom_cm: 2.0,
-                        margin_left_cm: 3.0,
-                        margin_right_cm: 1.5,
-                      };
-                      setLayoutKnobs(updated);
-                      compileLivePreview(items, updated, activeMode);
-                    }}
-                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                      layoutKnobs.margin_left_cm === 3.0 && layoutKnobs.margin_top_cm === 2.0
-                        ? "bg-indigo-50 border-indigo-400 text-indigo-900 shadow-xs ring-1 ring-indigo-200"
-                        : "bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    <span className="font-bold text-xs block text-slate-900">📋 Chuẩn NĐ 30/2020</span>
-                    <span className="text-[10px] text-slate-500 block mt-0.5">Lề trái 3cm đóng ghim</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = {
-                        ...layoutKnobs,
-                        margin_top_cm: 1.5,
-                        margin_bottom_cm: 1.5,
-                        margin_left_cm: 2.0,
-                        margin_right_cm: 1.5,
-                      };
-                      setLayoutKnobs(updated);
-                      compileLivePreview(items, updated, activeMode);
-                    }}
-                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                      layoutKnobs.margin_left_cm === 2.0 && layoutKnobs.margin_top_cm === 1.5
-                        ? "bg-indigo-50 border-indigo-400 text-indigo-900 shadow-xs ring-1 ring-indigo-200"
-                        : "bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    <span className="font-bold text-xs block text-slate-900">📄 Tiết Kiệm Trang</span>
-                    <span className="text-[10px] text-slate-500 block mt-0.5">Lề 1.5 - 2cm gọn trang</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                <h4 className="font-bold text-slate-800">Căn lề trang in A4 (cm)</h4>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-slate-600 block mb-1">Lề Trên:</label>
                     <input
@@ -1614,2916 +1184,6 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                 >
                   Áp Dụng Lề Mới
                 </button>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: SPECIFICATION MATRIX TABLE */}
-          {sidebarTab === "spec-matrix" && (
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-extrabold text-slate-800 text-xs flex items-center space-x-1.5">
-                    <BarChart3 className="w-4 h-4 text-indigo-600" />
-                    <span>Bảng Ma Trận & Đặc Tả Đề Thi</span>
-                  </h3>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        const rows = items.map((it) => {
-                          const snap = it.problem_snapshot || {};
-                          const pts = parseFloat(it.max_points) || 0;
-                          const pct = currentTotalScore > 0 ? Math.round((pts / currentTotalScore) * 100) : 0;
-                          return `${it.display_label}\t${TOPIC_VI_MAP[snap.main_topic] || snap.main_topic || "Đại số"}\t${pts}\t${pct}%`;
-                        });
-                        const tsv = `Câu\tChuyên đề\tĐiểm\tTỷ lệ\n` + rows.join("\n");
-                        navigator.clipboard?.writeText(tsv);
-                        setMatrixCopied(true);
-                        setTimeout(() => setMatrixCopied(false), 2000);
-                      }}
-                      className="flex items-center space-x-1 px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
-                      title="Sao chép bảng sang Excel / Google Sheets"
-                    >
-                      {matrixCopied ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-600" />
-                          <span className="text-emerald-700">Đã chép</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3 text-slate-500" />
-                          <span>Chép Excel</span>
-                        </>
-                      )}
-                    </button>
-                    <span className="text-[11px] font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
-                      Tổng: {currentTotalScore} điểm
-                    </span>
-                  </div>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Thống kê phân bổ câu hỏi theo chuyên đề và trọng số điểm dùng cho hồ sơ lưu trữ tổ chuyên môn.
-                </p>
-
-                {/* Visual Topic Distribution Bar */}
-                {(() => {
-                  const topicPoints: Record<string, number> = {};
-                  items.forEach((it) => {
-                    const snap = it.problem_snapshot || {};
-                    const topic = TOPIC_VI_MAP[snap.main_topic] || snap.main_topic || "Đại số";
-                    const pts = parseFloat(it.max_points) || 0;
-                    topicPoints[topic] = (topicPoints[topic] || 0) + pts;
-                  });
-                  const topicColors = [
-                    "bg-indigo-500",
-                    "bg-emerald-500",
-                    "bg-amber-500",
-                    "bg-rose-500",
-                    "bg-cyan-500",
-                    "bg-purple-500",
-                  ];
-                  const topicsList = Object.entries(topicPoints);
-                  return (
-                    <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
-                        <span>Phân bổ tỷ trọng kiến thức</span>
-                        <span className="text-[10px] text-slate-400 font-normal">
-                          {topicsList.length} chuyên đề
-                        </span>
-                      </div>
-                      {/* Stacked Progress Bar */}
-                      <div className="h-2.5 w-full bg-slate-200 rounded-full flex overflow-hidden">
-                        {topicsList.map(([topName, pts], idx) => {
-                          const pct = currentTotalScore > 0 ? (pts / currentTotalScore) * 100 : 0;
-                          return (
-                            <div
-                              key={topName}
-                              style={{ width: `${pct}%` }}
-                              className={`${topicColors[idx % topicColors.length]} h-full transition-all`}
-                              title={`${topName}: ${pts} điểm (${Math.round(pct)}%)`}
-                            />
-                          );
-                        })}
-                      </div>
-                      {/* Legend Chips */}
-                      <div className="flex flex-wrap gap-2 pt-1 text-[10px]">
-                        {topicsList.map(([topName, pts], idx) => {
-                          const pct = currentTotalScore > 0 ? Math.round((pts / currentTotalScore) * 100) : 0;
-                          return (
-                            <div key={topName} className="flex items-center space-x-1">
-                              <span
-                                className={`w-2 h-2 rounded-full ${
-                                  topicColors[idx % topicColors.length]
-                                }`}
-                              />
-                              <span className="text-slate-600 font-medium">
-                                {topName}: <strong className="text-slate-800">{pts}đ</strong> ({pct}%)
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-left border-collapse text-[11px]">
-                    <thead>
-                      <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                        <th className="p-2">Câu</th>
-                        <th className="p-2">Chuyên đề</th>
-                        <th className="p-2 text-center">Điểm</th>
-                        <th className="p-2 text-center">Tỷ lệ</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-600">
-                      {items.map((it) => {
-                        const snap = it.problem_snapshot || {};
-                        const pts = parseFloat(it.max_points) || 0;
-                        const pct = currentTotalScore > 0 ? Math.round((pts / currentTotalScore) * 100) : 0;
-                        return (
-                          <tr key={it.id} className="hover:bg-slate-50">
-                            <td className="p-2 font-bold text-indigo-900">{it.display_label}</td>
-                            <td className="p-2">{TOPIC_VI_MAP[snap.main_topic] || snap.main_topic || "Đại số"}</td>
-                            <td className="p-2 text-center font-bold text-slate-800">{pts}</td>
-                            <td className="p-2 text-center font-mono text-slate-500">{pct}%</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 6: INTEGRITY INSPECTOR */}
-          {sidebarTab === "integrity" && (
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-extrabold text-slate-800 text-xs flex items-center space-x-1.5">
-                    <ShieldAlert className="w-4 h-4 text-amber-600" />
-                    <span>Trợ Lý Kiểm Định Sư Phạm & Toàn Vẹn Đề Thi</span>
-                  </h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    XeLaTeX Engine Ready
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  Tự động quét cấu trúc câu hỏi, barem điểm số và cú pháp LaTeX để đảm bảo đề thi đạt chuẩn in ấn thương mại và sư phạm.
-                </p>
-
-                {/* Audit Checks */}
-                <div className="space-y-2 pt-1 text-[11px]">
-                  {/* Check 1: Total points */}
-                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                    {currentTotalScore === 10 || currentTotalScore === 20 || currentTotalScore === 100 ? (
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    )}
-                    <div>
-                      <div className="font-bold text-slate-800">
-                        Thang điểm tổng: <span className="font-mono text-indigo-700">{currentTotalScore} điểm</span>
-                      </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">
-                        {currentTotalScore === 10 || currentTotalScore === 20 || currentTotalScore === 100
-                          ? "✓ Chuẩn thang điểm quy định (10đ hoặc 20đ hoặc 100đ)."
-                          : "⚠️ Lưu ý: Tổng điểm hiện tại chưa theo thang điểm chuẩn 10đ, 20đ hoặc 100đ."}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Check 2: Question count */}
-                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                    {items.length > 0 ? (
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                    )}
-                    <div>
-                      <div className="font-bold text-slate-800">
-                        Số lượng câu hỏi: <span className="font-mono text-indigo-700">{items.length} câu</span>
-                      </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">
-                        {items.length > 0
-                          ? "✓ Đề thi có đầy đủ danh mục các câu hỏi thành phần."
-                          : "⚠️ Cảnh báo: Đề thi đang trống câu hỏi."}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Check 3: LaTeX syntax brackets */}
-                  {(() => {
-                    const openDollar = (rawLatexCode.match(/\$/g) || []).length;
-                    const isMathBalanced = openDollar % 2 === 0;
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {isMathBalanced ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">Cú pháp khối toán học LaTeX ($)</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {isMathBalanced
-                              ? "✓ Tất cả các dấu công thức toán học ($) đều đã đóng ngoặc đối xứng."
-                              : "⚠️ Cảnh báo: Phát hiện số lượng ký tự $ lẻ, có thể gây lỗi TeX khi biên dịch in ấn."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 4: Header institution */}
-                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                    {headerConfig.department_or_school && headerConfig.exam_name ? (
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    )}
-                    <div>
-                      <div className="font-bold text-slate-800">Tiêu đề & Cơ quan ban hành</div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">
-                        {headerConfig.department_or_school && headerConfig.exam_name
-                          ? `✓ Đã cấu hình: ${headerConfig.department_or_school} - ${headerConfig.exam_name}`
-                          : "⚠️ Chưa nhập đầy đủ tên trường hoặc tiêu đề kỳ thi."}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Check 5: Estimated Duration Check */}
-                  {(() => {
-                    let totalEstMinutes = 0;
-                    items.forEach((it) => {
-                      const snap = it.problem_snapshot || {};
-                      const diff = (snap.difficulty || "MEDIUM").toUpperCase();
-                      if (diff === "EASY") totalEstMinutes += 2;
-                      else if (diff === "MEDIUM") totalEstMinutes += 4;
-                      else if (diff === "HARD") totalEstMinutes += 8;
-                      else if (diff === "OLYMPIAD") totalEstMinutes += 15;
-                      else totalEstMinutes += 4;
-                    });
-                    const durationSet = headerConfig.duration_minutes || 150;
-                    const isDurationFeasible = totalEstMinutes <= durationSet * 1.1;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {isDurationFeasible ? (
-                          <Clock className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Dự toán thời gian làm bài: <span className="font-mono text-indigo-700">~{totalEstMinutes} phút</span> / {durationSet} phút
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {isDurationFeasible
-                              ? `✓ Khối lượng câu hỏi phù hợp với thời lượng ${durationSet} phút.`
-                              : `⚠️ Cảnh báo quá tải: Ước lượng ~${totalEstMinutes} phút vượt thời lượng thi ${durationSet} phút.`}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 6: Word & Math Expression Counter */}
-                  {(() => {
-                    const textWithoutLatex = rawLatexCode.replace(/\$[^$]*\$/g, " ");
-                    const wordCount = (textWithoutLatex.trim().split(/\s+/).filter(Boolean)).length;
-                    const mathCount = Math.floor((rawLatexCode.match(/\$/g) || []).length / 2);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Mật độ văn bản & Công thức: <span className="font-mono text-indigo-700">~{wordCount} từ</span> | <span className="font-mono text-cyan-700">~{mathCount} biểu thức toán</span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            ✓ Thống kê dung lượng ký tự tổng quan giúp kiểm soát độ dài và sự cô đọng của đề thi.
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 7: Difficulty Distribution Skew Inspector */}
-                  {(() => {
-                    const totalQuestions = items.length;
-                    if (totalQuestions === 0) return null;
-
-                    const easyCount = items.filter(
-                      (q) => !q.bloom_level || q.bloom_level === "RECOGNITION"
-                    ).length;
-                    const hardCount = items.filter(
-                      (q) => q.bloom_level === "APPLICATION" || q.bloom_level === "HIGH_APPLICATION"
-                    ).length;
-
-                    const easyPercent = Math.round((easyCount / totalQuestions) * 100);
-                    const hardPercent = Math.round((hardCount / totalQuestions) * 100);
-
-                    // Standard benchmark: Easy (40-60%), Hard/High Hard (20-40%)
-                    const isSkewedHard = hardPercent > 45;
-                    const isSkewedEasy = easyPercent > 70;
-                    const isBalanced = !isSkewedHard && !isSkewedEasy;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {isBalanced ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Phân bổ độ khó: <span className="font-mono text-emerald-700">NB {easyPercent}%</span> | <span className="font-mono text-amber-700">VD/VDC {hardPercent}%</span> ({isBalanced ? "CÂN ĐỐI" : "LỆCH CHUẨN"})
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {isSkewedHard && "⚠️ Cảnh báo: Đề thi có tỷ trọng câu Vận dụng/VDC cao (>45%), cần rà soát lại nếu không phải đề HSG/Tuyển sinh."}
-                            {isSkewedEasy && "⚠️ Cảnh báo: Đề thi có quá nhiều câu Nhận biết (>70%), thiếu độ phân hóa năng lực học sinh."}
-                            {isBalanced && "✓ Tỷ lệ độ khó phân bổ hài hòa theo chuẩn ma trận sư phạm Bộ GD&ĐT."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 8: Question Independence & Overlap Inspector */}
-                  {(() => {
-                    if (items.length <= 1) return null;
-
-                    // Scan for potential duplicate statements or heavy overlaps
-                    let duplicateCount = 0;
-                    const seenPrefixes = new Set<string>();
-
-                    for (const item of items) {
-                      const text = (item.content_latex || "").trim().toLowerCase().replace(/\s+/g, " ");
-                      // Clean LaTeX noise for semantic prefix comparison
-                      const cleanText = text.replace(/\\(frac|sqrt|vec|cdot|alpha|beta|pi)\b/g, "").replace(/[^a-z0-9àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/g, "");
-                      const prefix = cleanText.substring(0, 35);
-                      if (prefix.length >= 15) {
-                        if (seenPrefixes.has(prefix)) {
-                          duplicateCount++;
-                        } else {
-                          seenPrefixes.add(prefix);
-                        }
-                      }
-                    }
-
-                    const isIndependent = duplicateCount === 0;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {isIndependent ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Tính độc lập câu hỏi:{" "}
-                            {isIndependent ? (
-                              <span className="font-mono text-emerald-700">100% ĐỘC LẬP</span>
-                            ) : (
-                              <span className="font-mono text-amber-700">CÓ {duplicateCount} CÂU TRÙNG Ý/DỮ KIỆN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {isIndependent
-                              ? "✓ Toàn bộ các câu hỏi có dữ kiện và giả thiết độc lập, không bị chồng chéo."
-                              : "⚠️ Cảnh báo: Phát hiện câu hỏi có thể trùng lặp giả thiết hoặc đề dẫn, cần kiểm tra để tránh lỗi sư phạm kéo theo."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 9: Distractor Plausibility & Balance Inspector */}
-                  {(() => {
-                    // Check for multiple-choice distractor patterns in LaTeX: \task or \begin{tasks}
-                    const taskMatches = rawLatexCode.match(/\\task\s+([^\n\\]+)/g) || [];
-                    const hasTasks = taskMatches.length >= 4;
-
-                    if (!hasTasks) {
-                      return (
-                        <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                          <div>
-                            <div className="font-bold text-slate-800">
-                              Phương án nhiễu trắc nghiệm: <span className="font-mono text-emerald-700">TỰ LUẬN / CHUẨN</span>
-                            </div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">
-                              ✓ Đề thi dạng tự luận hoặc các phương án trắc nghiệm không có dấu hiệu chênh lệch cực đoan.
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    // Check lengths of distractor options
-                    const lengths = taskMatches.map((t) => t.replace(/\\task\s+/, "").trim().length);
-                    const minLen = Math.min(...lengths);
-                    const maxLen = Math.max(...lengths);
-                    const isExtremeDiff = maxLen > 60 && minLen < 5;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {!isExtremeDiff ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Cân bằng phương án nhiễu:{" "}
-                            {!isExtremeDiff ? (
-                              <span className="font-mono text-emerald-700">ĐỒNG ĐỀU & HỢP LÝ</span>
-                            ) : (
-                              <span className="font-mono text-amber-700">LỆCH ĐỘ DÀI PHƯƠNG ÁN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {!isExtremeDiff
-                              ? `✓ ${taskMatches.length} phương án trắc nghiệm có chiều dài tương đương, triệt tiêu mẹo đoán mò.`
-                              : "⚠️ Cảnh báo: Tồn tại phương án trắc nghiệm quá dài hoặc quá ngắn bất thường, học sinh dễ suy luận mẹo loại trừ."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 10: Answer Key Distribution & Bias Inspector */}
-                  {(() => {
-                    // Extract answers tagged like (Chọn A/B/C/D) or [A/B/C/D] or \textbf{A/B/C/D} in explanations/rubrics
-                    const answerMatches = (rawLatexCode.match(/(?:Chọn|Đáp án|\\textbf\{)([A-D])(?:\}|\.|\))/gi) || []).map((m) => {
-                      const match = m.match(/[A-D]/i);
-                      return match ? match[0].toUpperCase() : "";
-                    }).filter(Boolean);
-
-                    if (answerMatches.length < 4) {
-                      return (
-                        <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                          <div>
-                            <div className="font-bold text-slate-800">
-                              Phân phối đáp án đúng: <span className="font-mono text-emerald-700">TỰ LUẬN / CHƯA CỐ ĐỊNH</span>
-                            </div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">
-                              ✓ Đề thi dạng tự luận hoặc đáp án đang được tính toán theo thang điểm barem.
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    // Count occurrences
-                    const counts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0 };
-                    for (const a of answerMatches) {
-                      if (counts[a] !== undefined) counts[a]++;
-                    }
-
-                    const total = answerMatches.length;
-                    const maxCount = Math.max(...Object.values(counts));
-                    const maxRatio = maxCount / total;
-
-                    // Check consecutive answers streak
-                    let maxStreak = 1;
-                    let curStreak = 1;
-                    for (let i = 1; i < answerMatches.length; i++) {
-                      if (answerMatches[i] === answerMatches[i - 1]) {
-                        curStreak++;
-                        if (curStreak > maxStreak) maxStreak = curStreak;
-                      } else {
-                        curStreak = 1;
-                      }
-                    }
-
-                    const isBiased = maxRatio > 0.45 || maxStreak >= 4;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {!isBiased ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Phân bổ đáp án đúng (A/B/C/D):{" "}
-                            {!isBiased ? (
-                              <span className="font-mono text-emerald-700">CÂN BẰNG KHẢO THÍ</span>
-                            ) : (
-                              <span className="font-mono text-amber-700">LỆCH PHÂN BỐ / CHÙM ĐÁP ÁN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {!isBiased
-                              ? `✓ Tỷ lệ phân bố (A:${counts.A}, B:${counts.B}, C:${counts.C}, D:${counts.D}) đồng đều, không có chùm trùng lặp quá 3 câu.`
-                              : `⚠️ Cảnh báo: Tồn tại đáp án chiếm > 45% hoặc chùm ${maxStreak} câu liên tiếp cùng đáp án, dễ gây thiên vị hoặc hoang mang cho thí sinh.`}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 11: Cognitive Load & Advanced Math Density Inspector */}
-                  {(() => {
-                    // Count advanced math operators
-                    const advMathSymbols = (rawLatexCode.match(/\\(?:int|iint|iiint|oint|sum|prod|lim|sqrt|frac|dfrac|matrix|pmatrix|bmatrix|vmatrix|partial|nabla)/g) || []).length;
-                    const textWords = (rawLatexCode.replace(/\$[^$]*\$/g, " ").trim().split(/\s+/).filter(Boolean)).length || 1;
-                    const density = Math.round((advMathSymbols / textWords) * 100);
-
-                    // If density > 25% or advMathSymbols > 30, it is heavy cognitive load
-                    const isOverloaded = advMathSymbols > 35 || density > 30;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {!isOverloaded ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Tải nhận thức & Mật độ ký hiệu:{" "}
-                            {!isOverloaded ? (
-                              <span className="font-mono text-emerald-700">HỢP LÝ SƯ PHẠM ({density}%)</span>
-                            ) : (
-                              <span className="font-mono text-amber-700">MẬT ĐỘ CAO ({density}%)</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {!isOverloaded
-                              ? `✓ Tổng cộng ${advMathSymbols} ký hiệu toán nâng cao (tích phân, tổng, giới hạn, căn/phân số). Nhịp độ đọc đề vừa phải.`
-                              : `⚠️ Cảnh báo: Có ${advMathSymbols} ký hiệu nâng cao (${density}% mật độ từ). Học sinh có thể mất nhiều thời gian đọc hiểu đề.`}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 12: TikZ Graph & Visual Figure Integrity Inspector */}
-                  {(() => {
-                    const hasGeometryOrGraphKeywords = /hình|đồ thị|bảng biến thiên|cho tam giác|cho tứ diện|cho hình chóp|hình vẽ/i.test(rawLatexCode);
-                    const tikzCount = (rawLatexCode.match(/\\begin\{tikzpicture\}|\\includegraphics/g) || []).length;
-                    const isGraphWarning = hasGeometryOrGraphKeywords && tikzCount === 0;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {!isGraphWarning ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Đồ thị & Hình vẽ minh họa (TikZ):{" "}
-                            {!isGraphWarning ? (
-                              <span className="font-mono text-emerald-700">ĐẦY ĐỦ / HỢP LỆ ({tikzCount} hình)</span>
-                            ) : (
-                              <span className="font-mono text-amber-700">NGHI VẤN THIẾU HÌNH MINH HỌA</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {!isGraphWarning
-                              ? `✓ Phát hiện ${tikzCount} khối TikZ/hình vẽ. Đề thi minh họa trực quan đầy đủ.`
-                              : `⚠️ Cảnh báo: Đề bài chứa từ khóa 'đồ thị/hình vẽ' nhưng chưa phát hiện khối TikZ/includegraphics tương ứng.`}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 13: Decimal Grading Rubric Inspector & Recommender */}
-                  {(() => {
-                    const isTotalScore10 = Math.abs(currentTotalScore - 10) < 0.01;
-                    const isTotalScoreValid = isTotalScore10 || currentTotalScore === 20 || currentTotalScore === 100;
-                    
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {isTotalScoreValid ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Thang điểm thập phân & Phân bổ (Bộ GD&ĐT):{" "}
-                            {isTotalScoreValid ? (
-                              <span className="font-mono text-emerald-700">CHUẨN XÁC ({currentTotalScore.toFixed(2)} đ)</span>
-                            ) : (
-                              <span className="font-mono text-amber-700">LỆCH THANG ĐIỂM ({currentTotalScore.toFixed(2)} đ)</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {isTotalScoreValid
-                              ? `✓ Tổng điểm chuẩn quy định (${currentTotalScore.toFixed(2)} điểm). Thang điểm thập phân đáp ứng chuẩn khảo thí Bộ GD&ĐT 2025.`
-                              : `⚠️ Cảnh báo: Tổng điểm hiện tại là ${currentTotalScore.toFixed(2)}đ (khác 10.00đ hoặc 100đ). Cần kiểm tra lại trọng số điểm các phần.`}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 14: Question Phrasing Repetition & Stem Noise Inspector */}
-                  {(() => {
-                    // Extract opening phrases (first 4 words) of questions
-                    const openingPhrases = items.map((it) => {
-                      const txt = ((it.problem_snapshot || {}).content_latex || "")
-                        .replace(/\$[^$]*\$/g, " ")
-                        .replace(/[.,:;!?]/g, " ")
-                        .trim()
-                        .split(/\s+/)
-                        .slice(0, 4)
-                        .join(" ")
-                        .toLowerCase();
-                      return txt;
-                    }).filter(Boolean);
-
-                    const phraseCounts: Record<string, number> = {};
-                    openingPhrases.forEach((p) => {
-                      if (p.length > 5) {
-                        phraseCounts[p] = (phraseCounts[p] || 0) + 1;
-                      }
-                    });
-
-                    const repeatedEntries = Object.entries(phraseCounts).filter(([_, count]) => count >= 3);
-                    const hasRepetition = repeatedEntries.length > 0;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {!hasRepetition ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Đa dạng đề dẫn & Tránh trùng lặp mô-típ:{" "}
-                            {!hasRepetition ? (
-                              <span className="font-mono text-emerald-700">ĐẠT TIÊU CHUẨN</span>
-                            ) : (
-                              <span className="font-mono text-amber-700">CẢNH BÁO LẶP MÔ-TÍP ({repeatedEntries.length} cụm)</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {!hasRepetition
-                              ? "✓ Cấu trúc ngữ cảnh mở đầu các câu hỏi phong phú, không bị rập khuôn mô-típ lặp lại."
-                              : `⚠️ Cảnh báo: Phát hiện các câu hỏi có cùng mô-típ mở đầu ≥3 lần: \"${repeatedEntries[0][0]}\" (${repeatedEntries[0][1]} câu). Nên đa dạng hóa đề dẫn.`}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 15: Pedagogical Real-world Context & Mathematical Modeling Inspector */}
-                  {(() => {
-                    const realWorldKeywords = [
-                      "thực tế", "thực tiễn", "bài toán", "lãi suất", "ngân hàng",
-                      "vận tốc", "chuyển động", "quãng đường", "gia tốc", "chi phí",
-                      "lợi nhuận", "doanh thu", "chiều cao", "thể tích", "diện tích đất",
-                      "bể chứa", "máng nước", "tam giác", "tòa nhà", "cột cờ", "mặt cầu",
-                      "khoảng cách", "vật lý", "hóa học", "sinh học", "kinh tế"
-                    ];
-                    let realWorldCount = 0;
-                    items.forEach((it) => {
-                      const txt = ((it.problem_snapshot || {}).content_latex || "").toLowerCase();
-                      const matched = realWorldKeywords.some((kw) => txt.includes(kw));
-                      if (matched) realWorldCount++;
-                    });
-                    const realWorldRatio = items.length > 0 ? (realWorldCount / items.length) * 100 : 0;
-                    const isAdequate = realWorldCount >= 1 || items.length === 0;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {isAdequate ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Bối cảnh thực tế & Mô hình hóa (GDPT 2018):{" "}
-                            {isAdequate ? (
-                              <span className="font-mono text-emerald-700">ĐẠT CHUẨN NĂNG LỰC ({realWorldCount}/{items.length} câu ~ {realWorldRatio.toFixed(0)}%)</span>
-                            ) : (
-                              <span className="font-mono text-amber-700">CHƯA CÓ BÀI TOÁN THỰC TẾ (0/{items.length})</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {isAdequate
-                              ? `✓ Phát hiện ${realWorldCount} câu hỏi có ngữ cảnh ứng dụng thực tế/mô hình hóa toán học, bám sát định hướng phát triển phẩm chất năng lực học sinh.`
-                              : "⚠️ Cảnh báo: Đề thi chưa có câu hỏi ứng dụng thực tế hoặc mô hình hóa toán học. Nên bổ sung ít nhất 1-2 câu bối cảnh thực tiễn theo chuẩn GDPT 2018."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 16: Extreme Differentiation & Perfect 10 Ceiling Inspector */}
-                  {(() => {
-                    const hardItems = items.filter((it) => {
-                      const diff = ((it.problem_snapshot || {}).difficulty || "").toUpperCase();
-                      const bloom = (it.bloom_level || "").toUpperCase();
-                      return diff === "HARD" || diff === "VERY_HARD" || bloom === "HIGH_APPLICATION";
-                    });
-                    const hasDifferentiatingQuestions = hardItems.length >= 1;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {hasDifferentiatingQuestions ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Phân hóa đỉnh cao & Điểm 10 chuyên sâu:{" "}
-                            {hasDifferentiatingQuestions ? (
-                              <span className="font-mono text-emerald-700">ĐẠT CHUẨN PHÂN LOẠI ({hardItems.length} câu VDC)</span>
-                            ) : (
-                              <span className="font-mono text-amber-700">THIẾU CÂU HỎI VDC CHẶN ĐIỂM 10</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasDifferentiatingQuestions
-                              ? `✓ Phát hiện ${hardItems.length} câu hỏi vận dụng cao (VDC)/độ khó cao làm chốt chặn phân hóa đỉnh cao, đảm bảo phân loại xuất sắc học sinh giỏi.`
-                              : "⚠️ Cảnh báo: Đề thi chưa có câu hỏi Vận dụng cao (VDC) chốt chặn điểm 9.5-10. Đề có nguy cơ bị 'mưa điểm 10', giảm hiệu lực phân loại khảo thí."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 17: Standardized Pacing & Modular Time Allocation Inspector */}
-                  {(() => {
-                    const totalEstimatedMins = items.reduce((acc, it) => {
-                      const diff = ((it.problem_snapshot || {}).difficulty || "MEDIUM").toUpperCase();
-                      return acc + (diff === "EASY" ? 2 : diff === "MEDIUM" ? 4 : diff === "HARD" ? 8 : 15);
-                    }, 0);
-                    const examDuration = headerConfig.duration_minutes || 90;
-                    const pacingRatio = examDuration > 0 ? (totalEstimatedMins / examDuration) * 100 : 100;
-                    const isPacingValid = pacingRatio >= 75 && pacingRatio <= 115;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        {isPacingValid ? (
-                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Định mức thời gian & Nhịp độ (Pacing):{" "}
-                            {isPacingValid ? (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐỊNH MỨC (~{totalEstimatedMins}p/{examDuration}p)</span>
-                            ) : (
-                              <span className="font-mono text-amber-700">LỆCH ĐỊNH MỨC (~{totalEstimatedMins}p/{examDuration}p ~ {pacingRatio.toFixed(0)}%)</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {isPacingValid
-                              ? `✓ Thời gian giải ước tính (~${totalEstimatedMins} phút) tương thích tối ưu với thời lượng kỳ thi (${examDuration} phút), không gây áp lực thời gian quá tải.`
-                              : `⚠️ Cảnh báo: Thời gian làm bài ước tính (${totalEstimatedMins} phút) chiếm ${pacingRatio.toFixed(0)}% so với quy định (${examDuration} phút). Nên điều chỉnh lại cơ cấu độ khó câu hỏi.`}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 18: True/False Proposition Semantic Integrity & Independence Inspector */}
-                  {(() => {
-                    const tfQuestions = items.filter((it) => {
-                      const qType = (it.problem_snapshot || {}).question_type || "";
-                      return qType.toUpperCase().includes("TRUE_FALSE") || qType.toUpperCase().includes("TF");
-                    });
-                    const hasTf = tfQuestions.length > 0;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Độc lập mệnh đề Đúng/Sai (GDPT 2018):{" "}
-                            {hasTf ? (
-                              <span className="font-mono text-emerald-700">ĐỘC LẬP LOGIC ({tfQuestions.length} câu Đúng/Sai)</span>
-                            ) : (
-                              <span className="font-mono text-slate-600">ĐẠT CHUẨN (Không có câu TF)</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasTf
-                              ? `✓ Toàn bộ ${tfQuestions.length} câu hỏi Đúng/Sai (Phần II) đảm bảo 4 mệnh đề a, b, c, d độc lập logic, không lộ manh mối suy diễn bắc cầu giữa các ý.`
-                              : "✓ Đề thi dạng trắc nghiệm 4 lựa chọn hoặc tự luận, không vi phạm cấu trúc mệnh đề Đúng/Sai."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 19: Distractor Length & Plausibility Balance Inspector */}
-                  {(() => {
-                    const mcqQuestions = items.filter((it) => {
-                      const qType = (it.problem_snapshot || {}).question_type || "";
-                      return !qType || qType.toUpperCase().includes("MULTIPLE_CHOICE") || qType.toUpperCase().includes("MCQ");
-                    });
-                    const hasMcq = mcqQuestions.length > 0;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Cân bằng độ dài phương án trắc nghiệm:{" "}
-                            {hasMcq ? (
-                              <span className="font-mono text-emerald-700">CÂN BẰNG ĐỘ DÀI ({mcqQuestions.length} câu MCQ)</span>
-                            ) : (
-                              <span className="font-mono text-slate-600">ĐẠT CHUẨN (Tự luận)</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasMcq
-                              ? `✓ Các phương án lựa chọn A, B, C, D của ${mcqQuestions.length} câu trắc nghiệm có dung lượng đồng đều, không tạo bẫy tâm lý đáp án dài/ngắn bất thường.`
-                              : "✓ Đề thi dạng tự luận hoặc chuyên đề, không chịu ảnh hưởng của bẫy tâm lý phương án nhiễu."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 20: Short-Answer Math Expression & Numeric Range Inspector */}
-                  {(() => {
-                    const saQuestions = items.filter((it) => {
-                      const qType = (it.problem_snapshot || {}).question_type || "";
-                      return qType.toUpperCase().includes("SHORT_ANSWER") || qType.toUpperCase().includes("SA");
-                    });
-                    const hasSa = saQuestions.length > 0;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Định dạng đáp số ngắn (Phần III GDPT 2018):{" "}
-                            {hasSa ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TẬP NGHIỆM ({saQuestions.length} câu Điền khuyết)</span>
-                            ) : (
-                              <span className="font-mono text-slate-600">ĐẠT CHUẨN (Không có câu SA)</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasSa
-                              ? `✓ Toàn bộ ${saQuestions.length} câu hỏi trả lời ngắn (Phần III) có đáp số dạng số nguyên, phân số hoặc số thập phân hữu hạn quy ước chuẩn, không chứa biểu thức vô tỷ kéo dài.`
-                              : "✓ Đề thi dạng trắc nghiệm 4 lựa chọn hoặc tự luận, không vi phạm quy chuẩn điền số Phần III."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 21: Dimensional & Real-World Unit Consistency Inspector */}
-                  {(() => {
-                    const realWorldQuestions = items.filter((it) => {
-                      const text = JSON.stringify(it.problem_snapshot || {}).toLowerCase();
-                      return (
-                        text.includes("mét") ||
-                        text.includes("km") ||
-                        text.includes("m/s") ||
-                        text.includes("kg") ||
-                        text.includes("đồng") ||
-                        text.includes("lít") ||
-                        text.includes("độ c") ||
-                        text.includes("cm")
-                      );
-                    });
-                    const hasRw = realWorldQuestions.length > 0;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Đơn vị đo lường & Thực tiễn (Real-World Units):{" "}
-                            {hasRw ? (
-                              <span className="font-mono text-emerald-700">ĐỒNG BỘ ĐƠN VỊ ({realWorldQuestions.length} câu Thực tế)</span>
-                            ) : (
-                              <span className="font-mono text-slate-600">ĐẠT CHUẨN (Toán thuần túy)</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasRw
-                              ? `✓ Toàn bộ ${realWorldQuestions.length} bài toán thực tế sử dụng hệ đơn vị đo lường chuẩn xác, nhất quán giữa đề bài và đáp án (SI/Việt Nam), không gây nhầm lẫn quy đổi.`
-                              : "✓ Đề thi tập trung chuyên sâu toán lý thuyết/thuần túy, không có xung đột hệ đo lường."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 22: Exam-to-Rubric Step-by-Step Scoring Points Alignment Inspector */}
-                  {(() => {
-                    const totalExamPoints = items.reduce((sum, it) => sum + (it.points || 0), 0);
-                    const hasValidRubricPoints = totalExamPoints > 0;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Khớp điểm Đề & Biểu điểm (Rubric Alignment):{" "}
-                            {hasValidRubricPoints ? (
-                              <span className="font-mono text-emerald-700">CHUẨN BIỂU ĐIỂM (Tổng: {totalExamPoints.toFixed(2)}đ)</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐỒNG BỘ 100% (Thang 10 Chuẩn)</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasValidRubricPoints
-                              ? `✓ Tổng điểm các câu hỏi (${totalExamPoints.toFixed(2)}đ) khớp chính xác 100% với ma trận hướng dẫn chấm chi tiết, chia nhỏ theo thang bước giải 0.25đ.`
-                              : "✓ Đề thi và thang điểm hướng dẫn chấm đồng bộ tuyệt đối theo cấu trúc thang điểm chuẩn 10 điểm của Bộ GD&ĐT."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 23: Algebraic Parameter & Variable Diversity Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasParameters = /\\b[mknpab]\\b/.test(allContent) || /tham số/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Đa dạng tham số & Biến số (Algebraic Diversity):{" "}
-                            {hasParameters ? (
-                              <span className="font-mono text-emerald-700">ĐA DẠNG HÓA KÝ HIỆU</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasParameters
-                              ? "✓ Hệ thống ký hiệu biến số (x, y, z, t) và tham số (m, k, a, b) được phân bổ cân bằng, phong phú, không lặp lại đơn điệu một biến m qua nhiều câu liên tiếp."
-                              : "✓ Các câu hỏi đại số và giải tích sử dụng chuẩn mực biến số toán học, cấu trúc tường minh và dễ tiếp cận."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 24: Geometric Notation & Vertex-Order Topology Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasGeometry = /hình chóp|lăng trụ|tứ diện|tam giác|hình vuông|hình chữ nhật|hình thoi|ABCD|A'B'C'D'/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Ký hiệu hình học & Thứ tự đỉnh (Geometric Topology):{" "}
-                            {hasGeometry ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TÔ-PÔ HÌNH HỌC</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">CHUẨN KÝ HIỆU</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasGeometry
-                              ? "✓ Ký hiệu đỉnh hình chóp và đa giác đáy (S.ABCD, A'B'C'D') tuân thủ đúng thứ tự chiều kim đồng hồ, nhất quán và không gây tranh cãi dựng hình."
-                              : "✓ Các khái niệm hình học được định danh theo tiêu chuẩn quy ước toán học phổ thông Việt Nam."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 25: Function Family Diversity & Transcendental Balance Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasPoly = /bậc ba|bậc bốn|trùng phương|hàm số bậc/i.test(allContent);
-                    const hasRational = /phân thức|tiệm cận đứng|tiệm cận ngang|hữu tỉ/i.test(allContent);
-                    const hasTranscendental = /\\log|\\ln|e\^|mũ|logarit|\\sin|\\cos|\\tan/i.test(allContent);
-                    const isBalanced = (hasPoly ? 1 : 0) + (hasRational ? 1 : 0) + (hasTranscendental ? 1 : 0) >= 2;
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Cân bằng họ hàm số & Siêu việt (Function Balance):{" "}
-                            {isBalanced ? (
-                              <span className="font-mono text-emerald-700">CÂN BẰNG ĐA DẠNG HÀM SỐ</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ HỌC</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {isBalanced
-                              ? "✓ Cấu trúc phân bổ hàm số cân bằng hài hòa giữa đa thức, phân thức hữu tỉ và hàm siêu việt (mũ, logarit, lượng giác)."
-                              : "✓ Danh mục hàm số bao quát đầy đủ phạm vi khảo sát đồ thị và biến thiên theo khung chương trình GDPT."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 26: Mathematical Modeling & STEM Real-World Context Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasRealWorld = /thực tế|bài toán thực tế|chuyển động|vận tốc|quãng đường|lãi suất|kinh tế|doanh thu|lợi nhuận|chi phí|dân số|vi khuẩn|áp suất|nhiệt độ|dung tích|thể tích bể/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Mô hình hóa toán học & Bối cảnh thực tiễn (STEM Modeling):{" "}
-                            {hasRealWorld ? (
-                              <span className="font-mono text-emerald-700">ĐẠT CHUẨN THỰC TIỄN GDPT</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TOÁN HỌC HÀN LÂM</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasRealWorld
-                              ? "✓ Đề thi tích hợp các bài toán mô hình hóa thực tế (chuyển động, kinh tế, tối ưu hóa STEM) đúng định hướng đổi mới khảo thí."
-                              : "✓ Hệ thống bài tập tập trung rèn luyện tư duy toán học lý thuyết và kỹ năng biến đổi đại số chuyên sâu."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 27: Oxyz Coordinate Frame Orthogonality & Basis Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasOxyz = /Oxyz|tọa độ|mặt cầu|mặt phẳng|đường thẳng trong không gian|vectơ pháp tuyến|vectơ chỉ phương/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Hệ tọa độ Oxyz & Trực giao không gian (Oxyz Basis):{" "}
-                            {hasOxyz ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TỌA ĐỘ OXYZ KHÔNG GIAN</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC THUẦN TÚY</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasOxyz
-                              ? "✓ Hệ tọa độ không gian Oxyz và các vectơ pháp tuyến/chỉ phương chuẩn xác, không suy biến và đảm bảo tính trực giao."
-                              : "✓ Đề thi sử dụng phương pháp hình học không gian cổ điển (tổng hợp), rèn luyện tư duy quan hệ song song và vuông góc."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 28: Trigonometric Periodicity & Angular Domain Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasTrig = /\\sin|\\cos|\\tan|\\cot|lượng giác|chu kỳ|nghiệm lượng giác|cung lượng giác/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Chu kỳ lượng giác & Miền giá trị góc (Trigonometric Domain):{" "}
-                            {hasTrig ? (
-                              <span className="font-mono text-emerald-700">CHUẨN CHU KỲ LƯỢNG GIÁC</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ PHỔ THÔNG</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasTrig
-                              ? "✓ Các hàm lượng giác (sin, cos, tan) có miền góc xác định rõ ràng, chu kỳ tuần hoàn chuẩn mực và nghiệm không bị trùng lặp đối/bù."
-                              : "✓ Đề thi tập trung rèn luyện các cấu trúc đại số và giải tích đa thức, mũ, logarit tiêu chuẩn."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 29: Calculus Limits & Continuity Discontinuity Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasCalculus = /\\lim|giới hạn|tiệm cận|tiệm cận đứng|tiệm cận ngang|liên tục|gián đoạn|điểm gián đoạn/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giới hạn & Tính liên tục giải tích (Calculus Limits & Continuity):{" "}
-                            {hasCalculus ? (
-                              <span className="font-mono text-emerald-700">CHUẨN LIÊN TỤC & GIỚI HẠN</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÀM SỐ SƠ CẤP</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasCalculus
-                              ? "✓ Khảo sát giới hạn hàm số (lim x->x0, x->inf) và tiệm cận chuẩn xác, đã khử dạng vô định và phân loại rõ ràng điểm gián đoạn."
-                              : "✓ Đề thi sử dụng hàm số sơ cấp liên tục trên toàn miền xác định, phù hợp chuẩn kiến thức nền tảng."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 30: Arithmetic & Geometric Progressions Convergence Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasSequence = /cấp số cộng|cấp số nhân|dãy số|công sai|công bội|u_n|u_1|chuỗi số|lùi vô hạn/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Cấp số cộng, cấp số nhân & Dãy số (Progressions & Sequences):{" "}
-                            {hasSequence ? (
-                              <span className="font-mono text-emerald-700">CHUẨN CẤP SỐ & HỘI TỤ</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ RỜI RẠC KHÁC</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasSequence
-                              ? "✓ Cấp số cộng và cấp số nhân có công bội (q), công sai (d) chuẩn tắc (d khác 0, |q| < 1 khi lùi vô hạn), số hạng tổng quát không suy biến."
-                              : "✓ Đề thi tập trung rèn luyện các nội dung đại số, giải tích và hình học trọng tâm khác."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 31: Exponential & Radical Expression Domain Integrity Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasExpRadical = /\\sqrt|căn bậc|lũy thừa|số mũ|\\^\{|mũ thực|cơ số dương/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Biểu thức lũy thừa & Căn thức số học (Radicals & Exponentials):{" "}
-                            {hasExpRadical ? (
-                              <span className="font-mono text-emerald-700">CHUẨN MIỀN XÁC ĐỊNH</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ ĐA THỨC SƠ CẤP</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasExpRadical
-                              ? "✓ Căn thức bậc chẵn và lũy thừa số mũ thực tuân thủ nghiêm ngặt điều kiện xác định (biểu thức dưới căn >= 0, cơ số > 0), không có nghịch lý tính toán."
-                              : "✓ Đề thi sử dụng biểu thức đa thức và phân thức cơ bản, bảo đảm tính xác định hiển nhiên."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 32: 3D Cartesian Space & Orthogonal Vector Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasOxyz = /Oxyz|vectơ|vecto|mặt phẳng|mặt cầu|đường thẳng|tọa độ|tích có hướng|pháp tuyến|chỉ phương/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Hình học không gian Oxyz & Tọa độ vectơ (3D Cartesian Space):{" "}
-                            {hasOxyz ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TRỰC CHUẨN Oxyz</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC TỔNG HỢP / ĐẠI SỐ</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasOxyz
-                              ? "✓ Hệ trục Oxyz, tích có hướng, vectơ chỉ phương và pháp tuyến phi triệt tiêu, thỏa mãn tính trực giao và định dạng không gian 3 chiều."
-                              : "✓ Đề thi tập trung hình học không gian cổ điển hoặc hình học phẳng sơ cấp, không phụ thuộc tọa độ."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 33: Limits, Continuity & Asymptotes Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasLimits = /\\lim|giới hạn|tiệm cận|tiệm cận đứng|tiệm cận ngang|tiệm cận xiên|liên tục|vô cực|\\infty/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giới hạn dãy số, hàm số & Tiệm cận (Limits & Asymptotes):{" "}
-                            {hasLimits ? (
-                              <span className="font-mono text-emerald-700">CHUẨN DẠNG VÔ ĐỊNH & KHỬ KHẢ VI</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ GIÁ TRỊ HỮU HẠN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasLimits
-                              ? "✓ Phép tính giới hạn lim f(x), khử dạng 0/0, vô cực/vô cực và điều kiện tiệm cận ngang y = b, tiệm cận đứng x = a thỏa mãn chuẩn giải tích."
-                              : "✓ Đề thi áp dụng tính toán đại số và hình học hữu hạn, không khảo sát tiệm cận."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 34: Complex Numbers & Argand Gauss Plane Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasComplex = /số phức|phần thực|phần ảo|môđun|modun|liên hợp|mặt phẳng phức|Argand|z\s*=|\\bar\{z\}|i\^2\s*=\s*-1/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Số phức & Mặt phẳng tọa độ Argand (Complex Numbers):{" "}
-                            {hasComplex ? (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ TUYẾN TÍNH PHỨC</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ THỰC CHUẨN MỰC</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasComplex
-                              ? "✓ Cấu trúc số phức z = a + bi (i² = -1), môđun |z|, số phức liên hợp và quỹ tích điểm biểu diễn mặt phẳng Gauss bảo đảm chuẩn toán học THPT."
-                              : "✓ Đề thi giải tích và hình học trên trường số thực R, không áp dụng trường số phức."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 35: Combinatorics, Permutations & Classical Probability Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasProbability = /xác suất|biến cố|hoán vị|chỉnh hợp|tổ hợp|không gian mẫu|C_\{|A_\{|P_\{|P\(|C\^|A\^|quy tắc cộng|quy tắc nhân/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Tổ hợp, Xác suất & Không gian mẫu (Combinatorics & Probability):{" "}
-                            {hasProbability ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TIÊN ĐỀ LAPLACE & ĐẠI SỐ TỔ HỢP</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ ĐỊNH TÍNH</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasProbability
-                              ? "✓ Công thức chỉnh hợp A_n^k, tổ hợp C_n^k, hoán vị P_n và xác suất 0 ≤ P(A) ≤ 1 với không gian mẫu Ω hữu hạn thỏa mãn tiên đề xác suất."
-                              : "✓ Đề thi tập trung giải tích và hình học, không có câu hỏi tổ hợp - xác suất."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 36: 2D Analytic Geometry & Conic Sections Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const has2DConic = /đường tròn|elip|hypebol|parabol|tiêu cự|tâm sai|bán kính|tiếp tuyến|phương trình elip|mặt phẳng oxy|tọa độ oxy|\(C\)\s*:|\(E\)\s*:|\(H\)\s*:|\(P\)\s*:/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Hình học tọa độ Oxy & Đường Conic (2D Analytic Geometry):{" "}
-                            {has2DConic ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC GIẢI TÍCH OXY & CONIC</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC KHÔNG GIAN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {has2DConic
-                              ? "✓ Phương trình đường tròn (x-a)² + (y-b)² = R², Elip, Parabol, Hypebol và tiếp tuyến trong Oxy thỏa mãn chuẩn hình học giải tích phổ thông."
-                              : "✓ Đề thi tập trung hình học không gian Oxyz hoặc thuần túy đại số, không chứa bài toán Conic Oxy."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 37: Statistics & Empirical Data Analysis Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasStatistics = /thống kê|trung vị|tứ phân vị|phương sai|độ lệch chuẩn|mẫu số liệu|bảng tần số|tần suất|khoảng biến thiên|khoảng tứ phân vị|Q_1|Q_2|Q_3|\\bar\{x\}/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Thống kê & Phân tích số liệu thực tế (Statistics & Data Analysis):{" "}
-                            {hasStatistics ? (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ THỐNG KÊ THỰC NGHIỆM</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TOÁN HỌC THUẦN TÚY</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasStatistics
-                              ? "✓ Mẫu số liệu ghép nhóm, số trung bình x̄, trung vị Me, tứ phân vị Q1, Q2, Q3 và phương sai s² tuân thủ chương trình GDPT mới."
-                              : "✓ Đề thi giải tích và đại số lý thuyết, không bao gồm mẫu số liệu thống kê."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 38: Arithmetic & Geometric Progressions Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasSequences = /cấp số cộng|cấp số nhân|công sai|công bội|dãy số|u_n|u_\{n\}|u_1|u_\{1\}|S_n|S_\{n\}|công thức số hạng tổng quát/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Cấp số cộng & Cấp số nhân (Sequences & Progressions):{" "}
-                            {hasSequences ? (
-                              <span className="font-mono text-emerald-700">CHUẨN DÃY SỐ VÀ CẤP SỐ ĐẠI SỐ</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÀM SỐ & PHƯƠNG TRÌNH</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasSequences
-                              ? "✓ Số hạng tổng quát u_n = u_1 + (n-1)d, cấp số nhân u_n = u_1·q^(n-1) và tổng S_n thỏa mãn tiêu chuẩn giải tích phổ thông."
-                              : "✓ Đề thi tập trung khảo sát hàm số hoặc hình học, không bao gồm bài toán cấp số."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 39: Limits & Differential Calculus Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasCalculus = /\\lim|giới hạn|đạo hàm|tiếp tuyến|vi phân|f'\(|f''\(|y'|\\frac\{dy\}\{dx\}|L'Hôpital|L'Hospital/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giới hạn & Giải tích vi phân (Limits & Derivatives):{" "}
-                            {hasCalculus ? (
-                              <span className="font-mono text-emerald-700">CHUẨN GIẢI TÍCH VI PHÂN & GIỚI HẠN</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ & HÌNH HỌC KHÔNG GIAN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasCalculus
-                              ? "✓ Định lý giới hạn hữu hạn, khử dạng vô định (0/0, ∞/∞), đạo hàm cấp 1, cấp 2 và phương trình tiếp tuyến đúng chuẩn giải tích toán học."
-                              : "✓ Đề thi giải tích sơ cấp hoặc hình học không gian thuần túy."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 40: Definite & Indefinite Integrals & Applications Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasIntegrals = /\\int|nguyên hàm|tích phân|diện tích hình phẳng|thể tích khối tròn xoay|Newton-Leibniz|đổi biến số|tích phân từng phần/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Nguyên hàm, Tích phân & Ứng dụng hình học (Integrals & Applications):{" "}
-                            {hasIntegrals ? (
-                              <span className="font-mono text-emerald-700">CHUẨN GIẢI TÍCH TÍCH PHÂN NEWTON-LEIBNIZ</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TOÁN HỌC ĐẠI SỐ KHÁC</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasIntegrals
-                              ? "✓ Công thức Newton-Leibniz, tích phân từng phần udv, phương pháp đổi biến và công thức thể tích khối tròn xoay V = π∫[f(x)]²dx đạt chuẩn giải tích THPT."
-                              : "✓ Đề thi không chứa dạng toán tích phân và ứng dụng diện tích/thể tích."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 41: Complex Numbers Polar Form & Euler Formula Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasPolarForm = /\\cos.*\\+.*i.*\\sin|Moivre|dạng lượng giác|argument|\\text\{Arg\}|e\^\{i|căn bậc n.*số phức/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Dạng lượng giác & Công thức Moivre số phức (Polar Form & Moivre):{" "}
-                            {hasPolarForm ? (
-                              <span className="font-mono text-emerald-700">CHUẨN DẠNG LƯỢNG GIÁC & CÔNG THỨC MOIVRE</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">SỐ PHỨC DẠNG ĐẠI SỐ A+BI</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasPolarForm
-                              ? "✓ Dạng lượng giác z = r(cosφ + i sinφ), công thức Moivre [r(cosφ + i sinφ)]^n và căn bậc n của số phức đạt chuẩn bồi dưỡng HSG."
-                              : "✓ Đề thi sử dụng số phức dạng đại số chuẩn z = a + bi hoặc hình học không gian."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 42: 3D Analytic Geometry Oxyz & Sphere / Plane Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasOxyz = /Oxyz|tọa độ không gian|mặt cầu|mặt phẳng \\(P\\)|tích có hướng|\\[\\vec\{[a-z]\},|khoảng cách từ điểm.*đến mặt phẳng|vectơ chỉ phương|vectơ pháp tuyến/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Hình học không gian tọa độ Oxyz & Mặt cầu (3D Geometry Oxyz):{" "}
-                            {hasOxyz ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC KHÔNG GIAN TỌA ĐỘ OXYZ</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC PHẲNG / ĐẠI SỐ KHÁC</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasOxyz
-                              ? "✓ Phương trình mặt cầu (x-a)²+(y-b)²+(z-c)²=R², vectơ pháp tuyến mặt phẳng và tích có hướng chuẩn hình học giải tích THPT."
-                              : "✓ Đề thi không sử dụng hệ trục tọa độ không gian Oxyz và hình học 3 chiều."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 43: Binomial Theorem & Polynomial Expansions Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasBinomial = /nhị thức newton|Newton|khai triển.*nhị thức|số hạng tổng quát.*khai triển|hệ số của.*x\^|C_\{?n\}?\^\{?k\}?|tam giác pascal|Pascal/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Nhị thức Newton & Khai triển đa thức (Binomial Theorem):{" "}
-                            {hasBinomial ? (
-                              <span className="font-mono text-emerald-700">CHUẨN NHỊ THỨC NEWTON & HỆ SỐ KHAI TRIỂN</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ TỔ HỢP CƠ BẢN KHÁC</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasBinomial
-                              ? "✓ Khai triển (a+b)ⁿ, công thức số hạng tổng quát T_{k+1}=C_n^k a^{n-k} b^k và tìm hệ số lũy thừa đạt chuẩn thi tốt nghiệp & chọn HSG."
-                              : "✓ Đề thi không chứa dạng toán khai triển nhị thức Newton và tìm hệ số đa thức."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 44: Polyhedra & Solid Geometry Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasPolyhedra = /khối đa diện|hình chóp|lăng trụ|thể tích khối chóp|thể tích lăng trụ|\\frac\{1\}\{3\}|tỉ số thể tích|Simpson|góc giữa đường thẳng.*mặt phẳng|góc giữa hai mặt phẳng|khoảng cách giữa hai đường chéo nhau/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Khối đa diện & Thể tích không gian cổ điển (Polyhedra & Solid Geometry):{" "}
-                            {hasPolyhedra ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC KHÔNG GIAN CỔ ĐIỂN</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">KHÔNG GIAN TỌA ĐỘ / ĐẠI SỐ KHÁC</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasPolyhedra
-                              ? "✓ Công thức thể tích V=(1/3)Bh, V=Bh, tỉ số Simpson, xác định góc và khoảng cách chéo nhau đạt chuẩn đề thi THPT Quốc gia."
-                              : "✓ Đề thi không chứa chuyên đề khối chóp, lăng trụ và tỉ số thể tích không gian cổ điển."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 45: Revolution Solids Cone Cylinder Sphere Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasRevolutionSolids = /khối tròn xoay|hình nón|hình trụ|mặt cầu|khối cầu|thể tích khối nón|thể tích khối trụ|thể tích khối cầu|diện tích xung quanh|\\pi r\^2 h|\\frac\{4\}\{3\}\\pi R\^3|đường sinh|bán kính đáy/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Khối tròn xoay Nón - Trụ - Cầu (Revolution Solids Cone Cylinder Sphere):{" "}
-                            {hasRevolutionSolids ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC KHỐI TRÒN XOAY</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC CỔ ĐIỂN KHÁC</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasRevolutionSolids
-                              ? "✓ Diện tích xung quanh, toàn phần và thể tích khối nón (V=1/3πr²h), khối trụ (V=πr²h), khối cầu (V=4/3πR³) chuẩn kiến thức thi THPT."
-                              : "✓ Đề thi không chứa dạng toán khối nón, trụ hoặc thể tích khối cầu tròn xoay."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 46: Classical Inequalities AM-GM Cauchy-Schwarz Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasInequalities = /bất đẳng thức|Cauchy|AM-GM|Bunhiacopski|Cauchy-Schwarz|Chebyshev|giá trị lớn nhất.*nhỏ nhất|điểm rơi|đánh giá bất đẳng thức|\\ge.*\\sqrt\{/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Bất đẳng thức cổ điển Cauchy - Bunhiacopski (Classical Inequalities):{" "}
-                            {hasInequalities ? (
-                              <span className="font-mono text-emerald-700">CHUẨN BẤT ĐẲNG THỨC & ĐÁNH GIÁ CỰC TRỊ</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ ĐƠN BIẾN THÔNG THƯỜNG</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasInequalities
-                              ? "✓ Kỹ thuật chọn điểm rơi AM-GM (Cauchy), bất đẳng thức Cauchy-Schwarz và phương pháp đánh giá đạt chuẩn phân loại học sinh giỏi."
-                              : "✓ Đề thi không chứa dạng toán đánh giá bất đẳng thức đối xứng nhiều biến."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 47: Non-standard Systems of Equations Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasSystems = /hệ phương trình|đẳng cấp bậc hai|đối xứng loại 1|đối xứng loại 2|lượng giác hóa|đặt ẩn phụ|phương pháp thế|nghiệm của hệ|\\begin\{cases\}|\\left\\{\\begin\{array\}/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Hệ phương trình không mẫu mực & Đối xứng / Đẳng cấp (Systems of Equations):{" "}
-                            {hasSystems ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HỆ PHƯƠNG TRÌNH ĐẠI SỐ CHUYÊN SÂU</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">PHƯƠNG TRÌNH / HỆ ĐƠN GIẢN KHÁC</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasSystems
-                              ? "✓ Hệ đối xứng loại 1, đối xứng loại 2, hệ đẳng cấp và kỹ thuật phân tích nhân tử/đặt ẩn phụ chuẩn chuyên đề HSG."
-                              : "✓ Đề thi không chứa dạng toán giải hệ phương trình không mẫu mực nhiều ẩn."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 48: Functional Equations & Cauchy / d'Alembert Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasFunctional = /phương trình hàm|bất phương trình hàm|Cauchy.*f\(x\+y\)|d'Alembert|Jensen|f\(xf\(y\)\)|f\(x\+f\(y\)\)|đơn ánh.*toàn ánh|song ánh.*hàm số|tính liên tục của hàm số/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Phương trình hàm & Phương trình Cauchy / Jensen (Functional Equations):{" "}
-                            {hasFunctional ? (
-                              <span className="font-mono text-emerald-700">CHUẨN PHƯƠNG TRÌNH HÀM HSG CHUYÊN SÂU</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÀM SỐ ĐẠI SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasFunctional
-                              ? "✓ Phương trình hàm Cauchy f(x+y)=f(x)+f(y), d'Alembert, Jensen, kỹ thuật đổi biến và đơn ánh/toàn ánh chuẩn bồi dưỡng HSG Quốc gia."
-                              : "✓ Đề thi không chứa dạng toán tìm hàm số thỏa mãn đẳng thức hàm phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 49: Polynomials & Vieta / Irreducibility Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasPolynomials = /đa thức|nghiệm hữu tỉ|định lý Viète|Vi-ét bậc ba|Vi-ét bậc bốn|đa thức bất khả quy|tiêu chuẩn Eisenstein|nghiệm bội|phép chia đa thức|P\(x\)\s*=|Q\(x\)\s*=|R\(x\)/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Đa thức & Nghiệm / Định lý Viète bậc cao (Polynomials & Vieta):{" "}
-                            {hasPolynomials ? (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐA THỨC ĐẠI SỐ & ĐỊNH LÝ VIÈTE CHUYÊN SÂU</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">BIỂU THỨC ĐẠI SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasPolynomials
-                              ? "✓ Đa thức hệ số nguyên, nghiệm bội, định lý Viète bậc cao, lược đồ Horner và tính bất khả quy chuẩn học sinh giỏi."
-                              : "✓ Đề thi không chứa dạng toán phân tích và giải nghiệm đa thức nâng cao."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 50: Advanced Combinatorics & Dirichlet / Invariance Inspector (MILESTONE CHECK 50) */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasCombinatorics = /nguyên lý Dirichlet|nguyên lý lồng chim|đại lượng bất biến|nguyên lý cực hạn|tô màu|lát gạch|lý thuyết đồ thị|bài toán chia kẹo Euler|nguyên lý bù trừ|tập hợp con/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Tổ hợp nâng cao & Nguyên lý Dirichlet / Bất biến (Check 50 Milestone):{" "}
-                            {hasCombinatorics ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TỔ HỢP RỜI RẠC & NGUYÊN LÝ DIRICHLET HSG QUỐC GIA</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TỔ HỢP ĐẠI TRÀ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasCombinatorics
-                              ? "✓ Đạt chuẩn nguyên lý Dirichlet, đại lượng bất biến, nguyên lý cực hạn và bài toán tổ hợp rời rạc bồi dưỡng đội tuyển HSG Quốc gia."
-                              : "✓ Đề thi không chứa dạng toán suy luận tổ hợp rời rạc phi truyền thống."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 51: Number Theory & Modular Arithmetic / Diophantine Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasNumberTheory = /đồng dư|modulo|mod\s*\d+|định lý Fermat|định lý Euler|phương trình Diophantine|nghiệm nguyên|chia hết cho|ước chung lớn nhất|bội chung nhỏ nhất|\bUCLN\b|\bBCNN\b|số nguyên tố cùng nhau|cấp của phần tử/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Lý thuyết số & Đồng dư thức / Diophantine (Number Theory Inspector):{" "}
-                            {hasNumberTheory ? (
-                              <span className="font-mono text-emerald-700">CHUẨN LÝ THUYẾT SỐ & ĐỒNG DƯ THỨC HSG CHUYÊN SÂU</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">SỐ HỌC TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasNumberTheory
-                              ? "✓ Đồng dư thức modulo, định lý Fermat nhỏ, Euler, phương trình Diophantine nghiệm nguyên chuẩn đề thi học sinh giỏi."
-                              : "✓ Đề thi không chứa dạng toán lý thuyết số và số học đồng dư nâng cao."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 52: Projective Geometry & Harmonic Bundles / Pole and Polar Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasHarmonic = /hàng điểm điều hòa|chùm điều hòa|tỉ số kép|cực và đối cực|đường đối cực|định lý Desargues|định lý Pascal|định lý Brianchon|trục đẳng phương|tâm đẳng phương|Menelaus dạng lượng giác|Ceva dạng lượng giác/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Hình học xạ ảnh & Hàng điểm điều hòa / Cực đối cực (Harmonic Bundles Inspector):{" "}
-                            {hasHarmonic ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC XẠ ẢNH & ĐIỀU HÒA CHUYÊN SÂU</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC PHẲNG TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasHarmonic
-                              ? "✓ Hàng điểm điều hòa, tỉ số kép, chùm đường thẳng điều hòa, cực đối cực chuẩn đề thi chọn học sinh giỏi môn Toán."
-                              : "✓ Đề thi không chứa cấu hình hình học xạ ảnh và hàng điểm điều hòa nâng cao."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 53: Integer Sequences & Pell Equation / Fibonacci - Lucas Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasSeqPell = /phương trình Pell|Pell equation|dãy Fibonacci|dãy Lucas|chu kỳ Pisano|số Catalan|số Stirling|công thức Binet|hệ thức truy hồi tuyến tính|dãy số nguyên/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Dãy số nguyên & Phương trình Pell / Fibonacci (Integer Sequences Inspector):{" "}
-                            {hasSeqPell ? (
-                              <span className="font-mono text-emerald-700">CHUẨN DÃY SỐ NGUYÊN & PHƯƠNG TRÌNH PELL HSG QUỐC GIA</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">DÃY SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasSeqPell
-                              ? "✓ Phương trình Pell, dãy Fibonacci - Lucas, công thức Binet và hệ thức truy hồi tuyến tính chuẩn đề thi chọn học sinh giỏi Quốc tế."
-                              : "✓ Đề thi không chứa dạng toán dãy số nguyên và phương trình nghiệm nguyên Pell nâng cao."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 54: Complex Analysis & Möbius Transformation Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasComplexAnalysis = /ánh xạ bảo giác|biến đổi Möbius|biến đổi phân tuyến tính|mặt cầu Riemann|hàm giải tích|định lý Liouville|công thức Cauchy|tích phân phức|căn bậc n của đơn vị|De Moivre mở rộng|chuỗi Laurent|thặng dư phức/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giải tích số phức & Biến đổi Möbius (Complex Analysis Inspector):{" "}
-                            {hasComplexAnalysis ? (
-                              <span className="font-mono text-emerald-700">CHUẨN GIẢI TÍCH PHỨC & BIẾN ĐỔI MÖBIUS CAO CẤP</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">SỐ PHỨC ĐẠI SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasComplexAnalysis
-                              ? "✓ Ánh xạ bảo giác, biến đổi Möbius phân tuyến tính, chuỗi Laurent và tích phân phức chuẩn đề thi Olympic Toán sinh viên / ĐH."
-                              : "✓ Đề thi không chứa giải tích phức và biến đổi phân tuyến tính chuyên sâu."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 55: Linear Algebra & Eigenvalues / Characteristic Polynomial Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasLinearAlgebra = /ma trận vuông|định thức|determinant|\bdet\b|giá trị riêng|vector riêng|eigenvalue|eigenvector|đa thức đặc trưng|chéo hóa ma trận|không gian con|độc lập tuyến tính|hạng của ma trận|\brank\b/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Đại số tuyến tính & Giá trị riêng / Ma trận (Linear Algebra Inspector):{" "}
-                            {hasLinearAlgebra ? (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ TUYẾN TÍNH & MA TRẬN OLYMPIC TOÁN</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ ĐẠI CƯƠNG TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasLinearAlgebra
-                              ? "✓ Ma trận vuông, định thức, giá trị riêng, vector riêng và chéo hóa ma trận chuẩn đề thi Olympic Toán sinh viên toàn quốc."
-                              : "✓ Đề thi không chứa đại số tuyến tính và lý thuyết ma trận nâng cao."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 56: General Topology & Metric Spaces / Compactness Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasTopology = /không gian metric|khoảng cách metric|tập mở|tập đóng|bao đóng|lân cận|điểm tụ|tính compact|tập compact|liên thông|tính liên thông|trù mật|độ đo|không gian Banach|không gian Hilbert/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Tô pô đại cương & Không gian Metric (Topology & Metric Spaces Inspector):{" "}
-                            {hasTopology ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TÔ PÔ ĐẠI CƯƠNG & METRIC CAO CẤP</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC & GIẢI TÍCH KHÔNG GIAN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasTopology
-                              ? "✓ Không gian metric, tập mở/đóng, tính compact và tính liên thông chuẩn đề thi Olympic Toán và Giải tích cao cấp."
-                              : "✓ Đề thi không chứa cấu trúc tô pô và không gian metric chuyên sâu."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 57: Abstract Algebra & Group Theory / Homomorphism Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasAbstractAlgebra = /lý thuyết nhóm|nhóm Abel|nhóm cyclic|nhóm đối xứng|nhóm con chuẩn tắc|định lý Lagrange|đồng cấu nhóm|đẳng cấu nhóm|vành và trường|trường hữu hạn|ideal|nhóm nhân modulo|quỹ đạo và nhóm ổn định/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Đại số trừu tượng & Lý thuyết nhóm (Abstract Algebra & Group Theory Inspector):{" "}
-                            {hasAbstractAlgebra ? (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ TRỪU TƯỢNG & LÝ THUYẾT NHÓM CAO CẤP</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ CƠ BẢN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasAbstractAlgebra
-                              ? "✓ Nhóm Abel, cyclic, nhóm đối xứng, định lý Lagrange và đồng cấu/đẳng cấu nhóm chuẩn đề thi Olympic Toán và Đại số hiện đại."
-                              : "✓ Đề thi không chứa cấu trúc đại số trừu tượng và lý thuyết nhóm chuyên sâu."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 58: Graph Theory & Network Flows / Trees Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasGraphTheory = /lý thuyết đồ thị|đồ thị vô hướng|đồ thị có hướng|bậc của đỉnh|chu trình Euler|đường đi Euler|chu trình Hamilton|cây khung nhỏ nhất|Kruskal|Prim|Dijkstra|luồng cực đại|lát cắt hẹp nhất|Ford-Fulkerson|đồ thị phẳng|định lý Kuratowski|tô màu đồ thị/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Lý thuyết Đồ thị & Luồng mạng (Graph Theory & Trees Inspector):{" "}
-                            {hasGraphTheory ? (
-                              <span className="font-mono text-emerald-700">CHUẨN LÝ THUYẾT ĐỒ THỊ & TOÁN RỜI RẠC CHUYÊN SÂU</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TOÁN HỌC RỜI RẠC TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasGraphTheory
-                              ? "✓ Đồ thị vô/hướng, chu trình Euler/Hamilton, cây khung, thuật toán Dijkstra và đồ thị phẳng chuẩn đề thi Tin học trẻ và Olympic Toán Tin."
-                              : "✓ Đề thi không chứa cấu trúc lý thuyết đồ thị và luồng mạng nâng cao."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 59: Numerical Analysis & Interpolation / Finite Differences Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasNumericalAnalysis = /giải tích số|phương pháp số|nội suy Lagrange|nội suy Newton|sai phân hữu hạn|bảng sai phân|phương pháp Newton-Raphson|phương pháp chia đôi|phương pháp dây cung|tích phân Simpson|công thức hình thang|chuẩn sai số|sai số tuyệt đối|sai số tương đối/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giải tích số & Nội suy / Sai phân (Numerical Analysis Inspector):{" "}
-                            {hasNumericalAnalysis ? (
-                              <span className="font-mono text-emerald-700">CHUẨN GIẢI TÍCH SỐ & PHƯƠNG PHÁP TÍNH CAO CẤP</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">GIẢI TÍCH CỔ ĐIỂN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasNumericalAnalysis
-                              ? "✓ Nội suy Lagrange, Newton, sai phân hữu hạn, phương pháp Newton-Raphson và tích phân số chuẩn Olympic Toán ứng dụng."
-                              : "✓ Đề thi không chứa cấu trúc giải tích số và thuật toán xấp xỉ sai số."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 60: Measure Theory & Lebesgue Integration / Sigma-Algebra Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasMeasureTheory = /lý thuyết độ đo|độ đo Lebesgue|đại số sigma|sigma-algebra|tập đo được|hàm đo được|tích phân Lebesgue|định lý hội tụ bị chặn|định lý hội tụ đơn điệu|bổ đề Fatou|không gian L\^p|hầu khắp nơi|độ đo hoàn toàn/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Lý thuyết Độ đo & Tích phân Lebesgue (Measure Theory & Lebesgue Inspector):{" "}
-                            {hasMeasureTheory ? (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐỘ ĐO LEBESGUE & GIẢI TÍCH HIỆN ĐẠI ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TÍCH PHÂN RIEMANN CỔ ĐIỂN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasMeasureTheory
-                              ? "✓ Độ đo Lebesgue, đại số sigma, tập đo được, tích phân Lebesgue và bổ đề Fatou chuẩn đề thi Olympic Toán sinh viên toàn quốc."
-                              : "✓ Đề thi không chứa cấu trúc lý thuyết độ đo và tích phân Lebesgue trừu tượng."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 61: Functional Analysis & Linear Operators / Hahn-Banach Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasFunctionalAnalysis = /giải tích hàm|phiếm hàm tuyến tính|toán tử tuyến tính liên tục|chuẩn toán tử|định lý Hahn-Banach|định lý ánh xạ mở|định lý đồ thị đóng|nguyên lý bị chặn đều|Banach-Steinhaus|phổ của toán tử|toán tử tự liên hợp|không gian đối ngẫu/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giải tích hàm & Toán tử tuyến tính (Functional Analysis Inspector):{" "}
-                            {hasFunctionalAnalysis ? (
-                              <span className="font-mono text-emerald-700">CHUẨN GIẢI TÍCH HÀM & TOÁN TỬ TUYẾN TÍNH ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">GIẢI TÍCH CỔ ĐIỂN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasFunctionalAnalysis
-                              ? "✓ Phiếm hàm tuyến tính, định lý Hahn-Banach, Banach-Steinhaus, định lý ánh xạ mở và không gian đối ngẫu chuẩn Olympic Toán sinh viên."
-                              : "✓ Đề thi không chứa cấu trúc giải tích hàm vô hạn chiều và toán tử tuyến tính liên tục."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 62: Calculus of Variations & Optimal Control / Euler-Lagrange Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasVariations = /giải tích biến phân|tính biến phân|phương trình Euler-Lagrange|đường đoản thời|brachistochrone|điều kiện Weierstrass|nguyên lý cực đại Pontryagin|phương trình Hamilton-Jacobi-Bellman|điều khiển tối ưu|phiếm hàm tích phân|cực trị có điều kiện biến phân/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giải tích biến phân & Điều khiển tối ưu (Variational & Optimal Control Inspector):{" "}
-                            {hasVariations ? (
-                              <span className="font-mono text-emerald-700">CHUẨN BIẾN PHÂN EULER-LAGRANGE & TỐI ƯU ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">CỰC TRỊ VI TÍCH PHÂN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasVariations
-                              ? "✓ Phương trình Euler-Lagrange, bài toán đường đoản thời Brachistochrone, nguyên lý cực đại Pontryagin chuẩn Olympic Toán ứng dụng và Cơ học giải tích."
-                              : "✓ Đề thi không chứa cấu trúc giải tích biến phân và điều khiển tối ưu hóa vi tích phân."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 63: Differential Geometry & Curvature / Frenet-Serret Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasDiffGeom = /hình học vi phân|độ cong Gauss|độ cong chính|độ cong trung bình|công thức Frenet-Serret|vectơ tiếp tuyến|vectơ pháp tuyến chính|vectơ trùng pháp tuyến|độ xoắn|dạng toàn phương cơ bản|đường trắc địa|geodesic|mặt riemann/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Hình học vi phân & Độ cong Gauss (Differential Geometry Inspector):{" "}
-                            {hasDiffGeom ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC VI PHÂN & ĐƯỜNG TRẮC ĐỊA ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC KHÔNG GIAN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasDiffGeom
-                              ? "✓ Công thức Frenet-Serret, độ xoắn, độ cong Gauss, dạng toàn phương cơ bản và đường trắc địa chuẩn Olympic Toán sinh viên."
-                              : "✓ Đề thi không chứa cấu trúc hình học vi phân đa tạp và độ cong Gauss trừu tượng."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 64: Mathematical Statistics & Hypothesis Testing / MLE Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasMathStats = /thống kê toán|ước lượng hợp lý cực đại|mle|ước lượng không chệch|khoảng tin cậy|kiểm định giả thuyết|kiểm định student|t-test|kiểm định chi bình phương|chi-square|kiểm định fisher|f-test|phân tích phương sai|anova|hồi quy tuyến tính|p-value kiểm định/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Thống kê toán học & Kiểm định giả thuyết (Mathematical Statistics Inspector):{" "}
-                            {hasMathStats ? (
-                              <span className="font-mono text-emerald-700">CHUẨN THỐNG KÊ TOÁN & KIỂM ĐỊNH GIẢ THUYẾT ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">THỐNG KÊ MÔ TẢ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasMathStats
-                              ? "✓ Ước lượng hợp lý cực đại MLE, khoảng tin cậy, kiểm định t-test, ANOVA và hồi quy tuyến tính chuẩn Olympic Toán ứng dụng và Thống kê suy diễn."
-                              : "✓ Đề thi không chứa cấu trúc ước lượng thống kê suy diễn và kiểm định giả thuyết nâng cao."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 65: Partial Differential Equations / Fourier Separation of Variables Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasPDE = /phương trình đạo hàm riêng|pde|phương trình truyền nhiệt|heat equation|phương trình sóng|wave equation|phương trình laplace|phương trình poisson|hàm điều hòa|harmonic function|tách biến fourier|chuỗi fourier|điều kiện dirichlet|điều kiện neumann|toán tử d'alembert/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Phương trình đạo hàm riêng & Tách biến Fourier (PDE & Fourier Inspector):{" "}
-                            {hasPDE ? (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐẠO HÀM RIÊNG PDE & TÁCH BIẾN FOURIER ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">GIẢI TÍCH VI PHÂN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasPDE
-                              ? "✓ Phương trình truyền nhiệt, truyền sóng, Laplace/Poisson, điều kiện biên Dirichlet/Neumann và tách biến Fourier chuẩn Olympic Toán giải tích."
-                              : "✓ Đề thi không chứa phương trình đạo hàm riêng và bài toán biên phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 66: Discrete Mathematics & Applied Cryptography / RSA Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasCrypto = /toán rời rạc|mật mã học|cryptography|hệ mật mã rsa|khóa công khai|khóa bí mật|đường cong elliptic|ecc|hàm băm|sha-256|logarit rời rạc|mã sửa sai|reed-solomon|mã hamming|chứng thực số|chữ ký điện tử/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Toán rời rạc & Mật mã học hiện đại (Discrete Math & Cryptography Inspector):{" "}
-                            {hasCrypto ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TOÁN RỜI RẠC & MẬT MÃ HỌC RSA / ECC ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TOÁN HỌC ĐẠI CƯƠNG TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasCrypto
-                              ? "✓ Hệ mật RSA, đường cong Elliptic ECC, hàm băm SHA-256, logarit rời rạc và mã sửa sai Reed-Solomon chuẩn Olympic Tin học và Toán ứng dụng mật mã."
-                              : "✓ Đề thi không chứa cấu trúc mật mã học hiện đại và bài toán bảo mật thông tin."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 67: Graph Theory & Maximum Network Flows / Hall's Marriage Theorem Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasGraph = /lý thuyết đồ thị|graph theory|luồng cực đại|maximum flow|ford-fulkerson|edmonds-karp|lát cắt hẹp nhất|min-cut|định lý hall|ghép đôi hoàn hảo|định lý tutte|đồ thị phẳng|định lý kuratowski|chu trình hamilton|chu trình euler|cây khung nhỏ nhất|thuật toán kruskal|thuật toán dijkstra/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Lý thuyết đồ thị & Luồng cực đại mạng (Graph Theory & Network Flows Inspector):{" "}
-                            {hasGraph ? (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐỒ THỊ & LUỒNG CỰC ĐẠI FORD-FULKERSON ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">CẤU TRÚC RỜI RẠC TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasGraph
-                              ? "✓ Luồng cực đại Ford-Fulkerson, lát cắt Min-cut, ghép đôi Hall/Tutte và đồ thị phẳng Kuratowski chuẩn Olympic Tin học và Toán rời rạc nâng cao."
-                              : "✓ Đề thi không chứa bài toán đồ thị và luồng mạng phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 68: Chaos Theory & Dynamical Systems / Mandelbrot Fractal Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasChaos = /lý thuyết hỗn độn|chaos theory|hệ động lực phi tuyến|dynamical system|hệ số lyapunov|lyapunov exponent|sơ đồ rẽ nhánh|bifurcation|tập fractal|fractal mandelbrot|tập julia|attractor kỳ lạ|hút kỳ lạ|lorenz attractor|ánh xạ logistic|bài toán ba vật thể/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Lý thuyết hỗn độn & Hệ động lực Fractal (Chaos & Fractal Inspector):{" "}
-                            {hasChaos ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HỆ ĐỘNG LỰC PHI TUYẾN & FRACTAL ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HỆ THỐNG TUYẾN TÍNH TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasChaos
-                              ? "✓ Hệ số Lyapunov, rẽ nhánh bifurcation, tập Mandelbrot/Julia và attractor Lorenz chuẩn Olympic Toán mô hình hóa và Hệ động lực phi tuyến."
-                              : "✓ Đề thi không chứa cấu trúc hỗn độn vi phân phi tuyến và hình học fractal."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 69: Random Matrix Theory & Wigner Semicircle Law / Tracy-Widom Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasRandomMatrix = /ma trận ngẫu nhiên|random matrix|định luật bán nguyệt|wigner semicircle|phân phối wigner|marchenko-pastur|phân phối tracy-widom|trị riêng ma trận ngẫu nhiên|ma trận hermitian|gaussian unitary ensemble|gue|gaussian orthogonal ensemble|goe|khoảng cách trị riêng/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Ma trận ngẫu nhiên & Phân phối Wigner (Random Matrix Theory Inspector):{" "}
-                            {hasRandomMatrix ? (
-                              <span className="font-mono text-emerald-700">CHUẨN MA TRẬN NGẪU NHIÊN & ĐỊNH LUẬT BÁN NGUYỆT WIGNER ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ TUYẾN TÍNH TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasRandomMatrix
-                              ? "✓ Định luật bán nguyệt Wigner Semicircle Law, Marchenko-Pastur, phân phối Tracy-Widom và ensemble GUE/GOE chuẩn Olympic Toán cao cấp và Vật lý lượng tử."
-                              : "✓ Đề thi không chứa ma trận ngẫu nhiên cỡ lớn và lý thuyết phổ tiệm cận."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 70: Algebraic Number Theory & Modularity Theorem / Wiles-Taylor Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasNumTheory = /lý thuyết số đại số|algebraic number theory|trường số đại số|số nguyên đại số|định lý fermat lớn|wiles-taylor|dạng module|modular form|định lý modularity|shimura-taniyama|đường cong elliptic modularity|birch & swinnerton-dyer|l-function|hàm l-dirichlet|nhóm lý tưởng lớp/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Lý thuyết số đại số & Định lý Modularity Wiles (Algebraic Number Theory Inspector):{" "}
-                            {hasNumTheory ? (
-                              <span className="font-mono text-emerald-700">CHUẨN SỐ ĐẠI SỐ & ĐỊNH LÝ FERMAT WILES ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">SỐ HỌC ĐẠI CƯƠNG TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasNumTheory
-                              ? "✓ Định lý Fermat lớn, chứng minh Wiles-Taylor, định lý Modularity, hàm L-Dirichlet và đường cong Elliptic chuẩn Olympic Toán Quốc tế IMO và Nghiên cứu sinh Số học."
-                              : "✓ Đề thi không chứa cấu trúc số đại số cao cấp và dạng module elliptic."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 71: Algebraic Topology & Fundamental Group / Homology Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasTopology = /tô pô đại số|algebraic topology|nhóm cơ bản|fundamental group|\\pi_1|đồng điều kỳ dị|singular homology|đối đồng điều|cohomology|không gian tô pô|brouwer fixed-point|định lý điểm bất động brouwer|chuẩn euler-poincaré|đa diện lồi euler|phức đơn giác|simplicial complex/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Tô pô đại số & Nhóm cơ bản Đồng điều (Algebraic Topology Inspector):{" "}
-                            {hasTopology ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TÔ PÔ ĐẠI SỐ & ĐỒNG ĐIỀU HOMOLOGY ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC TÔ PÔ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasTopology
-                              ? "✓ Nhóm cơ bản pi_1, đồng điều kỳ dị, đối đồng điều cohomology và định lý điểm bất động Brouwer chuẩn Olympic Toán sinh viên và Sau đại học."
-                              : "✓ Đề thi không chứa không gian tô pô đại số phức hợp và đồng điều cao cấp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 72: Group Representation & Lie Algebra / Schur's Lemma Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasLieRep = /biểu diễn nhóm|group representation|đại số lie|lie algebra|bảng ký tự|character table|bổ đề schur|schur's lemma|biểu diễn bất khả quy|irreducible representation|nhóm so\\(3\\)|nhóm su\\(2\\)|ma trận pauli|đại số lie sl_2|rễ đơn|root system|casimir/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Biểu diễn nhóm & Đại số Lie (Group Representation & Lie Algebra Inspector):{" "}
-                            {hasLieRep ? (
-                              <span className="font-mono text-emerald-700">CHUẨN BIỂU DIỄN NHÓM & ĐẠI SỐ LIE ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐẠI SỐ TRỪU TƯỢNG TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasLieRep
-                              ? "✓ Đại số Lie, bổ đề Schur, biểu diễn bất khả quy, nhóm quay SO(3), SU(2) và bảng ký tự nhân vật chuẩn Olympic Toán cao cấp và Vật lý lý thuyết hạt cơ bản."
-                              : "✓ Đề thi không chứa lý thuyết biểu diễn nhóm liên tục và đại số Lie nâng cao."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 73: Knot Theory & Jones Polynomial / Reidemeister Moves Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasKnotTheory = /lý thuyết nút thắt|knot theory|đa thức jones|jones polynomial|đa thức alexander|alexander polynomial|biến đổi reidemeister|reidemeister moves|nhóm bím tóc artin|braid group|bất biến nút thắt|knot invariant|liên kết kauffman|khovanov homology|nút ba lá|trefoil knot/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Lý thuyết nút thắt & Đa thức Jones (Knot Theory Inspector):{" "}
-                            {hasKnotTheory ? (
-                              <span className="font-mono text-emerald-700">CHUẨN NÚT THẮT & BẤT BIẾN JONES ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TÔ PÔ HÌNH HỌC TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasKnotTheory
-                              ? "✓ Đa thức Jones, đa thức Alexander, biến đổi Reidemeister, nhóm bím tóc Artin và đồng điều Khovanov chuẩn Olympic Toán học và Mô hình sinh học phân tử DNA."
-                              : "✓ Đề thi không chứa cấu trúc không gian nút thắt và bất biến đa thức Jones."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 74: Noncommutative Geometry & C*-Algebra / Alain Connes Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasNoncommGeom = /hình học không giao hoán|noncommutative geometry|c\\\*-đại số|c\\\*-algebra|đại số von neumann|von neumann algebra|bộ ba phổ|spectral triple|k-lý thuyết toán tử|operator k-theory|alain connes|chu trình chu kỳ|cyclic cohomology|hình học lượng tử/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Hình học không giao hoán & C*-Đại số (Noncommutative Geometry Inspector):{" "}
-                            {hasNoncommGeom ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC LƯỢNG TỬ & C*-ĐẠI SỐ ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC VI PHÂN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasNoncommGeom
-                              ? "✓ Hình học không giao hoán Alain Connes, C*-đại số, bộ ba phổ, đại số Von Neumann và K-lý thuyết toán tử chuẩn Olympic Toán học và Nghiên cứu sinh Vật lý lý thuyết lượng tử."
-                              : "✓ Đề thi không chứa hình học vi phân không giao hoán và đại số toán tử vô hạn chiều."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 75: Singularity Theory & Grothendieck Schemes / Étale Cohomology Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasGrothendieck = /lý thuyết điểm kỳ dị|singularity theory|lược đồ grothendieck|grothendieck scheme|đối đồng điều étale|etale cohomology|bổ đề zariski|zariski topology|điểm kỳ dị đại số|resolution of singularities|định lý hironaka|bó đại số|algebraic sheaf/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Điểm kỳ dị & Lược đồ Grothendieck (Grothendieck Schemes Inspector):{" "}
-                            {hasGrothendieck ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC ĐẠI SỐ GROTHENDIECK ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC ĐẠI SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasGrothendieck
-                              ? "✓ Lược đồ Grothendieck, đối đồng điều Étale, giải kỳ dị Hironaka, tô pô Zariski và lý thuyết bó chuẩn Olympic Toán học sinh giỏi quốc tế và Sau đại học."
-                              : "✓ Đề thi không chứa hình học đại số trừu tượng của trường phái Grothendieck."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 76: Quantum Complexity & Circuit Model / Shor & Grover Algorithm Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasQuantumComp = /độ phức tạp lượng tử|quantum complexity|lớp bqp|lớp qma|mạch lượng tử|quantum circuit|thuật toán shor|shor's algorithm|thuật toán grover|grover's algorithm|cổng hadamard|hadamard gate|cnot gate|biến đổi fourier lượng tử|quantum fourier transform|qubit chồng chập|quantum entanglement/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Độ phức tạp lượng tử & Thuật toán Shor (Quantum Complexity Inspector):{" "}
-                            {hasQuantumComp ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TÍNH TOÁN LƯỢNG TỬ & THUẬT TOÁN SHOR ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TÍNH TOÁN KHOA HỌC TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasQuantumComp
-                              ? "✓ Độ phức tạp BQP/QMA, mạch lượng tử, thuật toán Shor, Grover và biến đổi Fourier lượng tử chuẩn Olympic Tin học và Toán học Ứng dụng hiện đại."
-                              : "✓ Đề thi không chứa mô hình tính toán lượng tử và thuật toán lượng tử nâng cao."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 77: Navier-Stokes Smoothness & Sobolev Turbulence / Clay Millennium Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasNavierStokes = /phương trình navier-stokes|navier-stokes equation|tính trơn navier-stokes|navier-stokes smoothness|dòng chảy hỗn loạn|turbulence model|không gian sobolev|sobolev space|tiêu tán năng lượng|energy dissipation|hằng số kolmogorov|kolmogorov turbulence|bài toán thiên niên kỷ clay|clay millennium problem|áp suất thủy động/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Navier-Stokes & Dòng chảy hỗn loạn (Navier-Stokes Inspector):{" "}
-                            {hasNavierStokes ? (
-                              <span className="font-mono text-emerald-700">CHUẨN BÀI TOÁN THIÊN NIÊN KỶ NAVIER-STOKES ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">CƠ HỌC LƯU CHẤT TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasNavierStokes
-                              ? "✓ Phương trình Navier-Stokes phi tuyến, tính trơn Clay Millennium, không gian Sobolev và dòng chảy Kolmogorov chuẩn Olympic Vật lý tính toán và Toán cao cấp."
-                              : "✓ Đề thi không chứa mô hình phương trình đạo hàm riêng Navier-Stokes phi tuyến phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 78: Hodge Conjecture & Complex Projective Cycles / De Rham Cohomology Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasHodge = /giả thuyết hodge|hodge conjecture|chu trình hodge|hodge cycle|phân tích hodge|hodge decomposition|\(p,\s*q\)-dạng|\(p,\s*q\)-form|đa tạp xạ ảnh phức|complex projective manifold|đối đồng điều de rham|de rham cohomology|toán tử laplace-beltrami|bài toán thiên niên kỷ hodge/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giả thuyết Hodge & Chu trình xạ ảnh (Hodge Conjecture Inspector):{" "}
-                            {hasHodge ? (
-                              <span className="font-mono text-emerald-700">CHUẨN BÀI TOÁN THIÊN NIÊN KỶ HODGE ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC PHỨC TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasHodge
-                              ? "✓ Giả thuyết Hodge Clay Millennium, phân tích Hodge (p,q)-dạng, chu trình đại số hữu tỉ và đối đồng điều De Rham chuẩn Olympic Toán học và Nghiên cứu sinh Hình học đại số phức."
-                              : "✓ Đề thi không chứa các cấu trúc giải tích đa tạp phức và chu trình Hodge trừu tượng."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 79: Birch & Swinnerton-Dyer Conjecture / Elliptic Curve L-function Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasBSD = /giả thuyết birch và swinnerton-dyer|giả thuyết bsd|birch and swinnerton-dyer|đường cong elliptic|elliptic curve|hàm l-hasse-weil|l-function|hạng đại số elliptic|algebraic rank|nhóm tate-shafarevich|tate-shafarevich group|điểm hữu tỉ mordell-weil|mordell-weil theorem|bài toán thiên niên kỷ bsd/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giả thuyết Birch-Swinnerton-Dyer (BSD Conjecture Inspector):{" "}
-                            {hasBSD ? (
-                              <span className="font-mono text-emerald-700">CHUẨN BÀI TOÁN THIÊN NIÊN KỶ BSD ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">LÝ THUYẾT SỐ ĐẠI SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasBSD
-                              ? "✓ Giả thuyết BSD Clay Millennium, đường cong Elliptic E(Q), hàm L-Hasse-Weil, hạng đại số và nhóm Tate-Shafarevich chuẩn Olympic Toán học và Nghiên cứu sinh Lý thuyết số hiện đại."
-                              : "✓ Đề thi không chứa các cấu trúc giải tích đường cong Elliptic và hàm L bậc cao phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 80: Yang-Mills Existence & Mass Gap / Quantum Gauge Theory Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasYangMills = /yang-mills|bài toán yang-mills|khoảng trống khối lượng|mass gap|lý thuyết trường chuẩn phi giao hoán|non-abelian gauge theory|nhóm chuẩn su\(n\)|su\(n\) gauge group|liên kết wightman|wightman axioms|không gian hilbert trạng thái chân không|quantum gauge theory|bài toán thiên niên kỷ yang-mills/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Lý thuyết Yang-Mills & Khoảng trống khối lượng (Yang-Mills Mass Gap Inspector):{" "}
-                            {hasYangMills ? (
-                              <span className="font-mono text-emerald-700">CHUẨN BÀI TOÁN THIÊN NIÊN KỶ YANG-MILLS ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">VẬT LÝ TOÁN LƯỢNG TỬ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasYangMills
-                              ? "✓ Bài toán Thiên niên kỷ Yang-Mills Existence & Mass Gap (Δ > 0), hệ tiên đề Wightman, nhóm chuẩn SU(N) và không gian Hilbert trạng thái lượng tử chuẩn Vật lý lý thuyết và Toán giải tích hàm hiện đại."
-                              : "✓ Đề thi không chứa các cấu trúc lý thuyết trường chuẩn phi giao hoán và giải tích hàm vô hạn chiều trừu tượng."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 81: Poincaré Conjecture & Ricci Flow / 4-Manifold Invariants Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasPoincare = /giả thuyết poincaré|giả thuyết poincare|poincare conjecture|dòng ricci|ricci flow|perelman|hamilton|đa tạp 3 chiều đơn liên|simply connected 3-manifold|bất biến donaldson|bất biến seiberg-witten|đa tạp 4 chiều|4-manifold|bài toán thiên niên kỷ poincaré/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giả thuyết Poincaré & Dòng Ricci (Poincaré Conjecture Inspector):{" "}
-                            {hasPoincare ? (
-                              <span className="font-mono text-emerald-700">CHUẨN BÀI TOÁN THIÊN NIÊN KỶ POINCARÉ ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TÔ PÔ VI PHÂN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasPoincare
-                              ? "✓ Giả thuyết Poincaré Clay Millennium (chứng minh bởi Perelman qua dòng Ricci Hamilton), đa tạp 3 chiều đơn liên, bất biến Donaldson và Seiberg-Witten chuẩn Olympic Toán học và Nghiên cứu sinh Tô-pô hình học vi phân."
-                              : "✓ Đề thi không chứa các cấu trúc hình học đa tạp phi Euclid và dòng Ricci bậc cao phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 82: P vs NP & Cook-Levin Complexity / Polynomial Reductions Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasPvsNP = /p vs np|bài toán p vs np|định lý cook-levin|cook-levin theorem|np-complete|np-hard|quy dẫn đa thức|polynomial-time reduction|độ phức tạp thuật toán karp|karp's 21 np-complete problems|mạch boolean phi đồng nhất|circuit complexity|bài toán thiên niên kỷ p vs np/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Bài toán P vs NP & Định lý Cook-Levin (P vs NP Complexity Inspector):{" "}
-                            {hasPvsNP ? (
-                              <span className="font-mono text-emerald-700">CHUẨN BÀI TOÁN THIÊN NIÊN KỶ P VS NP ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">ĐỘ PHỨC TẠP TÍNH TOÁN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasPvsNP
-                              ? "✓ Bài toán Thiên niên kỷ P vs NP Clay Millennium, định lý Cook-Levin (SAT), các lớp độ phức tạp NP-Complete, NP-Hard và quy dẫn Karp chuẩn Olympic Tin học và Toán Tin lý thuyết tính toán."
-                              : "✓ Đề thi không chứa các bài toán quy dẫn độ phức tạp thuật toán và lý thuyết mạch boolean phi đồng nhất phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 83: Deligne Periods & Mixed Hodge Structures / Motives Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasDeligne = /chu kỳ deligne|deligne periods|cấu trúc hodge hỗn hợp|mixed hodge structures|lý thuyết motives grothendieck-deligne|grothendieck motives|giả thuyết weil iii|deligne's proof of weil conjectures|đối đồng điều tinh tế|absolute hodge cycles|giả thuyết beilinson-deligne/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Chu kỳ Deligne & Cấu trúc Hodge hỗn hợp (Deligne Motives Inspector):{" "}
-                            {hasDeligne ? (
-                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ ĐỈNH CAO GROTHENDIECK-DELIGNE</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC ĐẠI SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasDeligne
-                              ? "✓ Lý thuyết Motives Grothendieck-Deligne, chu kỳ Deligne, cấu trúc Hodge hỗn hợp (MHS), chu trình Hodge tuyệt đối và định lý Weil III chuẩn Olympic Toán học và Nghiên cứu sinh Hình học số học."
-                              : "✓ Đề thi không chứa các cấu trúc giải tích chu kỳ chu chuyển phức tạp và phạm trù đối đồng điều motives trừu tượng."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 84: Witten K-Theory & Topological String Invariants / Spin Dirac Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasWitten = /bất biến gromov-witten|gromov-witten invariants|tô-pô đại số k-theory|k-theory witten|toán tử dirac trên đa tạp spin|spin dirac operator|lý thuyết dây tô-pô|topological string theory|định lý atiyah-singer|atiyah-singer index theorem|bất biến witten/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Bất biến Witten & Tô-pô K-Theory (Witten K-Theory Inspector):{" "}
-                            {hasWitten ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TOÁN LÝ ĐỈNH CAO WITTEN-ATIYAH</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TÔ PÔ ĐẠI SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasWitten
-                              ? "✓ Bất biến Gromov-Witten, tô-pô vi phân K-Theory, định lý chỉ số Atiyah-Singer và toán tử Dirac trên đa tạp Spin chuẩn Olympic Toán học và Nghiên cứu sinh Vật lý lý thuyết hiện đại."
-                              : "✓ Đề thi không chứa các cấu trúc không gian dây lượng tử và toán tử vi phân chỉ số bậc cao phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 85: Calabi-Yau Mirror Symmetry & Hodge Diamond / Yukawa Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasCalabiYau = /đa tạp calabi-yau|calabi-yau manifold|đối xứng gương|mirror symmetry|kim cương hodge|hodge diamond|yukawa coupling|tích yukawa|phương trình monge-ampère phức|complex monge-ampere equation|yau's proof of calabi conjecture/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Đa tạp Calabi-Yau & Đối xứng gương (Calabi-Yau Mirror Symmetry Inspector):{" "}
-                            {hasCalabiYau ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC PHỨC ĐỈNH CAO YAU-CALABI</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC PHỨC TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasCalabiYau
-                              ? "✓ Đa tạp Calabi-Yau 3 chiều, đối xứng gương Hodge Diamond (h^{1,1} đối ngẫu h^{2,1}), tích Yukawa và định lý Yau giải giả thuyết Calabi chuẩn Olympic Toán học và Nghiên cứu sinh Hình học vi phân phức."
-                              : "✓ Đề thi không chứa các phương trình Monge-Ampère phi tuyến và biến dạng siêu mặt Calabi-Yau phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 86: Floer Homology & Symplectic Topology / Arnold Fixed Point Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasFloer = /đối đồng điều floer|floer homology|tô-pô symplectic|symplectic topology|giả thuyết arnold|arnold conjecture|điểm bất động hamilton|hamiltonian fixed points|đa tạp lagrangian|lagrangian submanifolds|phương trình cauchy-riemann phi tuyến/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Đối đồng điều Floer & Tô-pô Symplectic (Floer Homology Inspector):{" "}
-                            {hasFloer ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TÔ PÔ ĐỈNH CAO FLOER-ARNOLD</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TÔ PÔ KHÔNG GIAN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasFloer
-                              ? "✓ Đối đồng điều Floer, giả thuyết Arnold về điểm bất động Hamilton, đa tạp con Lagrangian và đường cong giải tích giả holomorphic chuẩn Olympic Toán học và Nghiên cứu sinh Hình học vi phân hiện đại."
-                              : "✓ Đề thi không chứa các đường vi phôi Hamilton vô hạn chiều và phương trình Cauchy-Riemann nhiễu phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 87: Kontsevich Moduli Space & Intersection Theory / Witten Conjecture Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasKontsevich = /không gian moduli đường cong ổn định|moduli space of stable curves|\\bar\{m\}_\{g,n\}|bất biến kontsevich|kontsevich invariants|giả thuyết witten-kontsevich|witten-kontsevich conjecture|lý thuyết giao trên moduli|intersection theory on moduli|lớp chern psi|psi-classes on moduli/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Không gian Moduli & Lý thuyết Giao Kontsevich (Kontsevich Moduli Inspector):{" "}
-                            {hasKontsevich ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC ĐẠI SỐ ĐỈNH CAO KONTSEVICH</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC ĐẠI SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasKontsevich
-                              ? "✓ Không gian moduli đường cong ổn định, giả thuyết Witten-Kontsevich về giao của các lớp psi, ma trận ngẫu nhiên và tô-pô lượng tử chuẩn Olympic Toán học và Nghiên cứu sinh Hình học đại số."
-                              : "✓ Đề thi không chứa các tích phân lớp đặc trưng psi bậc cao trên không gian moduli đa chiều phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 88: Schoen-Yau Positive Mass Theorem & General Relativity Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasPositiveMass = /định lý khối lượng tích cực|positive mass theorem|schoen-yau|richard schoen|shing-tung yau|đa tạp riemann phẳng tiệm cận|asymptotically flat riemannian manifold|độ cong vô hướng dương|positive scalar curvature|phương trình dirac witten|witten's spinor proof/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Định lý Khối Lượng Tích Cực Schoen-Yau (Positive Mass Inspector):{" "}
-                            {hasPositiveMass ? (
-                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC VI PHÂN ĐỈNH CAO SCHOEN-YAU</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC VI PHÂN TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasPositiveMass
-                              ? "✓ Định lý khối lượng tích cực Schoen-Yau và Witten, độ cong vô hướng dương trên đa tạp phẳng tiệm cận và phương trình Dirac spinor chuẩn Olympic Toán học và Nghiên cứu sinh Hình học vi phân hiện đại."
-                              : "✓ Đề thi không chứa các siêu mặt cực tiểu tiệm cận và trường spinor Dirac vô hạn chiều phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 89: Khovanov Homology & Knot Theory / Jones Polynomial Categorification Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasKhovanov = /đối đồng điều khovanov|khovanov homology|phạm trù hóa đa thức jones|categorification of jones polynomial|lý thuyết nút|knot theory|bất biến nút đại số|algebraic knot invariants|chuỗi phức khovanov|khovanov bracket/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Đối đồng điều Khovanov & Lý thuyết Nút (Khovanov Homology Inspector):{" "}
-                            {hasKhovanov ? (
-                              <span className="font-mono text-emerald-700">CHUẨN TÔ PÔ ĐẠI SỐ ĐỈNH CAO KHOVANOV</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">TÔ PÔ ĐẠI SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasKhovanov
-                              ? "✓ Đối đồng điều Khovanov phân bậc, phạm trù hóa đa thức Jones, đối đồng điều vi phân nút và bất biến Rasmussen s-invariant chuẩn Olympic Toán học và Nghiên cứu sinh Tô-pô 4 chiều."
-                              : "✓ Đề thi không chứa các sơ đồ nút bện đa chiều và phức chuỗi lũy đẳng vô hạn chiều phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Check 90: Hodge Conjecture & Algebraic Cycles / Harmonic Forms Inspector */}
-                  {(() => {
-                    const allContent = items.map((it) => it.content_latex || "").join(" ");
-                    const hasHodge = /giả thuyết hodge|hodge conjecture|chu trình đại số hữu tỷ|rational algebraic cycles|dạng vi phân điều hòa|harmonic differential forms|đối đồng điều de rham phức|complex de rham cohomology|phân tích hodge|hodge decomposition|lớp hodge|hodge class/i.test(allContent);
-
-                    return (
-                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-slate-800">
-                            Giả thuyết Hodge & Chu kỳ Đại số (Hodge Conjecture Inspector):{" "}
-                            {hasHodge ? (
-                              <span className="font-mono text-emerald-700">CHUẨN THIÊN NIÊN KỶ HODGE ĐỈNH CAO</span>
-                            ) : (
-                              <span className="font-mono text-emerald-700">HÌNH HỌC ĐẠI SỐ TIÊU CHUẨN</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">
-                            {hasHodge
-                              ? "✓ Giả thuyết Thiên niên kỷ Hodge, phân tích Hodge $(p,p)$, chu trình đại số hữu tỷ trên đa tạp xạ ảnh phi kỳ dị và dạng vi phân điều hòa chuẩn Olympic Toán học quốc tế và Viện Toán học cao cấp."
-                              : "✓ Đề thi không chứa các dạng vi phân phức điều hòa $(p,p)$ và bài toán chu trình Hodge hữu tỷ vô hạn chiều phức tạp."}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Pedagogy Audit Report Export Action */}
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400">Biên bản thẩm định chuẩn hồ sơ lưu trữ</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const dollarCount = (rawLatexCode.match(/\$/g) || []).length;
-                      const isMathOk = dollarCount % 2 === 0;
-                      const isScoreOk = currentTotalScore === 10 || currentTotalScore === 20 || currentTotalScore === 100;
-                      const report = [
-                        `# BIÊN BẢN THẨM ĐỊNH SƯ PHẠM ĐỀ THI`,
-                        `* Nền tảng Khảo thí: dethi.ttgdvinhphat.com (Trung tâm GD Vinh Phát)`,
-                        `* Thời gian thẩm định: ${new Date().toLocaleString("vi-VN")}`,
-                        `* Đơn vị ban hành: ${headerConfig.department_or_school || "Chưa cấu hình"}`,
-                        `* Kỳ thi: ${headerConfig.exam_name || "Chưa cấu hình"} - Mã đề: ${headerConfig.exam_code || "101"}`,
-                        `----------------------------------------------------`,
-                        `1. Thang điểm: ${currentTotalScore} điểm (${isScoreOk ? "ĐẠT CHUẨN" : "CẦN LƯU Ý"})`,
-                        `2. Số lượng câu hỏi: ${items.length} câu (${items.length > 0 ? "ĐẠT CHUẨN" : "CHƯA ĐẠT"})`,
-                        `3. Dự toán thời gian làm bài: ~${items.reduce((acc, it) => {
-                          const diff = ((it.problem_snapshot || {}).difficulty || "MEDIUM").toUpperCase();
-                          return acc + (diff === "EASY" ? 2 : diff === "MEDIUM" ? 4 : diff === "HARD" ? 8 : 15);
-                        }, 0)} phút / ${headerConfig.duration_minutes || 150} phút quy định`,
-                        `4. Kiểm định cú pháp XeLaTeX: ${dollarCount} ký tự $ (${isMathOk ? "ĐỐI XỨNG HỢP LỆ" : "CẢNH BÁO LỖI BIÊN DỊCH"})`,
-                        `5. Phân bổ độ khó: Nhận biết ${Math.round((items.filter((q) => !q.bloom_level || q.bloom_level === "RECOGNITION").length / (items.length || 1)) * 100)}% | Vận dụng/VDC ${Math.round((items.filter((q) => q.bloom_level === "APPLICATION" || q.bloom_level === "HIGH_APPLICATION").length / (items.length || 1)) * 100)}%`,
-                        `6. Dung lượng: ~${(rawLatexCode.replace(/\$[^$]*\$/g, " ").trim().split(/\s+/).filter(Boolean)).length} từ | ~${Math.floor(dollarCount / 2)} công thức toán`,
-                        `7. Độc lập câu hỏi: 100% ĐỘC LẬP (Không phát hiện trùng lặp đề dẫn)`,
-                        `8. Phương án nhiễu trắc nghiệm: ĐỒNG ĐỀU & HỢP LÝ`,
-                        `9. Phân bổ đáp án đúng (A/B/C/D): CÂN BẰNG KHẢO THÍ`,
-                        `10. Tải nhận thức & Ký hiệu toán học: ĐẠT TIÊU CHUẨN`,
-                        `11. Hình vẽ & Đồ thị minh họa (TikZ): ĐẦY ĐỦ / HỢP LỆ`,
-                        `12. Thang điểm thập phân & Phân bổ (Bộ GD&ĐT): ${isScoreOk ? "CHUẨN XÁC" : "CẦN LƯU Ý"} (${currentTotalScore.toFixed(2)}đ)`,
-                        `13. Đa dạng hóa đề dẫn & Chống trùng lặp mô-típ: ĐẠT TIÊU CHUẨN`,
-                        `14. Bối cảnh thực tế & Mô hình hóa (GDPT 2018): ĐẠT CHUẨN NĂNG LỰC`,
-                        `15. Phân hóa đỉnh cao & Điểm 10 chuyên sâu: ĐẠT CHUẨN PHÂN LOẠI`,
-                        `16. Định mức thời gian & Nhịp độ (Pacing): CHUẨN ĐỊNH MỨC`,
-                        `17. Độc lập mệnh đề Đúng/Sai (GDPT 2018): ĐỘC LẬP LOGIC`,
-                        `18. Cân bằng độ dài phương án trắc nghiệm: ĐỒNG ĐỀU PHƯƠNG ÁN`,
-                        `19. Định dạng đáp số ngắn (GDPT 2018): CHUẨN TẬP NGHIỆM`,
-                        `20. Đơn vị đo lường & Thực tiễn: ĐỒNG BỘ ĐƠN VỊ`,
-                        `21. Khớp điểm Đề & Biểu điểm: CHUẨN BIỂU ĐIỂM`,
-                        `22. Đa dạng hóa tham số đại số: ĐA DẠNG KÝ HIỆU`,
-                        `23. Tô-pô & Ký hiệu hình học: CHUẨN TÔ-PÔ HÌNH HỌC`,
-                        `24. Cân bằng họ hàm số: CÂN BẰNG ĐA DẠNG HÀM SỐ`,
-                        `25. Mô hình hóa thực tiễn STEM: ĐẠT CHUẨN THỰC TIỄN GDPT`,
-                        `26. Trực giao & Hệ tọa độ Oxyz: CHUẨN TỌA ĐỘ OXYZ KHÔNG GIAN`,
-                        `27. Chu kỳ lượng giác & Miền giá trị góc: CHUẨN CHU KỲ LƯỢNG GIÁC`,
-                        `28. Giới hạn & Tính liên tục giải tích: CHUẨN LIÊN TỤC & GIỚI HẠN`,
-                        `29. Cấp số cộng, cấp số nhân & Dãy số: CHUẨN CẤP SỐ & HỘI TỤ`,
-                        `30. Lũy thừa & Căn thức số học: CHUẨN MIỀN XÁC ĐỊNH`,
-                        `31. Không gian Oxyz & Vectơ trực chuẩn: CHUẨN TRỰC CHUẨN OXYZ`,
-                        `32. Giới hạn dãy số, hàm số & Tiệm cận: CHUẨN DẠNG VÔ ĐỊNH & KHỬ KHẢ VI`,
-                        `33. Số phức & Mặt phẳng tọa độ Argand: CHUẨN ĐẠI SỐ TUYẾN TÍNH PHỨC`,
-                        `34. Tổ hợp, Xác suất & Không gian mẫu: CHUẨN TIÊN ĐỀ LAPLACE & ĐẠI SỐ TỔ HỢP`,
-                        `35. Hình học tọa độ Oxy & Đường Conic: CHUẨN HÌNH HỌC GIẢI TÍCH OXY & CONIC`,
-                        `36. Thống kê & Phân tích số liệu thực tế: CHUẨN ĐẠI SỐ THỐNG KÊ THỰC NGHIỆM`,
-                        `37. Cấp số cộng & Cấp số nhân: CHUẨN DÃY SỐ VÀ CẤP SỐ ĐẠI SỐ`,
-                        `38. Giới hạn & Giải tích vi phân: CHUẨN GIẢI TÍCH VI PHÂN & GIỚI HẠN`,
-                        `39. Nguyên hàm & Tích phân: CHUẨN GIẢI TÍCH TÍCH PHÂN NEWTON-LEIBNIZ`,
-                        `40. Số phức dạng lượng giác: CHUẨN DẠNG LƯỢNG GIÁC & CÔNG THỨC MOIVRE`,
-                        `41. Hình học không gian tọa độ Oxyz: CHUẨN HÌNH HỌC KHÔNG GIAN TỌA ĐỘ OXYZ`,
-                        `42. Nhị thức Newton & Khai triển đa thức: CHUẨN NHỊ THỨC NEWTON & HỆ SỐ KHAI TRIỂN`,
-                        `43. Khối đa diện & Thể tích không gian cổ điển: CHUẨN HÌNH HỌC KHÔNG GIAN CỔ ĐIỂN`,
-                        `44. Khối tròn xoay Nón - Trụ - Cầu: CHUẨN HÌNH HỌC KHỐI TRÒN XOAY`,
-                        `45. Bất đẳng thức cổ điển Cauchy - Bunhiacopski: CHUẨN BẤT ĐẲNG THỨC & ĐÁNH GIÁ CỰC TRỊ`,
-                        `46. Hệ phương trình không mẫu mực & Đối xứng: CHUẨN HỆ PHƯƠNG TRÌNH ĐẠI SỐ CHUYÊN SÂU`,
-                        `47. Phương trình hàm & Phương trình Cauchy / Jensen: CHUẨN PHƯƠNG TRÌNH HÀM HSG CHUYÊN SÂU`,
-                        `48. Đa thức & Nghiệm / Định lý Viète bậc cao: CHUẨN ĐA THỨC ĐẠI SỐ & ĐỊNH LÝ VIÈTE CHUYÊN SÂU`,
-                        `49. Tổ hợp nâng cao & Nguyên lý Dirichlet / Bất biến: CHUẨN TỔ HỢP RỜI RẠC & NGUYÊN LÝ DIRICHLET HSG QUỐC GIA`,
-                        `50. Lý thuyết số & Đồng dư thức / Diophantine: CHUẨN LÝ THUYẾT SỐ & ĐỒNG DƯ THỨC HSG CHUYÊN SÂU`,
-                        `51. Hình học xạ ảnh & Hàng điểm điều hòa / Cực đối cực: CHUẨN HÌNH HỌC XẠ ẢNH & ĐIỀU HÒA CHUYÊN SÂU`,
-                        `52. Dãy số nguyên & Phương trình Pell / Fibonacci: CHUẨN DÃY SỐ NGUYÊN & PHƯƠNG TRÌNH PELL HSG QUỐC GIA`,
-                        `53. Giải tích số phức & Biến đổi Möbius: CHUẨN GIẢI TÍCH PHỨC & BIẾN ĐỔI MÖBIUS CAO CẤP`,
-                        `54. Đại số tuyến tính & Giá trị riêng / Ma trận: CHUẨN ĐẠI SỐ TUYẾN TÍNH & MA TRẬN OLYMPIC TOÁN`,
-                        `55. Tô pô đại cương & Không gian Metric: CHUẨN TÔ PÔ ĐẠI CƯƠNG & METRIC CAO CẤP`,
-                        `56. Đại số trừu tượng & Lý thuyết nhóm: CHUẨN ĐẠI SỐ TRỪU TƯỢNG & LÝ THUYẾT NHÓM CAO CẤP`,
-                        `57. Lý thuyết Đồ thị & Luồng mạng: CHUẨN LÝ THUYẾT ĐỒ THỊ & TOÁN RỜI RẠC CHUYÊN SÂU`,
-                        `58. Giải tích số & Nội suy / Sai phân: CHUẨN GIẢI TÍCH SỐ & PHƯƠNG PHÁP TÍNH CAO CẤP`,
-                        `59. Lý thuyết Độ đo & Tích phân Lebesgue: CHUẨN ĐỘ ĐO LEBESGUE & GIẢI TÍCH HIỆN ĐẠI ĐỈNH CAO`,
-                        `60. Giải tích hàm & Toán tử tuyến tính: CHUẨN GIẢI TÍCH HÀM & TOÁN TỬ TUYẾN TÍNH ĐỈNH CAO`,
-                        `61. Giải tích biến phân & Điều khiển tối ưu: CHUẨN BIẾN PHÂN EULER-LAGRANGE & TỐI ƯU ĐỈNH CAO`,
-                        `62. Hình học vi phân & Độ cong Gauss: CHUẨN HÌNH HỌC VI PHÂN & ĐƯỜNG TRẮC ĐỊA ĐỈNH CAO`,
-                        `63. Thống kê toán học & Kiểm định giả thuyết: CHUẨN THỐNG KÊ TOÁN & KIỂM ĐỊNH GIẢ THUYẾT ĐỈNH CAO`,
-                        `64. Phương trình đạo hàm riêng & Tách biến Fourier: CHUẨN ĐẠO HÀM RIÊNG PDE & TÁCH BIẾN FOURIER ĐỈNH CAO`,
-                        `65. Toán rời rạc & Mật mã học hiện đại: CHUẨN TOÁN RỜI RẠC & MẬT MÃ HỌC RSA / ECC ĐỈNH CAO`,
-                        `66. Lý thuyết đồ thị & Luồng cực đại mạng: CHUẨN ĐỒ THỊ & LUỒNG CỰC ĐẠI FORD-FULKERSON ĐỈNH CAO`,
-                        `67. Lý thuyết hỗn độn & Hệ động lực Fractal: CHUẨN HỆ ĐỘNG LỰC PHI TUYẾN & FRACTAL ĐỈNH CAO`,
-                        `68. Ma trận ngẫu nhiên & Phân phối Wigner: CHUẨN MA TRẬN NGẪU NHIÊN & ĐỊNH LUẬT BÁN NGUYỆT WIGNER ĐỈNH CAO`,
-                        `69. Lý thuyết số đại số & Định lý Modularity Wiles: CHUẨN SỐ ĐẠI SỐ & ĐỊNH LÝ FERMAT WILES ĐỈNH CAO`,
-                        `70. Tô pô đại số & Nhóm cơ bản Đồng điều: CHUẨN TÔ PÔ ĐẠI SỐ & ĐỒNG ĐIỀU HOMOLOGY ĐỈNH CAO`,
-                        `71. Biểu diễn nhóm & Đại số Lie: CHUẨN BIỂU DIỄN NHÓM & ĐẠI SỐ LIE SCHUR ĐỈNH CAO`,
-                        `72. Lý thuyết nút thắt & Đa thức Jones: CHUẨN NÚT THẮT & BẤT BIẾN JONES ĐỈNH CAO`,
-                        `73. Hình học không giao hoán & C*-Đại số: CHUẨN HÌNH HỌC LƯỢNG TỬ & C*-ĐẠI SỐ ĐỈNH CAO`,
-                        `74. Điểm kỳ dị & Lược đồ Grothendieck: CHUẨN HÌNH HỌC ĐẠI SỐ GROTHENDIECK ĐỈNH CAO`,
-                        `75. Độ phức tạp lượng tử & Thuật toán Shor: CHUẨN TÍNH TOÁN LƯỢNG TỬ & THUẬT TOÁN SHOR ĐỈNH CAO`,
-                        `76. Navier-Stokes & Dòng chảy hỗn loạn: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ NAVIER-STOKES ĐỈNH CAO`,
-                        `77. Giả thuyết Hodge & Chu trình xạ ảnh: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ HODGE ĐỈNH CAO`,
-                        `78. Giả thuyết Birch-Swinnerton-Dyer: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ BSD ĐỈNH CAO`,
-                        `79. Yang-Mills & Khoảng trống khối lượng: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ YANG-MILLS ĐỈNH CAO`,
-                        `80. Giả thuyết Poincaré & Dòng Ricci: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ POINCARÉ ĐỈNH CAO`,
-                        `81. P vs NP & Định lý Cook-Levin: CHUẨN BÀI TOÁN THIÊN NIÊN KỶ P VS NP ĐỈNH CAO`,
-                        `82. Chu kỳ Deligne & Cấu trúc Hodge hỗn hợp: CHUẨN ĐẠI SỐ ĐỈNH CAO GROTHENDIECK-DELIGNE`,
-                        `83. Bất biến Witten & Tô-pô K-Theory: CHUẨN TOÁN LÝ ĐỈNH CAO WITTEN-ATIYAH`,
-                        `84. Đa tạp Calabi-Yau & Đối xứng gương: CHUẨN HÌNH HỌC PHỨC ĐỈNH CAO YAU-CALABI`,
-                        `85. Đối đồng điều Floer & Tô-pô Symplectic: CHUẨN TÔ PÔ ĐỈNH CAO FLOER-ARNOLD`,
-                        `86. Không gian Moduli & Lý thuyết Giao Kontsevich: CHUẨN HÌNH HỌC ĐẠI SỐ ĐỈNH CAO KONTSEVICH`,
-                        `87. Định lý Khối Lượng Tích Cực Schoen-Yau: CHUẨN HÌNH HỌC VI PHÂN ĐỈNH CAO SCHOEN-YAU`,
-                        `88. Đối đồng điều Khovanov & Lý thuyết Nút: CHUẨN TÔ PÔ ĐẠI SỐ ĐỈNH CAO KHOVANOV`,
-                        `89. Giả thuyết Hodge & Chu kỳ Đại số: CHUẨN THIÊN NIÊN KỶ HODGE ĐỈNH CAO`,
-                        `90. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
-                        `----------------------------------------------------`,
-                        `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
-                      ].join("\n");
-
-                      navigator.clipboard?.writeText(report);
-                      setAuditReportCopied(true);
-                      setTimeout(() => setAuditReportCopied(false), 2000);
-                    }}
-                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-all cursor-pointer"
-                  >
-                    {auditReportCopied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="text-emerald-700">Đã chép biên bản</span>
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Xuất Biên Bản Thẩm Định</span>
-                      </>
-                    )}
-                  </button>
-                </div>
               </div>
             </div>
           )}
@@ -4658,55 +1318,10 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                     </div>
                   </div>
                 ))
-              ) : compiling ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
-                  <RefreshCw className="w-10 h-10 text-indigo-500 animate-spin" />
-                  <p className="text-xs font-semibold text-slate-600">Đang nạp bản in trực tiếp từ TeX Live Engine...</p>
-                  <span className="text-[11px] text-slate-400">Hệ thống đang render công thức toán học và layout A4</span>
-                </div>
               ) : (
-                /* FALLBACK TRỰC QUAN A4 NẾU KHÔNG CÓ SVG TỪ BACKEND */
-                <div
-                  style={{ width: `${(595 * zoomScale) / 100}px` }}
-                  className="bg-white rounded-md shadow-lg border border-slate-300 p-8 space-y-6 text-slate-800 transition-all"
-                >
-                  {/* Fallback A4 Header */}
-                  <div className="border-b-2 border-slate-900 pb-4 flex justify-between items-start">
-                    <div className="text-center font-bold text-[11px] uppercase tracking-wider space-y-0.5">
-                      <p>{headerConfig.governing_body || "TRUNG TÂM GIÁO DỤC VINH PHÁT"}</p>
-                      <p className="underline underline-offset-2">{headerConfig.department_or_school || "BAN CHUYÊN MÔN KHẢO THÍ"}</p>
-                    </div>
-                    <div className="text-center space-y-0.5">
-                      <p className="font-extrabold text-xs uppercase text-indigo-900">{headerConfig.exam_name || "ĐỀ KHẢO THÍ CHÍNH THỨC"}</p>
-                      <p className="text-[11px] font-semibold text-slate-700">{headerConfig.subject_title || "MÔN: TOÁN HỌC"} - NĂM HỌC {headerConfig.academic_year || "2026-2027"}</p>
-                      <p className="text-[10px] text-slate-500 italic">Thời gian làm bài: {headerConfig.duration_minutes || 120} phút (Không kể phát đề)</p>
-                    </div>
-                  </div>
-
-                  {/* Fallback Questions List */}
-                  <div className="space-y-4">
-                    {items.length > 0 ? (
-                      items.map((it: any, idx: number) => (
-                        <div key={it.id || idx} className="space-y-1 text-xs">
-                          <p className="font-bold text-slate-900">
-                            Câu {idx + 1}. ({it.points || 2.0} điểm)
-                          </p>
-                          <div className="pl-3 leading-relaxed text-slate-700">
-                            <MathRenderer content={activeMode === "RUBRIC" ? (it.solution_latex || it.content_latex || "") : (it.content_latex || "")} />
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="py-12 text-center text-slate-400">
-                        <FileText className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-                        <p className="text-xs font-medium">Chưa có câu hỏi nào trong đề thi này.</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-6 border-t border-slate-200 text-center text-[10px] text-slate-400">
-                    -- HẾT -- (Bản xem trước A4 trực quan VINH PHÁT Platform)
-                  </div>
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
+                  <FileText className="w-12 h-12 text-slate-300 animate-pulse" />
+                  <p className="text-xs font-medium">Đang nạp bản in trực tiếp từ TeX Live Engine...</p>
                 </div>
               )}
             </div>
@@ -4868,110 +1483,15 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
         )}
       </div>
 
-      {/* UNIFIED EXAM SETTINGS & GOVERNANCE MODAL */}
-      <ExamSettingsModal
-        isOpen={isHeaderModalOpen}
-        onClose={() => setIsHeaderModalOpen(false)}
-        headerConfig={headerConfig}
-        setHeaderConfig={setHeaderConfig}
-        layoutKnobs={layoutKnobs}
-        setLayoutKnobs={setLayoutKnobs}
-        onSaveAndApply={async (newHeader, newKnobs) => {
-          try {
-            await fetch(`/api/studio/exams/${examId}/header`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(newHeader),
-            });
-            await fetch(`/api/generator/exams/${examId}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ header_config: newHeader }),
-            });
-          } catch (e) {
-            console.error("Save header error:", e);
-          }
-          compileLivePreview(items, newKnobs, activeMode, newHeader);
-        }}
-        applyPresetHeader={applyPresetHeader}
-      />
-
       {/* QUESTION EDIT MODAL */}
       <QuestionEditModal
         question={editingQuestion}
         isOpen={Boolean(editingQuestion)}
-        onClose={() => {
-          setEditingQuestion(null);
-          setEditingSlotIndex(null);
-        }}
-        onSaveSuccess={async (updatedQ) => {
-          try {
-            if (editingSlotIndex !== null && examId) {
-              await fetch(`/api/generator/exams/${examId}/slots/${editingSlotIndex}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(updatedQ)
-              });
-              if (typeof window !== "undefined") {
-                localStorage.removeItem(`exam_draft_${examId}`);
-              }
-            }
-          } catch (e) {
-            console.error("Lỗi đồng bộ slot từ Exam Studio:", e);
-          }
-          await loadExamItems(true);
-          onExamUpdated?.();
-          setEditingQuestion(null);
-          setEditingSlotIndex(null);
+        onClose={() => setEditingQuestion(null)}
+        onSaveSuccess={(updatedQ) => {
+          loadExamItems();
         }}
       />
-      {/* SHORTCUTS CHEATSHEET MODAL */}
-      {showShortcutModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <Command className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-bold text-slate-800 text-sm">Phím Tắt Nhanh Trong Exam Studio</h3>
-              </div>
-              <button
-                onClick={() => setShowShortcutModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-slate-700 font-medium">Biên dịch mã LaTeX / Render Live</span>
-                <kbd className="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-800 shadow-2xs">Ctrl + S</kbd>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-slate-700 font-medium">Bật / Tắt Ngăn Trợ Lý AI</span>
-                <kbd className="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-800 shadow-2xs">Ctrl + K</kbd>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-slate-700 font-medium">Tải Bản In PDF TeX Live Gốc</span>
-                <kbd className="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-800 shadow-2xs">Ctrl + P</kbd>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-slate-700 font-medium">Xuất File Word OMML Chuẩn Bộ GD&ĐT</span>
-                <kbd className="px-2 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-800 shadow-2xs">Ctrl + E</kbd>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 flex justify-end">
-              <button
-                onClick={() => setShowShortcutModal(false)}
-                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
-              >
-                Đã Hiểu
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

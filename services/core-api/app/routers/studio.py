@@ -10,13 +10,7 @@ from openai import OpenAI
 
 from app.database import get_db
 from app.models.models import GeneratedExam, ExamItem, Question, User
-from app.services.quota_service import (
-    require_authenticated_user,
-    consume_ai_quota,
-    require_role,
-    require_teacher_or_admin,
-    require_admin,
-)
+from app.services.quota_service import require_authenticated_user, consume_ai_quota
 from app.schemas.schemas import (
     ExamItemResponse,
     UpdateExamHeaderRequest,
@@ -38,7 +32,7 @@ def get_omniroute_client():
 # ==================== SYNC EXAM TO STUDIO ITEMS ====================
 
 @router.post("/exams/{exam_id}/sync-items", response_model=List[ExamItemResponse])
-def sync_exam_slots_to_items(exam_id: UUID, force: bool = False, db: Session = Depends(get_db)):
+def sync_exam_slots_to_items(exam_id: UUID, db: Session = Depends(get_db)):
     """Chuyển đổi slots_state của generated_exams thành các ExamItem Snapshot độc lập"""
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
     if not exam:
@@ -46,13 +40,8 @@ def sync_exam_slots_to_items(exam_id: UUID, force: bool = False, db: Session = D
 
     # Kiểm tra xem đã có items chưa
     existing_items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
-    if existing_items and not force:
+    if existing_items:
         return existing_items
-
-    if force and existing_items:
-        for it in existing_items:
-            db.delete(it)
-        db.commit()
 
     # Duyệt qua slots_state để tạo snapshots
     new_items = []
@@ -131,8 +120,8 @@ def sync_exam_slots_to_items(exam_id: UUID, force: bool = False, db: Session = D
 def get_exam_items(exam_id: UUID, db: Session = Depends(get_db)):
     items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
     if not items:
-        # Tự động sync nếu chưa có (truyền đúng keyword args để không bị gán db vào tham số force)
-        return sync_exam_slots_to_items(exam_id=exam_id, force=False, db=db)
+        # Tự động sync nếu chưa có
+        return sync_exam_slots_to_items(exam_id, db)
     return items
 
 
@@ -469,7 +458,7 @@ def get_exam_latex_preview(
 
     items = db.query(ExamItem).filter(ExamItem.exam_id == exam_id).order_by(ExamItem.order_index).all()
     if not items:
-        items = sync_exam_slots_to_items(exam_id=exam_id, force=False, db=db)
+        items = sync_exam_slots_to_items(exam_id, db)
 
     items_payload = [{
         "id": str(it.id),

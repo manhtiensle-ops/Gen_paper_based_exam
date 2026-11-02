@@ -1,6 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "vector";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 -- ENUMS
 DO $$ BEGIN
@@ -86,10 +85,6 @@ CREATE TABLE IF NOT EXISTS questions (
     embedding vector(768),
     usage_count INT DEFAULT 0,
     is_verified BOOLEAN DEFAULT FALSE,
-    tenant_id VARCHAR(100) DEFAULT 'default_school',
-    user_id UUID,
-    scope VARCHAR(20) DEFAULT 'PUBLIC',
-    is_public BOOLEAN DEFAULT TRUE,
     
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -99,9 +94,6 @@ CREATE INDEX IF NOT EXISTS idx_q_lookup ON questions (grade, section_type, main_
 CREATE INDEX IF NOT EXISTS idx_q_subtopics_gin ON questions USING GIN (sub_topics);
 CREATE INDEX IF NOT EXISTS idx_q_hash ON questions (normalized_hash);
 CREATE INDEX IF NOT EXISTS idx_q_embedding_hnsw ON questions USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX IF NOT EXISTS idx_q_tenant_scope ON questions (tenant_id, scope, is_verified);
-CREATE INDEX IF NOT EXISTS idx_q_content_trgm ON questions USING gin (content_latex gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS idx_q_summary_trgm ON questions USING gin (semantic_summary gin_trgm_ops);
 
 -- 3. EXAM BLUEPRINTS
 CREATE TABLE IF NOT EXISTS exam_blueprints (
