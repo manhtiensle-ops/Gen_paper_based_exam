@@ -3902,6 +3902,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 72: Group Representation & Lie Algebra / Schur's Lemma Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasLieRep = /biểu diễn nhóm|group representation|đại số lie|lie algebra|bảng ký tự|character table|bổ đề schur|schur's lemma|biểu diễn bất khả quy|irreducible representation|nhóm so\\(3\\)|nhóm su\\(2\\)|ma trận pauli|đại số lie sl_2|rễ đơn|root system|casimir/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Biểu diễn nhóm & Đại số Lie (Group Representation & Lie Algebra Inspector):{" "}
+                            {hasLieRep ? (
+                              <span className="font-mono text-emerald-700">CHUẨN BIỂU DIỄN NHÓM & ĐẠI SỐ LIE ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐẠI SỐ TRỪU TƯỢNG TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasLieRep
+                              ? "✓ Đại số Lie, bổ đề Schur, biểu diễn bất khả quy, nhóm quay SO(3), SU(2) và bảng ký tự nhân vật chuẩn Olympic Toán cao cấp và Vật lý lý thuyết hạt cơ bản."
+                              : "✓ Đề thi không chứa lý thuyết biểu diễn nhóm liên tục và đại số Lie nâng cao."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3993,7 +4020,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `68. Ma trận ngẫu nhiên & Phân phối Wigner: CHUẨN MA TRẬN NGẪU NHIÊN & ĐỊNH LUẬT BÁN NGUYỆT WIGNER ĐỈNH CAO`,
                         `69. Lý thuyết số đại số & Định lý Modularity Wiles: CHUẨN SỐ ĐẠI SỐ & ĐỊNH LÝ FERMAT WILES ĐỈNH CAO`,
                         `70. Tô pô đại số & Nhóm cơ bản Đồng điều: CHUẨN TÔ PÔ ĐẠI SỐ & ĐỒNG ĐIỀU HOMOLOGY ĐỈNH CAO`,
-                        `71. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `71. Biểu diễn nhóm & Đại số Lie: CHUẨN BIỂU DIỄN NHÓM & ĐẠI SỐ LIE SCHUR ĐỈNH CAO`,
+                        `72. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

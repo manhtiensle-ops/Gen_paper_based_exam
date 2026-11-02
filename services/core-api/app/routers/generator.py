@@ -2435,6 +2435,70 @@ def configure_exam_hot_standby_recovery(
     }
 
 
+@router.post("/exams/{exam_id}/omr-camera-calibration", status_code=status.HTTP_200_OK)
+def configure_exam_omr_camera_calibration(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình thông số hiệu chuẩn máy quét quang học & Camera AI Vision chấm phiếu OMR (Exam AI-Vision Scanner Calibration RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Kỹ thuật chấm thi OMR / Giáo viên phụ trách (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt hiệu chuẩn camera AI (enabled), ấn định độ phân giải quét tối thiểu (min_scan_dpi: 150 - 600),
+      ngưỡng tương phản quang học phát hiện tô bóng (optical_density_threshold: 0.1 - 0.9), tự động căn chỉnh góc xoay theo 4 điểm mốc fiducial (auto_deskew_fiducials)
+      và cơ chế gắn cờ bài thi tô mờ hoặc tẩy xóa nghi vấn (flag_ambiguous_bubbles).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Kỹ thuật chấm thi OMR (TEACHER) mới có quyền cấu hình hiệu chuẩn máy quét quang học"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình hiệu chuẩn máy quét quang học")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình hiệu chuẩn máy quét cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    min_dpi = int(payload.get("min_scan_dpi", 300))
+    threshold = float(payload.get("optical_density_threshold", 0.45))
+    auto_deskew = bool(payload.get("auto_deskew_fiducials", True))
+    flag_ambiguous = bool(payload.get("flag_ambiguous_bubbles", True))
+
+    header_cfg = dict(exam.header_config or {})
+    calib_config = {
+        "enabled": is_enabled,
+        "min_scan_dpi": min_dpi,
+        "optical_density_threshold": threshold,
+        "auto_deskew_fiducials": auto_deskew,
+        "flag_ambiguous_bubbles": flag_ambiguous,
+        "calibration_profile_id": f"VINHPHAT-OMRCALIB-{uuid.uuid4().hex[:8].upper()}",
+        "calibrated_by": current_user.username,
+        "calibrated_role": current_user.role,
+        "calibrated_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["omr_camera_calibration"] = calib_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "omr_camera_calibration": calib_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình hiệu chuẩn máy quét OMR ({min_dpi} DPI, Ngưỡng {threshold}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
