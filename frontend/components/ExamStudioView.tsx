@@ -39,7 +39,8 @@ import {
   ChevronDown,
   Shuffle,
   Printer,
-  ArrowUpDown
+  ArrowUpDown,
+  CheckSquare
 } from "lucide-react";
 
 import ExamSettingsModal from "./ExamSettingsModal";
@@ -52,7 +53,7 @@ interface Props {
 export default function ExamStudioView({ examId, onBack }: Props) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeMode, setActiveMode] = useState<"EXAM" | "RUBRIC">("EXAM");
+  const [activeMode, setActiveMode] = useState<"EXAM" | "RUBRIC" | "OMR">("EXAM");
 
   // Draggable Split Pane State
   const [splitRatio, setSplitRatio] = useState<number>(50); // percentage for left pane
@@ -643,9 +644,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     }
   };
 
-  // Switch Mode (Exam vs Rubric)
-  const handleModeSwitch = async (mode: "EXAM" | "RUBRIC") => {
+  // Switch Mode (Exam vs Rubric vs OMR Answer Sheet)
+  const handleModeSwitch = async (mode: "EXAM" | "RUBRIC" | "OMR") => {
     setActiveMode(mode);
+    if (mode === "OMR") {
+      setViewerMode("html");
+      return;
+    }
     try {
       const res = await fetch(`/api/studio/exams/${examId}/items`);
       if (res.ok) {
@@ -733,6 +738,17 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             >
               <Scale className="w-3.5 h-3.5" />
               <span>Barem Hướng Dẫn Chấm</span>
+            </button>
+            <button
+              onClick={() => handleModeSwitch("OMR")}
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
+                activeMode === "OMR"
+                  ? "bg-white text-indigo-700 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <CheckSquare className="w-3.5 h-3.5" />
+              <span>Phiếu Tô Trắc Nghiệm OMR</span>
             </button>
           </div>
 
@@ -1540,29 +1556,85 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   )}
                 </div>
 
-                {/* Question List */}
-                <div className="space-y-4">
-                  {items.map((it, idx) => {
-                    const snap = it.problem_snapshot || {};
-                    const rubric = it.rubric_data || {};
-                    return (
-                      <div key={it.id || idx} className="space-y-1 text-xs">
-                        <p className="font-bold text-slate-900">
-                          Câu {idx + 1}. ({it.max_points || 2.0} điểm)
-                        </p>
-                        <div className="pl-3 leading-relaxed text-slate-800">
-                          <MathRenderer
-                            content={
-                              activeMode === "RUBRIC"
-                                ? (rubric.pedagogical_analysis || it.solution_latex || snap.content_latex || "")
-                                : (snap.content_latex || it.content_latex || "")
-                            }
-                          />
+                {/* View Mode Switching: EXAM / RUBRIC vs OMR SHEET */}
+                {activeMode === "OMR" ? (
+                  /* GIAO DIỆN PHIẾU TÔ TRẮC NGHIỆM OMR SƯ PHẠM CHUẨN A4 */
+                  <div className="space-y-6">
+                    <div className="border-2 border-slate-900 p-3 rounded bg-slate-50/50 flex justify-between items-center text-xs">
+                      <div className="space-y-1">
+                        <p className="font-black text-indigo-900 uppercase">HƯỚNG DẪN TÔ PHIẾU OMR CHUẨN:</p>
+                        <p className="text-[11px] text-slate-700">1. Dùng bút chì 2B để tô kín vòng tròn đáp án đúng [ ● ].</p>
+                        <p className="text-[11px] text-slate-700">2. Không gạch chéo [ X ] hoặc đánh dấu tick [ ✓ ].</p>
+                      </div>
+                      <div className="flex items-center space-x-2 border border-slate-300 p-2 bg-white rounded">
+                        <span className="text-[11px] font-bold text-slate-500">Mã đề:</span>
+                        <div className="flex space-x-1">
+                          {["1", "0", "2"].map((d, i) => (
+                            <div key={i} className="w-5 h-6 border border-slate-800 text-center font-mono font-bold leading-6 text-xs">
+                              {d}
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+
+                    {/* Lưới câu trả lời trắc nghiệm OMR */}
+                    <div>
+                      <h3 className="font-black text-center text-xs tracking-wider uppercase text-slate-800 mb-3 border-b pb-1">
+                        PHẦN TRẢ LỜI TRẮC NGHIỆM (4 LỰA CHỌN A, B, C, D)
+                      </h3>
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                        {items.map((it, idx) => (
+                          <div
+                            key={it.id || idx}
+                            className="flex items-center justify-between border-b border-slate-100 py-1 text-xs"
+                          >
+                            <span className="font-bold text-slate-800 w-16">
+                              Câu {idx + 1}:
+                            </span>
+                            <div className="flex items-center space-x-4">
+                              {["A", "B", "C", "D"].map((opt) => (
+                                <div key={opt} className="flex items-center space-x-1 cursor-pointer">
+                                  <div className="w-5 h-5 rounded-full border border-slate-400 flex items-center justify-center font-bold text-[10px] text-slate-600 hover:border-indigo-600 hover:text-indigo-600">
+                                    {opt}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="border border-slate-300 rounded p-3 text-center text-[11px] text-slate-500 italic">
+                      Giám thị số 1: ....................................... Giám thị số 2: .......................................
+                    </div>
+                  </div>
+                ) : (
+                  /* Question List */
+                  <div className="space-y-4">
+                    {items.map((it, idx) => {
+                      const snap = it.problem_snapshot || {};
+                      const rubric = it.rubric_data || {};
+                      return (
+                        <div key={it.id || idx} className="space-y-1 text-xs">
+                          <p className="font-bold text-slate-900">
+                            Câu {idx + 1}. ({it.max_points || 2.0} điểm)
+                          </p>
+                          <div className="pl-3 leading-relaxed text-slate-800">
+                            <MathRenderer
+                              content={
+                                activeMode === "RUBRIC"
+                                  ? (rubric.pedagogical_analysis || it.solution_latex || snap.content_latex || "")
+                                  : (snap.content_latex || it.content_latex || "")
+                              }
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <div className="mt-8 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400">
                   -- HẾT -- (Bản xem trước A4 trực quan VINH PHÁT Platform)

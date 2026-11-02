@@ -16,7 +16,7 @@ export interface ClientExamDraft {
   schema_version: number;
   exam_id: string;
   exam_title: string;
-  active_mode: "EXAM" | "RUBRIC";
+  active_mode: "EXAM" | "RUBRIC" | "OMR";
   active_sidebar_tab: string;
   split_ratio: number;
   unsaved_latex: string | null;
