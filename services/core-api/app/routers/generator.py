@@ -523,6 +523,49 @@ def delete_generated_exam(
     return {"status": "SUCCESS", "message": f"Đã xóa đề thi {exam_id} thành công"}
 
 
+@router.post("/exams/{exam_id}/archive", status_code=status.HTTP_200_OK)
+def toggle_exam_archive_status(
+    exam_id: uuid.UUID,
+    archive: bool = True,
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Thùng rác & Lưu trữ đề thi khảo thí (Trash Bin & Archive State).
+    Bảo vệ phân quyền: Chỉ ADMIN, tác giả tạo đề hoặc Giáo viên cùng trường/tổ bộ môn mới có quyền chuyển/phục hồi lưu trữ.
+    """
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi cần thay đổi trạng thái lưu trữ")
+
+    is_admin = current_user.role == "ADMIN"
+    is_owner = exam.user_id is not None and exam.user_id == current_user.id
+    is_same_tenant = exam.tenant_id == current_user.tenant_id
+
+    if not (is_admin or (is_owner and is_same_tenant)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền quản lý thùng rác hoặc trạng thái lưu trữ của đề thi này"
+        )
+
+    header_cfg = dict(exam.header_config or {})
+    header_cfg["is_archived"] = archive
+    header_cfg["archived_by"] = current_user.username
+    header_cfg["archived_at"] = datetime.now(timezone.utc).isoformat() if archive else None
+    exam.header_config = header_cfg
+    flag_modified(exam, "header_config")
+    db.commit()
+    db.refresh(exam)
+
+    state_desc = "đã chuyển vào Thùng rác lưu trữ" if archive else "đã phục hồi thành công từ Thùng rác"
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "is_archived": archive,
+        "message": f"Đề thi '{exam.title}' {state_desc}"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

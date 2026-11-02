@@ -3092,6 +3092,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 42: 3D Analytic Geometry Oxyz & Sphere / Plane Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasOxyz = /Oxyz|tọa độ không gian|mặt cầu|mặt phẳng \\(P\\)|tích có hướng|\\[\\vec\{[a-z]\},|khoảng cách từ điểm.*đến mặt phẳng|vectơ chỉ phương|vectơ pháp tuyến/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Hình học không gian tọa độ Oxyz & Mặt cầu (3D Geometry Oxyz):{" "}
+                            {hasOxyz ? (
+                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC KHÔNG GIAN TỌA ĐỘ OXYZ</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC PHẲNG / ĐẠI SỐ KHÁC</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasOxyz
+                              ? "✓ Phương trình mặt cầu (x-a)²+(y-b)²+(z-c)²=R², vectơ pháp tuyến mặt phẳng và tích có hướng chuẩn hình học giải tích THPT."
+                              : "✓ Đề thi không sử dụng hệ trục tọa độ không gian Oxyz và hình học 3 chiều."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3153,7 +3180,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `38. Giới hạn & Giải tích vi phân: CHUẨN GIẢI TÍCH VI PHÂN & GIỚI HẠN`,
                         `39. Nguyên hàm & Tích phân: CHUẨN GIẢI TÍCH TÍCH PHÂN NEWTON-LEIBNIZ`,
                         `40. Số phức dạng lượng giác: CHUẨN DẠNG LƯỢNG GIÁC & CÔNG THỨC MOIVRE`,
-                        `41. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `41. Hình học không gian tọa độ Oxyz: CHUẨN HÌNH HỌC KHÔNG GIAN TỌA ĐỘ OXYZ`,
+                        `42. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
