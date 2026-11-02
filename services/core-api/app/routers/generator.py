@@ -2824,6 +2824,72 @@ def configure_exam_dispute_evidence_vault(
     }
 
 
+@router.post("/exams/{exam_id}/double-blind-omr-audit", status_code=status.HTTP_200_OK)
+def configure_exam_double_blind_omr_audit(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chế độ kiểm định mù độc lập kép OMR (Double-Blind Independent Dual OMR Scanner RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Kỹ thuật chấm thi OMR / Khảo thí (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ kiểm định kép 2 máy quét OMR độc lập chạy song song (enabled),
+      thiết lập ngưỡng sai lệch kết quả tối đa cho phép trước khi báo động (discrepancy_threshold_percentage: 0.0 - 5.0%),
+      bắt buộc sử dụng 2 mô hình nhận diện AI Vision khác nhau (require_disparate_ai_engines),
+      tự động chuyển các bài thi có sự bất đồng ý kiến quét sang Hội đồng Trọng tài chấm tay (auto_escalate_to_arbitration)
+      và cấm công bố kết quả OMR khi chưa giải quyết xong 100% các ca xung đột (block_publish_until_resolved).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Kỹ thuật chấm thi OMR (TEACHER) mới có quyền cấu hình kiểm định mù kép OMR"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình kiểm định mù kép OMR")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình kiểm định mù kép OMR cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    discrepancy_threshold = float(payload.get("discrepancy_threshold_percentage", 0.5))
+    disparate_engines = bool(payload.get("require_disparate_ai_engines", True))
+    auto_escalate = bool(payload.get("auto_escalate_to_arbitration", True))
+    block_publish = bool(payload.get("block_publish_until_resolved", True))
+
+    header_cfg = dict(exam.header_config or {})
+    audit_config = {
+        "enabled": is_enabled,
+        "discrepancy_threshold_percentage": discrepancy_threshold,
+        "require_disparate_ai_engines": disparate_engines,
+        "auto_escalate_to_arbitration": auto_escalate,
+        "block_publish_until_resolved": block_publish,
+        "double_blind_audit_id": f"VINHPHAT-DUALOMR-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["double_blind_omr_audit"] = audit_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "double_blind_omr_audit": audit_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình kiểm định mù kép OMR (Ngưỡng lệch: {discrepancy_threshold}%, Chuyển trọng tài: {'Bật' if auto_escalate else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
