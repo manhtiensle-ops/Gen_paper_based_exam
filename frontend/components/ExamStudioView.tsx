@@ -600,6 +600,21 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         e.preventDefault();
         setAiDrawerOpen((prev) => !prev);
       }
+      // Ctrl + '+' / '=': Zoom in preview canvas
+      if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
+        e.preventDefault();
+        setZoomScale((prev) => Math.min(180, prev + 10));
+      }
+      // Ctrl + '-': Zoom out preview canvas
+      if ((e.ctrlKey || e.metaKey) && e.key === "-") {
+        e.preventDefault();
+        setZoomScale((prev) => Math.max(50, prev - 10));
+      }
+      // Ctrl + '0': Reset zoom to 100%
+      if ((e.ctrlKey || e.metaKey) && e.key === "0") {
+        e.preventDefault();
+        setZoomScale(100);
+      }
       if (e.key === "Escape") {
         setShowShortcutsModal(false);
         setIsSettingsOpen(false);
@@ -2403,6 +2418,15 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Tự động căn vừa màn hình Canvas (Fit Width)</span>
                     <span className="text-xs text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Nút "Fit Vừa"</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Phóng to / Thu nhỏ trang A4 Canvas</span>
+                    <div className="flex items-center space-x-1">
+                      <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + +/-</kbd>
+                      <span className="text-xs text-slate-400">hoặc</span>
+                      <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + 0</kbd>
+                      <span className="text-xs text-slate-400">(về 100%)</span>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Bật / Tắt chế độ toàn màn hình Studio</span>
