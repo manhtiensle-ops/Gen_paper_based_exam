@@ -66,6 +66,7 @@ import {
   LayoutTemplate,
   BarChart3,
   ShieldCheck,
+  Binary,
   Plus
 } from "lucide-react";
 
@@ -114,6 +115,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isEditorSnippetsOpen, setIsEditorSnippetsOpen] = useState<boolean>(false);
   const [isEditorStatsOpen, setIsEditorStatsOpen] = useState<boolean>(false);
   const [isEditorLinterOpen, setIsEditorLinterOpen] = useState<boolean>(false);
+  const [isEditorSymbolsOpen, setIsEditorSymbolsOpen] = useState<boolean>(false);
   const [lastSavedLatexSnapshot, setLastSavedLatexSnapshot] = useState<string>("");
   const [editorSearchMatches, setEditorSearchMatches] = useState<number>(0);
   const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -868,6 +870,61 @@ export default function ExamStudioView({ examId, onBack }: Props) {
       readingMinutes,
     };
   }, [rawLatexCode]);
+
+  // Mathematical Symbols & Operators Palette Data
+  interface MathSymbolItem {
+    symbol: string;
+    latex: string;
+    name: string;
+    category: "greek" | "operators" | "relations" | "sets" | "geometry";
+  }
+
+  const QUICK_MATH_SYMBOLS: MathSymbolItem[] = [
+    // Greek
+    { symbol: "α", latex: "\\alpha", name: "alpha", category: "greek" },
+    { symbol: "β", latex: "\\beta", name: "beta", category: "greek" },
+    { symbol: "γ", latex: "\\gamma", name: "gamma", category: "greek" },
+    { symbol: "Δ", latex: "\\Delta", name: "Delta (biệt thức)", category: "greek" },
+    { symbol: "π", latex: "\\pi", name: "pi (3.14)", category: "greek" },
+    { symbol: "θ", latex: "\\theta", name: "theta (góc)", category: "greek" },
+    { symbol: "ω", latex: "\\omega", name: "omega", category: "greek" },
+    { symbol: "λ", latex: "\\lambda", name: "lambda (bước sóng)", category: "greek" },
+    { symbol: "φ", latex: "\\varphi", name: "phi", category: "greek" },
+    // Operators
+    { symbol: "±", latex: "\\pm", name: "cộng trừ", category: "operators" },
+    { symbol: "×", latex: "\\times", name: "nhân (times)", category: "operators" },
+    { symbol: "÷", latex: "\\div", name: "chia (div)", category: "operators" },
+    { symbol: "·", latex: "\\cdot", name: "chấm nhân", category: "operators" },
+    { symbol: "∫", latex: "\\int_{a}^{b}", name: "tích phân", category: "operators" },
+    { symbol: "∑", latex: "\\sum_{i=1}^{n}", name: "tổng sigma", category: "operators" },
+    { symbol: "lim", latex: "\\lim_{x \\to x_0}", name: "giới hạn", category: "operators" },
+    { symbol: "√", latex: "\\sqrt{x}", name: "căn bậc hai", category: "operators" },
+    { symbol: "∞", latex: "\\infty", name: "vô cực", category: "operators" },
+    // Relations
+    { symbol: "≠", latex: "\\ne", name: "khác", category: "relations" },
+    { symbol: "≤", latex: "\\le", name: "nhỏ hơn hoặc bằng", category: "relations" },
+    { symbol: "≥", latex: "\\ge", name: "lớn hơn hoặc bằng", category: "relations" },
+    { symbol: "≈", latex: "\\approx", name: "xấp xỉ", category: "relations" },
+    { symbol: "≡", latex: "\\equiv", name: "đồng nhất / đồng dư", category: "relations" },
+    { symbol: "⇒", latex: "\\Rightarrow", name: "suy ra", category: "relations" },
+    { symbol: "⇔", latex: "\\Leftrightarrow", name: "tương đương", category: "relations" },
+    // Sets & Logic
+    { symbol: "∈", latex: "\\in", name: "thuộc", category: "sets" },
+    { symbol: "∉", latex: "\\notin", name: "không thuộc", category: "sets" },
+    { symbol: "⊂", latex: "\\subset", name: "tập con", category: "sets" },
+    { symbol: "∪", latex: "\\cup", name: "hợp", category: "sets" },
+    { symbol: "∩", latex: "\\cap", name: "giao", category: "sets" },
+    { symbol: "∅", latex: "\\emptyset", name: "tập rỗng", category: "sets" },
+    { symbol: "∀", latex: "\\forall", name: "với mọi", category: "sets" },
+    { symbol: "∃", latex: "\\exists", name: "tồn tại", category: "sets" },
+    { symbol: "ℝ", latex: "\\mathbb{R}", name: "tập số thực", category: "sets" },
+    // Geometry & Vectors
+    { symbol: "⊥", latex: "\\perp", name: "vuông góc", category: "geometry" },
+    { symbol: "∥", latex: "\\parallel", name: "song song", category: "geometry" },
+    { symbol: "∠", latex: "\\widehat{ABC}", name: "góc tam giác", category: "geometry" },
+    { symbol: "→", latex: "\\vec{u}", name: "vectơ u", category: "geometry" },
+    { symbol: "Δ", latex: "\\Delta ABC", name: "tam giác ABC", category: "geometry" },
+  ];
 
   // Helper: Real-time LaTeX syntax, environment & bracket linter
   interface LatexLintDiagnostic {
@@ -1753,6 +1810,17 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           setIsEditorDiffOpen((prev) => !prev);
         }
       }
+      // Ctrl + K / Cmd + K: Toggle Quick Mathematical Symbols & Greek Operators Drawer (when on editor tab)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          setIsEditorSymbolsOpen((prev) => !prev);
+          if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
+          if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
+          if (isEditorStatsOpen) setIsEditorStatsOpen(false);
+          if (isEditorLinterOpen) setIsEditorLinterOpen(false);
+        }
+      }
       // Ctrl + L / Cmd + L: Toggle Real-time LaTeX Syntax & Environment Linter (when on editor tab)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "l") {
         if (sidebarTab === "editor") {
@@ -1877,6 +1945,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         setIsEditorSnippetsOpen(false);
         setIsEditorStatsOpen(false);
         setIsEditorLinterOpen(false);
+        setIsEditorSymbolsOpen(false);
         setIsEditorOutlineOpen(false);
       }
       if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -2519,6 +2588,26 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
 
                 <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+                  {/* Quick Mathematical Symbols & Greek Operators Palette Button */}
+                  <button
+                    onClick={() => {
+                      setIsEditorSymbolsOpen((prev) => !prev);
+                      if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
+                      if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
+                      if (isEditorStatsOpen) setIsEditorStatsOpen(false);
+                      if (isEditorLinterOpen) setIsEditorLinterOpen(false);
+                    }}
+                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
+                      isEditorSymbolsOpen
+                        ? "border-indigo-300 bg-indigo-50 text-indigo-800 font-semibold"
+                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium"
+                    }`}
+                    title="Bảng ký tự toán học & ký hiệu Hy Lạp chèn nhanh (Ctrl+K / Cmd+K)"
+                  >
+                    <Binary className="w-3 h-3 text-indigo-600" />
+                    <span>Ký hiệu toán (Ω)</span>
+                  </button>
+
                   {/* Real-time LaTeX Syntax & Environment Linter Drawer Button */}
                   <button
                     onClick={() => {
@@ -2844,6 +2933,71 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     <span>% [Cấu hình hệ thống TeX Live & Tiêu chuẩn Bộ GD&ĐT (đã thu gọn) — Bấm để mở rộng]</span>
                   </span>
                   <span className="text-[10px] text-indigo-600 font-semibold">Xem mã preamble →</span>
+                </div>
+              )}
+
+              {/* Quick Mathematical Symbols & Greek Operators Drawer */}
+              {isEditorSymbolsOpen && (
+                <div className="bg-indigo-50/95 border-b border-indigo-200 p-2.5 text-xs shrink-0 animate-in fade-in duration-150 shadow-inner flex flex-col font-sans">
+                  <div className="flex items-center justify-between pb-2 border-b border-indigo-200 mb-2 px-1">
+                    <div className="flex items-center space-x-2">
+                      <Binary className="w-4 h-4 text-indigo-700" />
+                      <span className="font-semibold text-indigo-950 text-xs">
+                        Bảng Ký Tự Toán Học & Ký Hiệu Hy Lạp Chèn Nhanh (Math & Greek Palette)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-200 text-indigo-900">
+                        {QUICK_MATH_SYMBOLS.length} ký hiệu
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setIsEditorSymbolsOpen(false)}
+                      className="text-indigo-700 hover:text-indigo-900 px-1.5 py-0.5 rounded hover:bg-indigo-100 font-bold text-xs"
+                      title="Đóng bảng ký hiệu (Esc)"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-1">
+                    {QUICK_MATH_SYMBOLS.map((item, idx) => (
+                      <button
+                        key={`${item.latex}-${idx}`}
+                        onClick={() => {
+                          const ta = editorTextareaRef.current;
+                          if (ta) {
+                            const start = ta.selectionStart;
+                            const end = ta.selectionEnd;
+                            const currentVal = ta.value;
+                            const insertion = item.latex + " ";
+                            const newVal = currentVal.substring(0, start) + insertion + currentVal.substring(end);
+                            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                              window.HTMLTextAreaElement.prototype,
+                              "value"
+                            )?.set;
+                            if (nativeInputValueSetter) {
+                              nativeInputValueSetter.call(ta, newVal);
+                            } else {
+                              ta.value = newVal;
+                            }
+                            ta.dispatchEvent(new Event("input", { bubbles: true }));
+                            ta.focus();
+                            const newCursorPos = start + insertion.length;
+                            ta.setSelectionRange(newCursorPos, newCursorPos);
+                            updateCursorStats();
+                          }
+                        }}
+                        className="flex items-center space-x-1.5 px-2 py-1 bg-white hover:bg-indigo-100/80 border border-indigo-200 hover:border-indigo-400 rounded transition-all shadow-sm group text-left"
+                        title={`${item.name} (${item.latex}) - Bấm để chèn`}
+                      >
+                        <span className="font-bold text-indigo-900 text-sm group-hover:scale-110 transition-transform inline-block w-4 text-center">
+                          {item.symbol}
+                        </span>
+                        <span className="font-mono text-[10px] text-slate-500 group-hover:text-indigo-800">
+                          {item.latex}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -4684,6 +4838,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Tự động đóng cặp ngoặc & bọc chọn</span>
                     <span className="text-[11px] font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{}, [], (), $$, ""</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Bảng ký hiệu toán & Hy Lạp (Palette)</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + K</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Kiểm tra cú pháp & Linter LaTeX</span>
