@@ -2890,6 +2890,74 @@ def configure_exam_double_blind_omr_audit(
     }
 
 
+@router.post("/exams/{exam_id}/box-tamper-evident-seal", status_code=status.HTTP_200_OK)
+def configure_exam_box_tamper_evident_seal(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chế độ kiểm soát tem niêm phong hộp bài thi vật lý (Physical Exam Box Tamper-Evident Seal RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Trưởng Điểm Thi / Giáo viên phụ trách Hội đồng coi thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ kiểm soát tem niêm phong vật lý cho thùng đề thi và bài thi giấy (enabled),
+      ấn định danh sách mã tem niêm phong RFID/Barcode hợp lệ (seal_serial_numbers),
+      bắt buộc xác thực tọa độ GPS khi bóc tem niêm phong tại phòng thi (require_gps_geofence_verification),
+      bắt buộc chụp ảnh biên bản bóc niêm phong có chữ ký 2 giám thị (require_dual_proctor_unsealing_photo)
+      và cấm tiến hành chấm thi nếu tem niêm phong bị rách hoặc không trùng khớp mã số (quarantine_on_seal_breach).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Trưởng Điểm Thi / Giáo viên coi thi (TEACHER) mới có quyền cấu hình tem niêm phong hộp bài thi"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình tem niêm phong hộp bài thi")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình tem niêm phong hộp bài thi cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    seal_serials = payload.get("seal_serial_numbers", [])
+    if not isinstance(seal_serials, list):
+        seal_serials = [str(seal_serials)] if seal_serials else []
+    require_gps = bool(payload.get("require_gps_geofence_verification", True))
+    require_photo = bool(payload.get("require_dual_proctor_unsealing_photo", True))
+    quarantine_on_breach = bool(payload.get("quarantine_on_seal_breach", True))
+
+    header_cfg = dict(exam.header_config or {})
+    box_seal_config = {
+        "enabled": is_enabled,
+        "seal_serial_numbers": seal_serials,
+        "require_gps_geofence_verification": require_gps,
+        "require_dual_proctor_unsealing_photo": require_photo,
+        "quarantine_on_seal_breach": quarantine_on_breach,
+        "box_seal_policy_id": f"VINHPHAT-BOXSEAL-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["box_tamper_evident_seal"] = box_seal_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "box_tamper_evident_seal": box_seal_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình tem niêm phong hộp bài thi ({len(seal_serials)} mã tem, GPS: {'Bật' if require_gps else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
