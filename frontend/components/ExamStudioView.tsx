@@ -62,6 +62,8 @@ import {
   FileCheck2,
   ListTree,
   Bookmark,
+  BookmarkCheck,
+  BookmarkPlus,
   CopyPlus,
   LayoutTemplate,
   BarChart3,
@@ -116,6 +118,8 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isEditorStatsOpen, setIsEditorStatsOpen] = useState<boolean>(false);
   const [isEditorLinterOpen, setIsEditorLinterOpen] = useState<boolean>(false);
   const [isEditorSymbolsOpen, setIsEditorSymbolsOpen] = useState<boolean>(false);
+  const [editorBookmarks, setEditorBookmarks] = useState<number[]>([]);
+  const [isEditorBookmarksOpen, setIsEditorBookmarksOpen] = useState<boolean>(false);
   const [lastSavedLatexSnapshot, setLastSavedLatexSnapshot] = useState<string>("");
   const [editorSearchMatches, setEditorSearchMatches] = useState<number>(0);
   const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -533,6 +537,51 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     }, 20);
 
     showToast(`Đã dịch chuyển dòng sang vị trí ${direction === "up" ? "lên" : "xuống"}`, "info");
+  };
+
+  // Helper: Toggle bookmark at current cursor line
+  const handleToggleCurrentLineBookmark = () => {
+    const ta = editorTextareaRef.current;
+    if (!ta) return;
+    const pos = ta.selectionStart;
+    const textBefore = ta.value.substring(0, pos);
+    const lineNum = textBefore.split("\n").length;
+
+    setEditorBookmarks((prev) => {
+      if (prev.includes(lineNum)) {
+        const next = prev.filter((l) => l !== lineNum);
+        showToast(`Đã gỡ dấu trang (Bookmark) tại Dòng ${lineNum}`, "info");
+        return next;
+      } else {
+        const next = [...prev, lineNum].sort((a, b) => a - b);
+        showToast(`Đã đánh dấu trang (Bookmark) tại Dòng ${lineNum}`, "success");
+        return next;
+      }
+    });
+  };
+
+  // Helper: Jump to next or previous bookmark
+  const handleJumpToBookmark = (direction: "next" | "prev") => {
+    if (editorBookmarks.length === 0) {
+      showToast("Chưa có dấu trang (Bookmark) nào được tạo!", "warning");
+      return;
+    }
+    const ta = editorTextareaRef.current;
+    if (!ta) return;
+    const pos = ta.selectionStart;
+    const currentLine = ta.value.substring(0, pos).split("\n").length;
+
+    let targetLine: number;
+    if (direction === "next") {
+      const nextBookmarks = editorBookmarks.filter((b) => b > currentLine);
+      targetLine = nextBookmarks.length > 0 ? nextBookmarks[0] : editorBookmarks[0];
+    } else {
+      const prevBookmarks = editorBookmarks.filter((b) => b < currentLine);
+      targetLine = prevBookmarks.length > 0 ? prevBookmarks[prevBookmarks.length - 1] : editorBookmarks[editorBookmarks.length - 1];
+    }
+
+    handleGotoLineInEditor(targetLine);
+    showToast(`Đã nhảy đến Bookmark tại Dòng ${targetLine}`, "info");
   };
 
   // Helper: Format & Beautify LaTeX source code with intelligent indentation and line clean-up
@@ -1810,6 +1859,20 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           setIsEditorDiffOpen((prev) => !prev);
         }
       }
+      // Ctrl + B / Cmd + B: Toggle Bookmark at current cursor line (when on editor tab)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          handleToggleCurrentLineBookmark();
+        }
+      }
+      // F2 / Shift+F2: Jump to next / previous Bookmark (when on editor tab)
+      if (e.key === "F2") {
+        if (sidebarTab === "editor") {
+          e.preventDefault();
+          handleJumpToBookmark(e.shiftKey ? "prev" : "next");
+        }
+      }
       // Ctrl + K / Cmd + K: Toggle Quick Mathematical Symbols & Greek Operators Drawer (when on editor tab)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         if (sidebarTab === "editor") {
@@ -1946,6 +2009,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         setIsEditorStatsOpen(false);
         setIsEditorLinterOpen(false);
         setIsEditorSymbolsOpen(false);
+        setIsEditorBookmarksOpen(false);
         setIsEditorOutlineOpen(false);
       }
       if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -2588,6 +2652,58 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
 
                 <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+                  {/* Editor Bookmarks Quick Manager Button */}
+                  <div className="flex items-center rounded border border-slate-200 bg-slate-100 p-0.5 space-x-0.5">
+                    <button
+                      onClick={handleToggleCurrentLineBookmark}
+                      className="flex items-center space-x-1 px-1.5 py-0.5 rounded hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+                      title="Đánh dấu / Gỡ Bookmark tại dòng hiện tại (Ctrl+B / Cmd+B)"
+                    >
+                      {editorBookmarks.length > 0 ? (
+                        <BookmarkCheck className="w-3 h-3 text-sky-600" />
+                      ) : (
+                        <BookmarkPlus className="w-3 h-3 text-slate-500" />
+                      )}
+                      <span>Bookmark ({editorBookmarks.length})</span>
+                    </button>
+                    {editorBookmarks.length > 0 && (
+                      <>
+                        <button
+                          onClick={() => handleJumpToBookmark("prev")}
+                          className="px-1 py-0.5 rounded hover:bg-slate-200 text-slate-600 text-[10px] font-bold"
+                          title="Nhảy đến Bookmark trước đó (Shift+F2)"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onClick={() => handleJumpToBookmark("next")}
+                          className="px-1 py-0.5 rounded hover:bg-slate-200 text-slate-600 text-[10px] font-bold"
+                          title="Nhảy đến Bookmark kế tiếp (F2)"
+                        >
+                          ▼
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditorBookmarksOpen((prev) => !prev);
+                            if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
+                            if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
+                            if (isEditorStatsOpen) setIsEditorStatsOpen(false);
+                            if (isEditorLinterOpen) setIsEditorLinterOpen(false);
+                            if (isEditorSymbolsOpen) setIsEditorSymbolsOpen(false);
+                          }}
+                          className={`px-1 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                            isEditorBookmarksOpen
+                              ? "bg-sky-200 text-sky-900 font-bold"
+                              : "hover:bg-slate-200 text-slate-600"
+                          }`}
+                          title="Danh sách tất cả Bookmark"
+                        >
+                          Xem
+                        </button>
+                      </>
+                    )}
+                  </div>
+
                   {/* Quick Mathematical Symbols & Greek Operators Palette Button */}
                   <button
                     onClick={() => {
@@ -2933,6 +3049,67 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     <span>% [Cấu hình hệ thống TeX Live & Tiêu chuẩn Bộ GD&ĐT (đã thu gọn) — Bấm để mở rộng]</span>
                   </span>
                   <span className="text-[10px] text-indigo-600 font-semibold">Xem mã preamble →</span>
+                </div>
+              )}
+
+              {/* Quick Bookmarks List Drawer */}
+              {isEditorBookmarksOpen && (
+                <div className="bg-sky-50/95 border-b border-sky-200 p-2.5 text-xs shrink-0 animate-in fade-in duration-150 shadow-inner flex flex-col font-sans">
+                  <div className="flex items-center justify-between pb-2 border-b border-sky-200 mb-2 px-1">
+                    <div className="flex items-center space-x-2">
+                      <BookmarkCheck className="w-4 h-4 text-sky-700" />
+                      <span className="font-semibold text-sky-950 text-xs">
+                        Danh Sách Dấu Trang Đã Đánh Dấu (Editor Bookmarks)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-200 text-sky-900">
+                        {editorBookmarks.length} vị trí
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => {
+                          setEditorBookmarks([]);
+                          setIsEditorBookmarksOpen(false);
+                          showToast("Đã xóa toàn bộ dấu trang (Bookmarks)", "info");
+                        }}
+                        className="text-[10px] text-rose-600 hover:text-rose-800 font-medium hover:underline"
+                      >
+                        Xóa tất cả
+                      </button>
+                      <button
+                        onClick={() => setIsEditorBookmarksOpen(false)}
+                        className="text-sky-700 hover:text-sky-900 px-1.5 py-0.5 rounded hover:bg-sky-100 font-bold text-xs"
+                        title="Đóng danh sách dấu trang (Esc)"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1">
+                    {editorBookmarks.map((lineNum) => {
+                      const allLines = (rawLatexCode || "").split("\n");
+                      const snippet = (allLines[lineNum - 1] || "").trim();
+                      return (
+                        <button
+                          key={`bm-${lineNum}`}
+                          onClick={() => {
+                            handleGotoLineInEditor(lineNum);
+                            showToast(`Đã chuyển đến Bookmark Dòng ${lineNum}`, "info");
+                          }}
+                          className="flex items-center space-x-2 px-2.5 py-1 bg-white hover:bg-sky-100 border border-sky-200 hover:border-sky-400 rounded transition-all shadow-sm group text-left max-w-xs"
+                          title={`Bấm để nhảy đến dòng ${lineNum}: ${snippet}`}
+                        >
+                          <span className="font-mono font-bold text-sky-800 text-xs bg-sky-100 group-hover:bg-sky-200 px-1.5 py-0.5 rounded">
+                            Dòng {lineNum}
+                          </span>
+                          <span className="font-mono text-[11px] text-slate-600 truncate max-w-[160px]">
+                            {snippet || "(Dòng trống)"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -4838,6 +5015,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Tự động đóng cặp ngoặc & bọc chọn</span>
                     <span className="text-[11px] font-mono font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{}, [], (), $$, ""</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Đánh dấu / Gỡ Bookmark dòng</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">Ctrl + B</kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Nhảy tới Bookmark kế tiếp / trước</span>
+                    <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">F2 / Shift + F2</kbd>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Bảng ký hiệu toán & Hy Lạp (Palette)</span>
