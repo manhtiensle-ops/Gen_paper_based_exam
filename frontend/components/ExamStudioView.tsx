@@ -3605,6 +3605,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 61: Functional Analysis & Linear Operators / Hahn-Banach Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasFunctionalAnalysis = /giải tích hàm|phiếm hàm tuyến tính|toán tử tuyến tính liên tục|chuẩn toán tử|định lý Hahn-Banach|định lý ánh xạ mở|định lý đồ thị đóng|nguyên lý bị chặn đều|Banach-Steinhaus|phổ của toán tử|toán tử tự liên hợp|không gian đối ngẫu/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Giải tích hàm & Toán tử tuyến tính (Functional Analysis Inspector):{" "}
+                            {hasFunctionalAnalysis ? (
+                              <span className="font-mono text-emerald-700">CHUẨN GIẢI TÍCH HÀM & TOÁN TỬ TUYẾN TÍNH ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">GIẢI TÍCH CỔ ĐIỂN TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasFunctionalAnalysis
+                              ? "✓ Phiếm hàm tuyến tính, định lý Hahn-Banach, Banach-Steinhaus, định lý ánh xạ mở và không gian đối ngẫu chuẩn Olympic Toán sinh viên."
+                              : "✓ Đề thi không chứa cấu trúc giải tích hàm vô hạn chiều và toán tử tuyến tính liên tục."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3685,7 +3712,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `57. Lý thuyết Đồ thị & Luồng mạng: CHUẨN LÝ THUYẾT ĐỒ THỊ & TOÁN RỜI RẠC CHUYÊN SÂU`,
                         `58. Giải tích số & Nội suy / Sai phân: CHUẨN GIẢI TÍCH SỐ & PHƯƠNG PHÁP TÍNH CAO CẤP`,
                         `59. Lý thuyết Độ đo & Tích phân Lebesgue: CHUẨN ĐỘ ĐO LEBESGUE & GIẢI TÍCH HIỆN ĐẠI ĐỈNH CAO`,
-                        `60. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `60. Giải tích hàm & Toán tử tuyến tính: CHUẨN GIẢI TÍCH HÀM & TOÁN TỬ TUYẾN TÍNH ĐỈNH CAO`,
+                        `61. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

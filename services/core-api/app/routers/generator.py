@@ -1732,6 +1732,68 @@ def configure_exam_ab_testing_variants(
     }
 
 
+@router.post("/exams/{exam_id}/bilingual-localization", status_code=status.HTTP_200_OK)
+def configure_exam_bilingual_localization(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình phiên bản đề thi song ngữ Anh - Việt và bản địa hóa thuật ngữ toán học quốc tế (Exam Bilingual Localization RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách môn thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ song ngữ (bilingual_mode), bố cục 2 cột đối sánh (side_by_side_layout),
+      lựa chọn ngôn ngữ thứ hai (secondary_language: 'en', 'fr') và từ điển thuật ngữ chuyên ngành (glossary_profile).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền cấu hình đề thi song ngữ"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình chế độ song ngữ")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình song ngữ cho đề thi thuộc trường học khác"
+            )
+
+    bilingual_enabled = bool(payload.get("enabled", True))
+    secondary_language = payload.get("secondary_language", "en").lower()
+    side_by_side = bool(payload.get("side_by_side_layout", True))
+    glossary_profile = payload.get("glossary_profile", "CAMBRIDGE_IGCSE_A_LEVEL")
+    include_pronunciation = bool(payload.get("include_pronunciation", False))
+
+    header_cfg = dict(exam.header_config or {})
+    bilingual_config = {
+        "enabled": bilingual_enabled,
+        "secondary_language": secondary_language,
+        "side_by_side_layout": side_by_side,
+        "glossary_profile": glossary_profile,
+        "include_pronunciation": include_pronunciation,
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["bilingual_localization"] = bilingual_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "bilingual_localization": bilingual_config,
+        "message": f"Đã {'kích hoạt' if bilingual_enabled else 'vô hiệu hóa'} cấu hình đề thi song ngữ ({secondary_language.upper()} - {glossary_profile}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
