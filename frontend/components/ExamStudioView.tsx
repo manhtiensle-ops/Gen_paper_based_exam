@@ -3632,6 +3632,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 62: Calculus of Variations & Optimal Control / Euler-Lagrange Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasVariations = /giải tích biến phân|tính biến phân|phương trình Euler-Lagrange|đường đoản thời|brachistochrone|điều kiện Weierstrass|nguyên lý cực đại Pontryagin|phương trình Hamilton-Jacobi-Bellman|điều khiển tối ưu|phiếm hàm tích phân|cực trị có điều kiện biến phân/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Giải tích biến phân & Điều khiển tối ưu (Variational & Optimal Control Inspector):{" "}
+                            {hasVariations ? (
+                              <span className="font-mono text-emerald-700">CHUẨN BIẾN PHÂN EULER-LAGRANGE & TỐI ƯU ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">CỰC TRỊ VI TÍCH PHÂN TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasVariations
+                              ? "✓ Phương trình Euler-Lagrange, bài toán đường đoản thời Brachistochrone, nguyên lý cực đại Pontryagin chuẩn Olympic Toán ứng dụng và Cơ học giải tích."
+                              : "✓ Đề thi không chứa cấu trúc giải tích biến phân và điều khiển tối ưu hóa vi tích phân."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3713,7 +3740,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `58. Giải tích số & Nội suy / Sai phân: CHUẨN GIẢI TÍCH SỐ & PHƯƠNG PHÁP TÍNH CAO CẤP`,
                         `59. Lý thuyết Độ đo & Tích phân Lebesgue: CHUẨN ĐỘ ĐO LEBESGUE & GIẢI TÍCH HIỆN ĐẠI ĐỈNH CAO`,
                         `60. Giải tích hàm & Toán tử tuyến tính: CHUẨN GIẢI TÍCH HÀM & TOÁN TỬ TUYẾN TÍNH ĐỈNH CAO`,
-                        `61. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `61. Giải tích biến phân & Điều khiển tối ưu: CHUẨN BIẾN PHÂN EULER-LAGRANGE & TỐI ƯU ĐỈNH CAO`,
+                        `62. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

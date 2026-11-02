@@ -1794,6 +1794,69 @@ def configure_exam_bilingual_localization(
     }
 
 
+@router.post("/exams/{exam_id}/omr-sheet-template", status_code=status.HTTP_200_OK)
+def configure_exam_omr_sheet_template(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình và phát hành phiếu trả lời trắc nghiệm quang học OMR (Optical Mark Recognition Sheet RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách môn thi (TEACHER) cùng tenant_id mới có quyền
+      cấu hình mẫu phiếu OMR (sheet_layout: '50_QUESTIONS', '120_QUESTIONS', '2025_FORMAT'),
+      dấu căn chỉnh góc (corner_anchors), vạch định thời quang học (timing_tracks) và mã QR đồng bộ kết quả.
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách (TEACHER) mới có quyền cấu hình phiếu trả lời trắc nghiệm OMR"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình phiếu OMR")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình phiếu OMR cho đề thi thuộc trường học khác"
+            )
+
+    sheet_layout = payload.get("sheet_layout", "2025_FORMAT")
+    enable_timing_tracks = bool(payload.get("enable_timing_tracks", True))
+    include_student_id_grid = bool(payload.get("include_student_id_grid", True))
+    include_exam_code_grid = bool(payload.get("include_exam_code_grid", True))
+    qr_sync_enabled = bool(payload.get("qr_sync_enabled", True))
+
+    header_cfg = dict(exam.header_config or {})
+    omr_config = {
+        "sheet_layout": sheet_layout,
+        "enable_timing_tracks": enable_timing_tracks,
+        "include_student_id_grid": include_student_id_grid,
+        "include_exam_code_grid": include_exam_code_grid,
+        "qr_sync_enabled": qr_sync_enabled,
+        "anchor_signature": f"VINHPHAT-OMR-{uuid.uuid4().hex[:10].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["omr_sheet_template"] = omr_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "omr_sheet_template": omr_config,
+        "message": f"Đã cấu hình thành công mẫu phiếu trả lời trắc nghiệm OMR chuẩn '{sheet_layout}'"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
