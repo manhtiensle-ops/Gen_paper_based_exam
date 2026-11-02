@@ -3290,6 +3290,72 @@ def configure_exam_dynamic_qr_rubric(
     }
 
 
+@router.post("/exams/{exam_id}/zk-whistleblower-vault", status_code=status.HTTP_200_OK)
+def configure_exam_zk_whistleblower_vault(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chính sách Hòm thư nặc danh báo cáo gian lận thi cử mã hóa không kiến thức (Zero-Knowledge Whistleblower Vault RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Thanh tra Khảo thí / Giám sát Kỳ thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt hòm thư nặc danh ZK (enabled),
+      cho phép thí sinh hoặc giám thị gửi báo cáo ẩn danh (allow_student_anonymous_reports),
+      bắt buộc bằng chứng mã hóa zk-SNARK không để lộ IP hoặc danh tính người tố cáo (require_zk_proof_integrity),
+      ấn định dung lượng tệp tin bằng chứng tố cáo tối đa (max_attachment_size_mb: e.g. 10 - 50MB),
+      và kích hoạt chế độ bất biến cấm xóa sửa log thanh tra (immutable_audit_vault).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Cán bộ Thanh tra Khảo thí (TEACHER) mới có quyền cấu hình hòm thư nặc danh ZK"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình hòm thư nặc danh ZK")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình hòm thư nặc danh ZK cho đề thi thuộc trường học khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    allow_students = bool(payload.get("allow_student_anonymous_reports", True))
+    require_zk = bool(payload.get("require_zk_proof_integrity", True))
+    max_mb = int(payload.get("max_attachment_size_mb", 25))
+    immutable_log = bool(payload.get("immutable_audit_vault", True))
+
+    header_cfg = dict(exam.header_config or {})
+    zk_vault_config = {
+        "enabled": is_enabled,
+        "allow_student_anonymous_reports": allow_students,
+        "require_zk_proof_integrity": require_zk,
+        "max_attachment_size_mb": max_mb,
+        "immutable_audit_vault": immutable_log,
+        "zk_vault_policy_id": f"VINHPHAT-ZKVAULT-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["zk_whistleblower_vault"] = zk_vault_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "zk_whistleblower_vault": zk_vault_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình hòm thư nặc danh ZK (Bằng chứng ZK: {'Bật' if require_zk else 'Tắt'}, Bất biến: {'Bật' if immutable_log else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
