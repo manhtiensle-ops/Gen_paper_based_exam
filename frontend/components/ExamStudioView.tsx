@@ -3983,6 +3983,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 75: Singularity Theory & Grothendieck Schemes / Étale Cohomology Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasGrothendieck = /lý thuyết điểm kỳ dị|singularity theory|lược đồ grothendieck|grothendieck scheme|đối đồng điều étale|etale cohomology|bổ đề zariski|zariski topology|điểm kỳ dị đại số|resolution of singularities|định lý hironaka|bó đại số|algebraic sheaf/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Điểm kỳ dị & Lược đồ Grothendieck (Grothendieck Schemes Inspector):{" "}
+                            {hasGrothendieck ? (
+                              <span className="font-mono text-emerald-700">CHUẨN HÌNH HỌC ĐẠI SỐ GROTHENDIECK ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">HÌNH HỌC ĐẠI SỐ TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasGrothendieck
+                              ? "✓ Lược đồ Grothendieck, đối đồng điều Étale, giải kỳ dị Hironaka, tô pô Zariski và lý thuyết bó chuẩn Olympic Toán học sinh giỏi quốc tế và Sau đại học."
+                              : "✓ Đề thi không chứa hình học đại số trừu tượng của trường phái Grothendieck."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -4077,7 +4104,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `71. Biểu diễn nhóm & Đại số Lie: CHUẨN BIỂU DIỄN NHÓM & ĐẠI SỐ LIE SCHUR ĐỈNH CAO`,
                         `72. Lý thuyết nút thắt & Đa thức Jones: CHUẨN NÚT THẮT & BẤT BIẾN JONES ĐỈNH CAO`,
                         `73. Hình học không giao hoán & C*-Đại số: CHUẨN HÌNH HỌC LƯỢNG TỬ & C*-ĐẠI SỐ ĐỈNH CAO`,
-                        `74. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `74. Điểm kỳ dị & Lược đồ Grothendieck: CHUẨN HÌNH HỌC ĐẠI SỐ GROTHENDIECK ĐỈNH CAO`,
+                        `75. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");

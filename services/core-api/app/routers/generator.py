@@ -2628,6 +2628,71 @@ def configure_exam_download_quota_policy(
     }
 
 
+@router.post("/exams/{exam_id}/multi-campus-unified-grading", status_code=status.HTTP_200_OK)
+def configure_exam_multi_campus_unified_grading(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình chế độ hợp nhất chấm thi liên trường / đa điểm cầu (Multi-Campus Unified Grading RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên Chủ tịch Hội đồng liên trường (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ chấm thi liên trường (enabled), chỉ định danh sách các điểm trường/cơ sở tham gia (participating_campuses: list các mã cơ sở),
+      khóa chốt bảng điểm độc lập từng cơ sở trước khi gộp (require_campus_level_freeze),
+      tự động đồng bộ phổ điểm toàn hệ thống (auto_sync_aggregate_scores)
+      và cấm đơn phương điều chỉnh điểm sau khi chốt bảng điểm liên trường (lock_cross_campus_edits).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên Chủ tịch Hội đồng liên trường (TEACHER) mới có quyền cấu hình chế độ chấm thi liên trường"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình chế độ chấm thi liên trường")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình chấm thi liên trường cho đề thi thuộc đơn vị khác"
+            )
+
+    is_enabled = bool(payload.get("enabled", True))
+    campuses = list(payload.get("participating_campuses", ["CAMPUS_MAIN", "CAMPUS_NORTH"]))
+    require_freeze = bool(payload.get("require_campus_level_freeze", True))
+    auto_sync = bool(payload.get("auto_sync_aggregate_scores", True))
+    lock_edits = bool(payload.get("lock_cross_campus_edits", True))
+
+    header_cfg = dict(exam.header_config or {})
+    unified_grading_config = {
+        "enabled": is_enabled,
+        "participating_campuses": campuses,
+        "require_campus_level_freeze": require_freeze,
+        "auto_sync_aggregate_scores": auto_sync,
+        "lock_cross_campus_edits": lock_edits,
+        "unified_grading_id": f"VINHPHAT-CAMPUS-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["multi_campus_unified_grading"] = unified_grading_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "multi_campus_unified_grading": unified_grading_config,
+        "message": f"Đã {'kích hoạt' if is_enabled else 'vô hiệu hóa'} cấu hình chấm thi liên trường ({len(campuses)} cơ sở tham gia, Khóa chốt cơ sở: {'Bật' if require_freeze else 'Tắt'}) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
