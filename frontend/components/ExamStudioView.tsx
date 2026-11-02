@@ -42,7 +42,9 @@ import {
   ArrowUpDown,
   CheckSquare,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Copy,
+  Check
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -71,6 +73,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   // Raw LaTeX Code State for Live Editor
   const [rawLatexCode, setRawLatexCode] = useState<string>("");
   const [isPreambleFolded, setIsPreambleFolded] = useState<boolean>(true);
+  const [copiedTex, setCopiedTex] = useState<boolean>(false);
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [restoredDraftNotice, setRestoredDraftNotice] = useState<string | null>(null);
 
@@ -1044,6 +1047,48 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
 
                 <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+                  <button
+                    onClick={() => {
+                      if (!rawLatexCode) return;
+                      navigator.clipboard.writeText(rawLatexCode);
+                      setCopiedTex(true);
+                      setTimeout(() => setCopiedTex(false), 2000);
+                    }}
+                    className="flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
+                    title="Sao chép toàn bộ mã nguồn LaTeX vào bộ nhớ tạm"
+                  >
+                    {copiedTex ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span className="text-emerald-700 font-semibold">Đã chép</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3 text-slate-500" />
+                        <span>Sao chép TeX</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!rawLatexCode) return;
+                      const blob = new Blob([rawLatexCode], { type: "text/plain;charset=utf-8" });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = `${headerConfig.exam_name || "de_thi"}.tex`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
+                    title="Tải tập tin nguồn .tex về máy để mở bằng Overleaf / TeXStudio"
+                  >
+                    <Download className="w-3 h-3 text-slate-500" />
+                    <span>Tải .tex</span>
+                  </button>
+                  <span className="text-slate-300">|</span>
                   <span>Nhấn <kbd className="bg-slate-200 text-slate-700 px-1 py-0.5 rounded font-mono">Ctrl+S</kbd> để biên dịch</span>
                 </div>
               </div>
