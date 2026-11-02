@@ -85,6 +85,7 @@ jobs:
         if: steps.changes.outputs.frontend == 'true' || inputs.force_rebuild == true || inputs.target_ref != ''
         run: |
           cd /home/manhtien/Gen_paper_based_exam
+          git fetch origin --tags
           git checkout ${{ inputs.target_ref || github.sha }}
           docker compose build frontend
           docker stop hsg_frontend && docker rm hsg_frontend
@@ -94,6 +95,7 @@ jobs:
         if: steps.changes.outputs.core_api == 'true' || inputs.force_rebuild == true || inputs.target_ref != ''
         run: |
           cd /home/manhtien/Gen_paper_based_exam
+          git fetch origin --tags
           git checkout ${{ inputs.target_ref || github.sha }}
           docker compose restart core-api
 
@@ -101,6 +103,7 @@ jobs:
         if: steps.changes.outputs.export_service == 'true' || inputs.force_rebuild == true || inputs.target_ref != ''
         run: |
           cd /home/manhtien/Gen_paper_based_exam
+          git fetch origin --tags
           git checkout ${{ inputs.target_ref || github.sha }}
           docker compose restart export-service
 
