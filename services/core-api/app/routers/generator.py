@@ -2233,6 +2233,70 @@ def configure_exam_peripheral_device_guard(
     }
 
 
+@router.post("/exams/{exam_id}/scratch-paper-audit", status_code=status.HTTP_200_OK)
+def configure_exam_scratch_paper_audit(
+    exam_id: uuid.UUID,
+    payload: Dict[str, Any],
+    current_user: User = Depends(require_authenticated_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cấu hình quản lý và kiểm soát thu hồi giấy nháp thi số hóa (Exam Scratch Paper Audit Policy RBAC).
+    Phân quyền:
+    - Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách phòng thi (TEACHER) cùng tenant_id mới có quyền
+      kích hoạt chế độ kiểm soát giấy nháp (enabled), ấn định số tờ nháp dập mã phát tối đa (max_sheets_per_student: 1 - 10),
+      bắt buộc dập mã vạch/QR số hóa trên từng tờ nháp (require_serialized_barcode), bắt buộc thu hồi toàn bộ giấy nháp trước khi rời phòng thi (mandatory_collection)
+      và yêu cầu chữ ký đối soát của cả 2 giám thị trên từng tờ giấy nháp (require_double_proctor_signature).
+    - Học sinh hoặc tài khoản thông thường bị chặn đứng với mã lỗi HTTP 403 Forbidden.
+    """
+    if current_user.role not in ["ADMIN", "TEACHER"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ Quản trị viên (ADMIN) hoặc Giáo viên phụ trách phòng thi (TEACHER) mới có quyền cấu hình kiểm soát giấy nháp thi"
+        )
+
+    exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề thi để cấu hình kiểm soát giấy nháp thi")
+
+    if current_user.role != "ADMIN" and exam.tenant_id and current_user.tenant_id:
+        if exam.tenant_id != current_user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền cấu hình kiểm soát giấy nháp cho đề thi thuộc trường học khác"
+            )
+
+    audit_enabled = bool(payload.get("enabled", True))
+    max_sheets = int(payload.get("max_sheets_per_student", 2))
+    require_serialized_barcode = bool(payload.get("require_serialized_barcode", True))
+    mandatory_collection = bool(payload.get("mandatory_collection", True))
+    require_double_signature = bool(payload.get("require_double_proctor_signature", True))
+
+    header_cfg = dict(exam.header_config or {})
+    audit_config = {
+        "enabled": audit_enabled,
+        "max_sheets_per_student": max_sheets,
+        "require_serialized_barcode": require_serialized_barcode,
+        "mandatory_collection": mandatory_collection,
+        "require_double_proctor_signature": require_double_signature,
+        "scratch_audit_batch_id": f"VINHPHAT-SCRATCH-{uuid.uuid4().hex[:8].upper()}",
+        "configured_by": current_user.username,
+        "configured_role": current_user.role,
+        "configured_at": datetime.now(timezone.utc).isoformat()
+    }
+    header_cfg["scratch_paper_audit"] = audit_config
+    exam.header_config = header_cfg
+    db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "exam_id": str(exam.id),
+        "exam_title": exam.title,
+        "scratch_paper_audit": audit_config,
+        "message": f"Đã {'kích hoạt' if audit_enabled else 'vô hiệu hóa'} cấu hình kiểm soát giấy nháp ({max_sheets} tờ/thí sinh) thành công"
+    }
+
+
 @router.get("/exams/{exam_id}", response_model=GeneratedExamResponse)
 def get_generated_exam(exam_id: uuid.UUID, db: Session = Depends(get_db)):
     exam = db.query(GeneratedExam).filter(GeneratedExam.id == exam_id).first()

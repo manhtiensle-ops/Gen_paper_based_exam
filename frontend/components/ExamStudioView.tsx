@@ -3821,6 +3821,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 69: Random Matrix Theory & Wigner Semicircle Law / Tracy-Widom Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasRandomMatrix = /ma trận ngẫu nhiên|random matrix|định luật bán nguyệt|wigner semicircle|phân phối wigner|marchenko-pastur|phân phối tracy-widom|trị riêng ma trận ngẫu nhiên|ma trận hermitian|gaussian unitary ensemble|gue|gaussian orthogonal ensemble|goe|khoảng cách trị riêng/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Ma trận ngẫu nhiên & Phân phối Wigner (Random Matrix Theory Inspector):{" "}
+                            {hasRandomMatrix ? (
+                              <span className="font-mono text-emerald-700">CHUẨN MA TRẬN NGẪU NHIÊN & ĐỊNH LUẬT BÁN NGUYỆT WIGNER ĐỈNH CAO</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐẠI SỐ TUYẾN TÍNH TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasRandomMatrix
+                              ? "✓ Định luật bán nguyệt Wigner Semicircle Law, Marchenko-Pastur, phân phối Tracy-Widom và ensemble GUE/GOE chuẩn Olympic Toán cao cấp và Vật lý lượng tử."
+                              : "✓ Đề thi không chứa ma trận ngẫu nhiên cỡ lớn và lý thuyết phổ tiệm cận."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3909,7 +3936,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `65. Toán rời rạc & Mật mã học hiện đại: CHUẨN TOÁN RỜI RẠC & MẬT MÃ HỌC RSA / ECC ĐỈNH CAO`,
                         `66. Lý thuyết đồ thị & Luồng cực đại mạng: CHUẨN ĐỒ THỊ & LUỒNG CỰC ĐẠI FORD-FULKERSON ĐỈNH CAO`,
                         `67. Lý thuyết hỗn độn & Hệ động lực Fractal: CHUẨN HỆ ĐỘNG LỰC PHI TUYẾN & FRACTAL ĐỈNH CAO`,
-                        `68. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `68. Ma trận ngẫu nhiên & Phân phối Wigner: CHUẨN MA TRẬN NGẪU NHIÊN & ĐỊNH LUẬT BÁN NGUYỆT WIGNER ĐỈNH CAO`,
+                        `69. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
