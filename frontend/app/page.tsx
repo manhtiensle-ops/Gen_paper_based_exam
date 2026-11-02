@@ -1172,7 +1172,7 @@ export default function Dashboard() {
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  <span>📚 Mẫu chuẩn Vinh Phát</span>
+                  <span>📚 Mẫu chuẩn VINH PHÁT</span>
                 </button>
               </div>
             </div>
@@ -1231,7 +1231,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm font-bold text-slate-700">Kho cá nhân của bạn hiện chưa có câu hỏi nào</p>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                    Hãy vào tab <strong>Số hóa tài liệu</strong> để tải lên đề thi Word/PDF riêng của bạn, hoặc bấm nút <strong>Sao chép</strong> trên các câu hỏi Mẫu Vinh Phát để lưu về kho cá nhân!
+                    Hãy vào tab <strong>Số hóa tài liệu</strong> để tải lên đề thi Word/PDF riêng của bạn, hoặc bấm nút <strong>Sao chép</strong> trên các câu hỏi Mẫu VINH PHÁT để lưu về kho cá nhân!
                   </p>
                 </div>
               ) : filterScope === "TENANT" ? (

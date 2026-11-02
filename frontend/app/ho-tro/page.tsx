@@ -153,7 +153,7 @@ export default function HoTroPage() {
               </p>
               <ul className="list-disc pl-5 space-y-1">
                 <li><strong>⭐ Của tôi:</strong> Chỉ hiển thị các câu hỏi do chính tài khoản của thầy cô tạo hoặc sao chép về.</li>
-                <li><strong>📚 Mẫu chuẩn Vinh Phát:</strong> 60 câu hỏi hạt giống chuẩn mực quốc gia do trung tâm tuyển chọn sẵn.</li>
+                <li><strong>📚 Mẫu chuẩn VINH PHÁT:</strong> 60 câu hỏi hạt giống chuẩn mực quốc gia do trung tâm tuyển chọn sẵn.</li>
                 <li><strong>Tất cả:</strong> Tổng hợp đầy đủ.</li>
               </ul>
               <p>

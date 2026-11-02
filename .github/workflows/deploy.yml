@@ -4,6 +4,15 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      target_ref:
+        description: 'Nhánh, Tag hoặc Commit SHA cần deploy / rollback (để trống sẽ deploy HEAD main)'
+        required: false
+        default: ''
+      force_rebuild:
+        description: 'Buộc rebuild toàn bộ container'
+        type: boolean
+        default: false
 
 jobs:
   # =========================================================================
@@ -16,6 +25,8 @@ jobs:
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_ref || github.sha }}
 
       - name: 🟢 Setup Node.js 20
         uses: actions/setup-node@v4
@@ -51,6 +62,8 @@ jobs:
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_ref || github.sha }}
 
       - name: 🔍 Phát hiện dịch vụ có thay đổi
         id: changes
@@ -67,23 +80,26 @@ jobs:
               - 'services/ingestion-worker/**'
 
       - name: 🔄 Rebuild & Restart Frontend (nếu có đổi code frontend)
-        if: steps.changes.outputs.frontend == 'true'
+        if: steps.changes.outputs.frontend == 'true' || inputs.force_rebuild == true || inputs.target_ref != ''
         run: |
           cd /home/manhtien/Gen_paper_based_exam
+          git checkout ${{ inputs.target_ref || github.sha }}
           docker compose build frontend
           docker stop hsg_frontend && docker rm hsg_frontend
           docker compose up -d frontend
 
       - name: 🔄 Restart Backend Services (nếu có đổi code backend)
-        if: steps.changes.outputs.core_api == 'true'
+        if: steps.changes.outputs.core_api == 'true' || inputs.force_rebuild == true || inputs.target_ref != ''
         run: |
           cd /home/manhtien/Gen_paper_based_exam
+          git checkout ${{ inputs.target_ref || github.sha }}
           docker compose restart core-api
 
       - name: 🔄 Restart Export Service (nếu có đổi)
-        if: steps.changes.outputs.export_service == 'true'
+        if: steps.changes.outputs.export_service == 'true' || inputs.force_rebuild == true || inputs.target_ref != ''
         run: |
           cd /home/manhtien/Gen_paper_based_exam
+          git checkout ${{ inputs.target_ref || github.sha }}
           docker compose restart export-service
 
       - name: 🩺 Kiểm tra sức khỏe dịch vụ (Smoke Test)
