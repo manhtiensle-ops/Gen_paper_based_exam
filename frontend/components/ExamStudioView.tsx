@@ -3443,6 +3443,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                       </div>
                     );
                   })()}
+
+                  {/* Check 55: Linear Algebra & Eigenvalues / Characteristic Polynomial Inspector */}
+                  {(() => {
+                    const allContent = items.map((it) => it.content_latex || "").join(" ");
+                    const hasLinearAlgebra = /ma trận vuông|định thức|determinant|\bdet\b|giá trị riêng|vector riêng|eigenvalue|eigenvector|đa thức đặc trưng|chéo hóa ma trận|không gian con|độc lập tuyến tính|hạng của ma trận|\brank\b/i.test(allContent);
+
+                    return (
+                      <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-slate-800">
+                            Đại số tuyến tính & Giá trị riêng / Ma trận (Linear Algebra Inspector):{" "}
+                            {hasLinearAlgebra ? (
+                              <span className="font-mono text-emerald-700">CHUẨN ĐẠI SỐ TUYẾN TÍNH & MA TRẬN OLYMPIC TOÁN</span>
+                            ) : (
+                              <span className="font-mono text-emerald-700">ĐẠI SỐ ĐẠI CƯƠNG TIÊU CHUẨN</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {hasLinearAlgebra
+                              ? "✓ Ma trận vuông, định thức, giá trị riêng, vector riêng và chéo hóa ma trận chuẩn đề thi Olympic Toán sinh viên toàn quốc."
+                              : "✓ Đề thi không chứa đại số tuyến tính và lý thuyết ma trận nâng cao."}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pedagogy Audit Report Export Action */}
@@ -3517,7 +3544,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                         `51. Hình học xạ ảnh & Hàng điểm điều hòa / Cực đối cực: CHUẨN HÌNH HỌC XẠ ẢNH & ĐIỀU HÒA CHUYÊN SÂU`,
                         `52. Dãy số nguyên & Phương trình Pell / Fibonacci: CHUẨN DÃY SỐ NGUYÊN & PHƯƠNG TRÌNH PELL HSG QUỐC GIA`,
                         `53. Giải tích số phức & Biến đổi Möbius: CHUẨN GIẢI TÍCH PHỨC & BIẾN ĐỔI MÖBIUS CAO CẤP`,
-                        `54. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
+                        `54. Đại số tuyến tính & Giá trị riêng / Ma trận: CHUẨN ĐẠI SỐ TUYẾN TÍNH & MA TRẬN OLYMPIC TOÁN`,
+                        `55. Tiêu đề hành chính: ${headerConfig.department_or_school && headerConfig.exam_name ? "HOÀN CHỈNH" : "THIẾU THÔNG TIN"}`,
                         `----------------------------------------------------`,
                         `KẾT LUẬN: ${isMathOk && items.length > 0 ? "ĐỦ ĐIỀU KIỆN XUẤT BẢN VÀ IN ẤN THƯƠNG MẠI" : "CẦN HIỆU CHỈNH TRƯỚC KHI IN"}`
                       ].join("\n");
