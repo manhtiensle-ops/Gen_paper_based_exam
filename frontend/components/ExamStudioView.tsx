@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import MathRenderer from "@/components/MathRenderer";
 import QuestionEditModal from "@/components/QuestionEditModal";
 import RubricTablePreview from "@/components/RubricTablePreview";
+import ExamSettingsModal from "@/components/ExamSettingsModal";
 import {
   saveExamDraft,
   getExamDraft,
@@ -48,7 +49,8 @@ import {
   Check,
   ShieldAlert,
   ShieldCheck,
-  Clock
+  Clock,
+  Printer
 } from "lucide-react";
 
 interface Props {
@@ -68,8 +70,8 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
   const containerRef = useRef<HTMLDivElement>(null);
   const activePointerIdRef = useRef<number | null>(null);
 
-  // Left Sidebar Tab: "editor" | "rubric-table" | "items" | "knobs" | "spec-matrix"
-  const [sidebarTab, setSidebarTab] = useState<"editor" | "rubric-table" | "items" | "knobs" | "spec-matrix" | "integrity">("editor");
+  // Left Sidebar Tab: "items" | "rubric-table" | "editor" | "knobs" | "spec-matrix" | "integrity"
+  const [sidebarTab, setSidebarTab] = useState<"editor" | "rubric-table" | "items" | "knobs" | "spec-matrix" | "integrity">("items");
   const [templateDoc, setTemplateDoc] = useState<any | null>(null);
 
   // Raw LaTeX Code State for Live Editor
@@ -88,7 +90,10 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
     if (draft) {
       if (draft.split_ratio) setSplitRatio(draft.split_ratio);
       if (draft.active_mode) setActiveMode(draft.active_mode);
-      if (draft.active_sidebar_tab) setSidebarTab(draft.active_sidebar_tab as any);
+      if (draft.active_sidebar_tab) {
+        // Nếu bản nháp lưu editor rỗng thì ưu tiên mở items
+        setSidebarTab(draft.active_sidebar_tab === "editor" && !draft.unsaved_latex ? "items" : (draft.active_sidebar_tab as any));
+      }
       if (draft.unsaved_latex && draft.is_dirty) {
         setRawLatexCode(draft.unsaved_latex);
         setIsDirty(true);
@@ -373,9 +378,13 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
 
         compileLivePreview(data, layoutKnobs, activeMode, currentHeader);
         loadTemplateDoc();
+      } else {
+        // Nếu fetch items thất bại, vẫn gọi compile preview với items hiện có để không bị treo
+        compileLivePreview(items, layoutKnobs, activeMode, headerConfig);
       }
     } catch (e) {
       console.error(e);
+      compileLivePreview(items, layoutKnobs, activeMode, headerConfig);
     } finally {
       setLoading(false);
     }
@@ -392,19 +401,23 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
     currentItems = items,
     knobs = layoutKnobs,
     mode = activeMode,
-    customHeader = headerConfig
+    customHeader: any = headerConfig
   ) => {
     setCompiling(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout phòng thủ
     try {
       const res = await fetch(`/api/studio/exams/${examId}/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           layout_knobs: knobs,
           header_config: customHeader,
           mode: mode,
         }),
       });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         setPreviewData(data);
@@ -412,10 +425,20 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
         if (data.latex_source) {
           setRawLatexCode(data.latex_source);
         }
+      } else {
+        console.warn("Compile preview failed with status:", res.status);
+        // Fallback: nếu chưa có previewData, tạo dummy fallback để không treo spinner vô tận
+        setPreviewData((prev) => prev || { page_keys: [], total_pages: 1, fallback_mode: true });
       }
-    } catch (e) {
-      console.error("Compile preview error:", e);
+    } catch (e: any) {
+      if (e.name === "AbortError") {
+        console.warn("Compile preview timed out after 7s. Switching to fallback viewer.");
+      } else {
+        console.error("Compile preview error:", e);
+      }
+      setPreviewData((prev) => prev || { page_keys: [], total_pages: 1, fallback_mode: true });
     } finally {
+      clearTimeout(timeoutId);
       setCompiling(false);
     }
   };
@@ -719,124 +742,72 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
 
   return (
     <div className="h-screen w-screen bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden select-none">
-      {/* 1. TOPBAR - LIGHT ACADEMIC THEME (FROSTED GLASS BOUTIQUE SAAS) */}
-      <header className="h-14 frosted-glass border-b border-slate-200/90 px-5 flex items-center justify-between shadow-xs shrink-0 z-30 transition-all">
-        <div className="flex items-center space-x-3">
+      {/* 1. TOPBAR - LIGHT ACADEMIC THEME (FROSTED GLASS BOUTIQUE SAAS - COMPACT & CLEAN) */}
+      <header className="h-14 frosted-glass border-b border-slate-200/90 px-4 flex items-center justify-between shadow-xs shrink-0 z-30 transition-all">
+        {/* Left: Back & Exam Name */}
+        <div className="flex items-center space-x-3 min-w-0">
           {onBack && (
             <button
               onClick={onBack}
-              className="text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 shadow-2xs hover:shadow-xs transition-all flex items-center space-x-1 cursor-pointer"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 shadow-2xs hover:shadow-xs transition-all flex items-center space-x-1 cursor-pointer shrink-0"
+              title="Quay lại danh sách đề thi"
             >
               <span>← Trở lại</span>
             </button>
           )}
-          <div className="flex items-center space-x-2">
-            <h1 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-              <span className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-indigo-900 bg-clip-text text-transparent font-black tracking-tight">Exam Studio</span>
+          <div className="flex items-center space-x-2 min-w-0">
+            <h1 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5 truncate">
+              <span className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-indigo-900 bg-clip-text text-transparent font-black tracking-tight shrink-0">VINH PHÁT Studio</span>
               <span className="text-slate-300">/</span>
-              <span className="text-slate-700 truncate max-w-sm font-semibold">{headerConfig.exam_name}</span>
+              <span className="text-slate-700 truncate max-w-xs font-semibold">{headerConfig.exam_name}</span>
             </h1>
-            <button
-              onClick={() => {
-                setHeaderForm(headerConfig);
-                setIsHeaderModalOpen(true);
-              }}
-              className="text-xs px-2.5 py-1 rounded-xl bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200/80 transition-all flex items-center space-x-1.5 cursor-pointer shadow-2xs"
-              title="Tùy biến tiêu đề kỳ thi, trường học, năm học & thời gian"
-            >
-              <Settings className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Tiêu đề & Trường</span>
-            </button>
-            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold border border-emerald-200 shadow-2xs flex items-center space-x-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>TeX Live & OMML</span>
-            </span>
-            {/* Auto-save Status Indicator */}
-            <span
-              className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center space-x-1 transition-all ${
-                isAutoSaving
-                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                  : "bg-slate-100/90 text-slate-500 border-slate-200/80"
-              }`}
-              title="Trạng thái tự động lưu trữ bản nháp phòng mất điện/mất kết nối"
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isAutoSaving ? "bg-amber-500 animate-ping" : "bg-slate-400"
-                }`}
-              ></span>
-              <span>{isAutoSaving ? "Đang lưu..." : `Đã lưu ${lastSavedTime}`}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-extrabold border border-indigo-200 shadow-2xs shrink-0 hidden md:inline">
+              {headerConfig.exam_code || "CHÍNH THỨC"}
             </span>
           </div>
         </div>
 
         {/* Center: Mode Switcher & Score Badge */}
-        <div className="flex items-center space-x-3">
-          <div className="flex bg-slate-100/90 p-1 rounded-2xl text-xs font-bold border border-slate-200/90 shadow-inner">
+        <div className="flex items-center space-x-2 shrink-0">
+          <div className="flex bg-slate-100/90 p-0.5 rounded-2xl text-xs font-bold border border-slate-200/90 shadow-inner">
             <button
               onClick={() => handleModeSwitch("EXAM")}
-              className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer ${
                 activeMode === "EXAM"
                   ? "bg-white text-indigo-700 shadow-sm font-extrabold"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>Đề Thi Thí Sinh</span>
+              <span>Đề Thi</span>
             </button>
             <button
               onClick={() => handleModeSwitch("RUBRIC")}
-              className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer ${
                 activeMode === "RUBRIC"
                   ? "bg-white text-indigo-700 shadow-sm font-extrabold"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <Scale className="w-3.5 h-3.5" />
-              <span>Barem Hướng Dẫn Chấm</span>
+              <span>Barem Điểm</span>
             </button>
           </div>
 
-          <div className="flex items-center space-x-2 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-slate-200/90 text-xs shadow-2xs">
-            <span className="text-slate-500 font-medium">Tổng điểm:</span>
+          <div className="hidden lg:flex items-center space-x-1.5 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200/90 text-xs shadow-2xs">
+            <span className="text-slate-500 font-medium">Tổng:</span>
             <span
               className={`font-black ${
                 currentTotalScore === 20.0 ? "text-emerald-600" : "text-amber-600"
               }`}
             >
-              {currentTotalScore.toFixed(2)} / 20.00đ
+              {currentTotalScore.toFixed(2)} / 20đ
             </span>
           </div>
         </div>
 
-        {/* Right: Actions, AI Drawer Toggle & Exports */}
-        <div className="flex items-center space-x-2">
-          {/* AI Drawer Button */}
-          <button
-            onClick={() => setAiDrawerOpen((prev) => !prev)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border shadow-sm ${
-              aiDrawerOpen
-                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-            }`}
-            title="Mở trợ lý AI dàn trang & dán ảnh (Ctrl+K)"
-          >
-            <Bot className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Trợ Lý AI</span>
-            <kbd className="text-[9px] bg-slate-100 px-1 py-0.5 rounded text-slate-400 font-mono">⌘K</kbd>
-          </button>
-
-          {/* Sync from Matrix Button */}
-          <button
-            onClick={() => loadExamItems(true)}
-            disabled={loading}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm disabled:opacity-50"
-            title="Đồng bộ lại toàn bộ câu hỏi và thay đổi mới nhất từ Ma trận đề thi"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${loading ? "animate-spin" : ""}`} />
-            <span>Đồng bộ từ Ma trận</span>
-          </button>
-
+        {/* Right: Actions, AI Drawer Toggle, Settings Modal & Exports */}
+        <div className="flex items-center space-x-2 shrink-0">
           {/* Quick Recompile Button */}
           <button
             onClick={async () => {
@@ -844,13 +815,6 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                 handleCompileRawLatex();
               } else {
                 try {
-                  if (sidebarTab === "rubric-table" && templateDoc) {
-                    await fetch(`/api/studio/exams/${examId}/template-document`, {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(templateDoc),
-                    });
-                  }
                   const res = await fetch(`/api/studio/exams/${examId}/items`);
                   if (res.ok) {
                     const fresh = await res.json();
@@ -865,43 +829,54 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
               }
             }}
             disabled={compiling}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50"
-            title="Biên dịch lại (< 0.3s) (Ctrl+S)"
+            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center space-x-1 border border-slate-200 shadow-2xs cursor-pointer disabled:opacity-50"
+            title="Biên dịch lại TeX Live (< 0.3s) (Ctrl+S)"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${compiling ? "animate-spin" : ""}`} />
-            <span>{compiling ? "Đang dựng..." : "Biên dịch"}</span>
-            <kbd className="text-[9px] bg-emerald-800 text-emerald-200 px-1 py-0.5 rounded font-mono">⌘S</kbd>
+            <RefreshCw className={`w-3.5 h-3.5 ${compiling ? "animate-spin text-indigo-600" : ""}`} />
+            <span className="hidden sm:inline">{compiling ? "Đang dựng..." : "Biên dịch"}</span>
           </button>
 
-          {/* Export Buttons */}
-          <div className="flex items-center space-x-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/90 shadow-inner">
-            <button
-              onClick={() => handleDownload("docx")}
-              className="px-3 py-1 text-slate-700 hover:bg-white hover:text-blue-700 text-xs font-extrabold rounded-xl transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer"
-              title="Xuất file Word OMML chuẩn Bộ GD&ĐT (Phím tắt: Ctrl+E)"
-            >
-              <Download className="w-3.5 h-3.5 text-blue-600" />
-              <span>Word .docx</span>
-              <kbd className="text-[9px] bg-slate-200 text-slate-600 px-1 py-0.2 rounded font-mono hidden sm:inline">⌘E</kbd>
-            </button>
-            <button
-              onClick={() => handleDownload("pdf")}
-              className="px-3 py-1 text-slate-700 hover:bg-white hover:text-rose-700 text-xs font-extrabold rounded-xl transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer"
-              title="Tải bản in PDF TeX Live gốc (Phím tắt: Ctrl+P)"
-            >
-              <Download className="w-3.5 h-3.5 text-rose-600" />
-              <span>PDF In A4</span>
-              <kbd className="text-[9px] bg-slate-200 text-slate-600 px-1 py-0.2 rounded font-mono hidden sm:inline">⌘P</kbd>
-            </button>
-          </div>
-
-          {/* Shortcut Help Button */}
+          {/* Unified Settings Modal Button */}
           <button
-            onClick={() => setShowShortcutModal(true)}
-            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white/80 rounded-xl transition-all border border-slate-200/80 shadow-2xs cursor-pointer"
-            title="Xem danh sách phím tắt hữu ích"
+            onClick={() => setIsHeaderModalOpen(true)}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-2xs transition flex items-center space-x-1.5 cursor-pointer"
+            title="Mở toàn bộ cài đặt tiêu đề trường học, dàn trang in A4 và chuẩn khảo thí"
           >
-            <HelpCircle className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="hidden sm:inline">Cài Đặt & Khảo Thí</span>
+          </button>
+
+          {/* Export Word */}
+          <button
+            onClick={() => handleDownload("docx")}
+            className="px-3 py-1.5 text-white bg-emerald-600 hover:bg-emerald-700 text-xs font-extrabold rounded-xl transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
+            title="Xuất file Word OMML chuẩn Bộ GD&ĐT (Ctrl+E)"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Word (.docx)</span>
+          </button>
+
+          {/* Export PDF */}
+          <button
+            onClick={() => handleDownload("pdf")}
+            className="px-3 py-1.5 text-white bg-indigo-600 hover:bg-indigo-700 text-xs font-extrabold rounded-xl transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
+            title="Tải bản in PDF TeX Live chuẩn A4 (Ctrl+P)"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>In / PDF</span>
+          </button>
+
+          {/* AI Drawer Button */}
+          <button
+            onClick={() => setAiDrawerOpen((prev) => !prev)}
+            className={`p-1.5 rounded-xl border transition cursor-pointer shadow-2xs ${
+              aiDrawerOpen
+                ? "bg-purple-100 border-purple-300 text-purple-700"
+                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
+            title="Mở trợ lý AI khảo thí & dán ảnh (Ctrl+K)"
+          >
+            <Bot className="w-4 h-4 text-purple-600" />
           </button>
         </div>
       </header>
@@ -4683,10 +4658,55 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
                     </div>
                   </div>
                 ))
-              ) : (
+              ) : compiling ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
-                  <FileText className="w-12 h-12 text-slate-300 animate-pulse" />
-                  <p className="text-xs font-medium">Đang nạp bản in trực tiếp từ TeX Live Engine...</p>
+                  <RefreshCw className="w-10 h-10 text-indigo-500 animate-spin" />
+                  <p className="text-xs font-semibold text-slate-600">Đang nạp bản in trực tiếp từ TeX Live Engine...</p>
+                  <span className="text-[11px] text-slate-400">Hệ thống đang render công thức toán học và layout A4</span>
+                </div>
+              ) : (
+                /* FALLBACK TRỰC QUAN A4 NẾU KHÔNG CÓ SVG TỪ BACKEND */
+                <div
+                  style={{ width: `${(595 * zoomScale) / 100}px` }}
+                  className="bg-white rounded-md shadow-lg border border-slate-300 p-8 space-y-6 text-slate-800 transition-all"
+                >
+                  {/* Fallback A4 Header */}
+                  <div className="border-b-2 border-slate-900 pb-4 flex justify-between items-start">
+                    <div className="text-center font-bold text-[11px] uppercase tracking-wider space-y-0.5">
+                      <p>{headerConfig.governing_body || "TRUNG TÂM GIÁO DỤC VINH PHÁT"}</p>
+                      <p className="underline underline-offset-2">{headerConfig.department_or_school || "BAN CHUYÊN MÔN KHẢO THÍ"}</p>
+                    </div>
+                    <div className="text-center space-y-0.5">
+                      <p className="font-extrabold text-xs uppercase text-indigo-900">{headerConfig.exam_name || "ĐỀ KHẢO THÍ CHÍNH THỨC"}</p>
+                      <p className="text-[11px] font-semibold text-slate-700">{headerConfig.subject_title || "MÔN: TOÁN HỌC"} - NĂM HỌC {headerConfig.academic_year || "2026-2027"}</p>
+                      <p className="text-[10px] text-slate-500 italic">Thời gian làm bài: {headerConfig.duration_minutes || 120} phút (Không kể phát đề)</p>
+                    </div>
+                  </div>
+
+                  {/* Fallback Questions List */}
+                  <div className="space-y-4">
+                    {items.length > 0 ? (
+                      items.map((it: any, idx: number) => (
+                        <div key={it.id || idx} className="space-y-1 text-xs">
+                          <p className="font-bold text-slate-900">
+                            Câu {idx + 1}. ({it.points || 2.0} điểm)
+                          </p>
+                          <div className="pl-3 leading-relaxed text-slate-700">
+                            <MathRenderer content={activeMode === "RUBRIC" ? (it.solution_latex || it.content_latex || "") : (it.content_latex || "")} />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-12 text-center text-slate-400">
+                        <FileText className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                        <p className="text-xs font-medium">Chưa có câu hỏi nào trong đề thi này.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-200 text-center text-[10px] text-slate-400">
+                    -- HẾT -- (Bản xem trước A4 trực quan VINH PHÁT Platform)
+                  </div>
                 </div>
               )}
             </div>
@@ -4848,169 +4868,33 @@ export default function ExamStudioView({ examId, onBack, onExamUpdated }: Props)
         )}
       </div>
 
-      {/* HEADER CONFIG MODAL */}
-      {isHeaderModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                  <Settings className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Cấu Hình Tiêu Đề Đề Thi & Trường Học</h3>
-                  <p className="text-[11px] text-slate-500">Thông tin xuất hiện ở đầu trang in A4 và tài liệu Word/PDF</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsHeaderModalOpen(false)}
-                className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 flex items-center justify-center text-sm cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Presets */}
-            <div className="px-6 pt-3 pb-2 bg-indigo-50/40 border-b border-indigo-100/50 flex items-center space-x-2 overflow-x-auto text-[11px]">
-              <span className="font-semibold text-indigo-900 shrink-0">Mẫu gợi ý nhanh:</span>
-              <button
-                type="button"
-                onClick={() => applyPresetHeader("vinhphat")}
-                className="px-2.5 py-1 rounded-md bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium transition cursor-pointer shadow-xs shrink-0"
-              >
-                🌟 TTGD VINH PHÁT
-              </button>
-              <button
-                type="button"
-                onClick={() => applyPresetHeader("hanoi")}
-                className="px-2.5 py-1 rounded-md bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium transition cursor-pointer shadow-xs shrink-0"
-              >
-                🏛️ Sở Hà Nội - Amsterdam
-              </button>
-              <button
-                type="button"
-                onClick={() => applyPresetHeader("hcm")}
-                className="px-2.5 py-1 rounded-md bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium transition cursor-pointer shadow-xs shrink-0"
-              >
-                🏢 Sở TP.HCM - Lê Hồng Phong
-              </button>
-            </div>
-
-            {/* Form Fields */}
-            <form onSubmit={handleSaveHeader} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Cơ quan chủ quản</label>
-                  <input
-                    type="text"
-                    value={headerForm.governing_body}
-                    onChange={(e) => setHeaderForm({ ...headerForm, governing_body: e.target.value })}
-                    placeholder="Ví dụ: SỞ GIÁO DỤC VÀ ĐÀO TẠO..."
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Đơn vị / Trường ra đề</label>
-                  <input
-                    type="text"
-                    value={headerForm.department_or_school}
-                    onChange={(e) => setHeaderForm({ ...headerForm, department_or_school: e.target.value })}
-                    placeholder="Ví dụ: TRƯỜNG THCS CHUYÊN..."
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Tên kỳ thi</label>
-                <input
-                  type="text"
-                  value={headerForm.exam_name}
-                  onChange={(e) => setHeaderForm({ ...headerForm, exam_name: e.target.value })}
-                  placeholder="Ví dụ: KỲ THI CHỌN HỌC SINH GIỎI TOÁN 9"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-900"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Môn thi</label>
-                  <input
-                    type="text"
-                    value={headerForm.subject_title}
-                    onChange={(e) => setHeaderForm({ ...headerForm, subject_title: e.target.value })}
-                    placeholder="Môn thi: TOÁN 9"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Năm học</label>
-                  <input
-                    type="text"
-                    value={headerForm.academic_year}
-                    onChange={(e) => setHeaderForm({ ...headerForm, academic_year: e.target.value })}
-                    placeholder="Năm học: 2026 - 2027"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Thời gian (phút)</label>
-                  <input
-                    type="number"
-                    min={15}
-                    max={360}
-                    value={headerForm.duration_minutes}
-                    onChange={(e) => setHeaderForm({ ...headerForm, duration_minutes: Number(e.target.value) || 150 })}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 items-center pt-1">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Mã đề / Nhãn đề</label>
-                  <input
-                    type="text"
-                    value={headerForm.exam_code}
-                    onChange={(e) => setHeaderForm({ ...headerForm, exam_code: e.target.value })}
-                    placeholder="Ví dụ: ĐỀ CHÍNH THỨC"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-                <div className="flex items-center pt-4">
-                  <label className="flex items-center space-x-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={headerForm.show_sbd_box}
-                      onChange={(e) => setHeaderForm({ ...headerForm, show_sbd_box: e.target.checked })}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
-                    />
-                    <span>Hiện khung Số Báo Danh & Phòng Thi</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2.5">
-                <button
-                  type="button"
-                  onClick={() => setIsHeaderModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition cursor-pointer flex items-center space-x-1.5"
-                >
-                  <span>Lưu & Cập Nhật Trang In</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* UNIFIED EXAM SETTINGS & GOVERNANCE MODAL */}
+      <ExamSettingsModal
+        isOpen={isHeaderModalOpen}
+        onClose={() => setIsHeaderModalOpen(false)}
+        headerConfig={headerConfig}
+        setHeaderConfig={setHeaderConfig}
+        layoutKnobs={layoutKnobs}
+        setLayoutKnobs={setLayoutKnobs}
+        onSaveAndApply={async (newHeader, newKnobs) => {
+          try {
+            await fetch(`/api/studio/exams/${examId}/header`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(newHeader),
+            });
+            await fetch(`/api/generator/exams/${examId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ header_config: newHeader }),
+            });
+          } catch (e) {
+            console.error("Save header error:", e);
+          }
+          compileLivePreview(items, newKnobs, activeMode, newHeader);
+        }}
+        applyPresetHeader={applyPresetHeader}
+      />
 
       {/* QUESTION EDIT MODAL */}
       <QuestionEditModal
