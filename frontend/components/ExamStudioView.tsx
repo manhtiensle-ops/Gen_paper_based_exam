@@ -40,7 +40,9 @@ import {
   Shuffle,
   Printer,
   ArrowUpDown,
-  CheckSquare
+  CheckSquare,
+  PanelLeftClose,
+  PanelLeftOpen
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -57,6 +59,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
   // Draggable Split Pane State
   const [splitRatio, setSplitRatio] = useState<number>(50); // percentage for left pane
+  const [isEditorCollapsed, setIsEditorCollapsed] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const activePointerIdRef = useRef<number | null>(null);
@@ -899,11 +902,12 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
       {/* 2. MAIN RESIZABLE FLUID WORKSPACE (TẬN DỤNG TOÀN BỘ MÀN HÌNH) */}
       <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
-        {/* LEFT WORKSTATION (WIDTH: splitRatio%) */}
-        <div
-          style={{ width: `${splitRatio}%` }}
-          className="bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden shrink-0"
-        >
+        {/* LEFT WORKSTATION (WIDTH: splitRatio% or COLLAPSED) */}
+        {!isEditorCollapsed && (
+          <div
+            style={{ width: `${splitRatio}%` }}
+            className="bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden shrink-0"
+          >
           {/* Workspace Tabs Header */}
           <div className="h-11 bg-slate-50 border-b border-slate-200 px-4 flex items-center justify-between shrink-0">
             <div className="flex items-center space-x-1">
@@ -960,30 +964,47 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               </button>
             </div>
 
-            {/* Split Presets */}
+            {/* Split Presets & Collapse Toggle */}
             <div className="flex items-center space-x-1 text-[11px] text-slate-400 font-mono">
               <button
-                onClick={() => setSplitRatio(30)}
+                onClick={() => setIsEditorCollapsed(true)}
+                className="px-1.5 py-0.5 rounded hover:bg-slate-200 text-slate-600 font-sans flex items-center space-x-1 border border-slate-200"
+                title="Thu gọn Sidebar để toàn màn hình bản in A4"
+              >
+                <PanelLeftClose className="w-3 h-3 text-slate-600" />
+                <span className="text-[10px]">Thu gọn</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditorCollapsed(false);
+                  setSplitRatio(30);
+                }}
                 className={`px-1.5 py-0.5 rounded ${
-                  splitRatio <= 35 ? "bg-slate-200 text-slate-800 font-bold" : "hover:text-slate-700"
+                  !isEditorCollapsed && splitRatio <= 35 ? "bg-slate-200 text-slate-800 font-bold" : "hover:text-slate-700"
                 }`}
                 title="Thu nhỏ Editor 30%"
               >
                 30%
               </button>
               <button
-                onClick={() => setSplitRatio(50)}
+                onClick={() => {
+                  setIsEditorCollapsed(false);
+                  setSplitRatio(50);
+                }}
                 className={`px-1.5 py-0.5 rounded ${
-                  splitRatio >= 45 && splitRatio <= 55 ? "bg-slate-200 text-slate-800 font-bold" : "hover:text-slate-700"
+                  !isEditorCollapsed && splitRatio >= 45 && splitRatio <= 55 ? "bg-slate-200 text-slate-800 font-bold" : "hover:text-slate-700"
                 }`}
                 title="Chia đôi 50/50"
               >
                 50%
               </button>
               <button
-                onClick={() => setSplitRatio(70)}
+                onClick={() => {
+                  setIsEditorCollapsed(false);
+                  setSplitRatio(70);
+                }}
                 className={`px-1.5 py-0.5 rounded ${
-                  splitRatio >= 65 ? "bg-slate-200 text-slate-800 font-bold" : "hover:text-slate-700"
+                  !isEditorCollapsed && splitRatio >= 65 ? "bg-slate-200 text-slate-800 font-bold" : "hover:text-slate-700"
                 }`}
                 title="Mở rộng Editor 70%"
               >
@@ -1422,29 +1443,42 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             </div>
           )}
         </div>
+        )}
 
         {/* DRAGGABLE RESIZABLE SPLIT RESIZER */}
-        <div
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onDoubleClick={() => setSplitRatio(50)}
-          className={`w-1.5 hover:w-2 bg-slate-200 hover:bg-indigo-500 cursor-col-resize transition-all flex items-center justify-center shrink-0 group relative z-20 select-none ${
-            isDragging ? "bg-indigo-600 w-2" : ""
-          }`}
-          title="Kéo sang trái/phải để đổi tỷ lệ. Nhấp đúp để về 50/50"
-        >
-          <div className="h-8 w-1 rounded-full bg-slate-400 group-hover:bg-white transition-colors" />
-        </div>
+        {!isEditorCollapsed && (
+          <div
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onDoubleClick={() => setSplitRatio(50)}
+            className={`w-1.5 hover:w-2 bg-slate-200 hover:bg-indigo-500 cursor-col-resize transition-all flex items-center justify-center shrink-0 group relative z-20 select-none ${
+              isDragging ? "bg-indigo-600 w-2" : ""
+            }`}
+            title="Kéo sang trái/phải để đổi tỷ lệ. Nhấp đúp để về 50/50"
+          >
+            <div className="h-8 w-1 rounded-full bg-slate-400 group-hover:bg-white transition-colors" />
+          </div>
+        )}
 
-        {/* RIGHT LIVE A4 PDF CANVAS (WIDTH: remaining %) */}
+        {/* RIGHT LIVE A4 PDF CANVAS (WIDTH: remaining % or 100%) */}
         <div
-          style={{ width: `${100 - splitRatio}%` }}
-          className="bg-slate-200/70 flex flex-col h-full overflow-hidden shrink-0"
+          style={{ width: isEditorCollapsed ? "100%" : `${100 - splitRatio}%` }}
+          className="bg-slate-200/70 flex flex-col h-full overflow-hidden shrink-0 flex-1"
         >
           {/* Canvas Toolbar */}
           <div className="h-11 bg-white border-b border-slate-200 px-4 flex items-center justify-between text-xs text-slate-600 shrink-0 shadow-sm">
             <div className="flex items-center space-x-2">
+              {isEditorCollapsed && (
+                <button
+                  onClick={() => setIsEditorCollapsed(false)}
+                  className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg border border-indigo-200 transition-all flex items-center space-x-1 mr-2 shadow-sm"
+                  title="Mở lại Sidebar Biên tập"
+                >
+                  <PanelLeftOpen className="w-3.5 h-3.5" />
+                  <span>Hiện Biên Tập</span>
+                </button>
+              )}
               <span className="font-bold text-slate-800">Bản In Khổ Giấy A4 (Live PDF)</span>
               {previewData?.total_pages && (
                 <span className="text-[11px] bg-slate-100 text-indigo-700 font-bold px-2 py-0.5 rounded border border-slate-200">
