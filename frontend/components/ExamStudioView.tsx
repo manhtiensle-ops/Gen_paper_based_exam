@@ -23,6 +23,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Minimize2,
   Sliders,
   Settings,
   Edit3,
@@ -65,6 +66,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   // Draggable Split Pane State
   const [splitRatio, setSplitRatio] = useState<number>(50); // percentage for left pane
   const [isEditorCollapsed, setIsEditorCollapsed] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -550,6 +552,28 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     }
   };
 
+  // Fullscreen toggle handler
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+      setIsFullscreen(false);
+    }
+  };
+
+  // Sync fullscreen state with document changes (e.g. Esc key pressed)
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
   // Global Shortcuts: Ctrl + S (compile), Ctrl + K (toggle AI Drawer)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -917,6 +941,17 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               title="Hướng dẫn phím tắt bàn phím (Bấm ?)"
             >
               <HelpCircle className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={toggleFullscreen}
+              className={`p-1.5 rounded-lg transition-colors border ${
+                isFullscreen
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                  : "text-slate-500 hover:text-indigo-600 hover:bg-white border-transparent hover:border-slate-200"
+              }`}
+              title={isFullscreen ? "Thoát toàn màn hình (Esc / F11)" : "Toàn màn hình Studio (F11)"}
+            >
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
             </button>
           </div>
         </div>
@@ -2309,6 +2344,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Tự động căn vừa màn hình Canvas (Fit Width)</span>
                     <span className="text-xs text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Nút "Fit Vừa"</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-700 font-medium">Bật / Tắt chế độ toàn màn hình Studio</span>
+                    <div className="flex items-center space-x-1">
+                      <kbd className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold text-slate-800">F11</kbd>
+                      <span className="text-xs text-slate-400">hoặc biểu tượng</span>
+                      <span className="text-xs text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Toàn màn hình</span>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span className="text-slate-700 font-medium">Đóng cửa sổ / Hộp thoại đang mở</span>
