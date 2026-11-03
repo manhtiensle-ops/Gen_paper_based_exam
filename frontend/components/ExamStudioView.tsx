@@ -83,7 +83,8 @@ import {
   BookOpen,
   Timer,
   Sigma,
-  Wrench
+  Wrench,
+  ArrowLeft
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -3006,10 +3007,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   };
 
   return (
-    <div className="h-screen w-screen bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden select-none">
-      {/* 1. TOPBAR - LIGHT ACADEMIC THEME (TRẮNG NGÀ CHUẨN MỰC) */}
-      <header className="h-14 bg-white border-b border-slate-200 px-5 flex items-center justify-between shadow-sm shrink-0 z-30">
-        <div className="flex items-center space-x-3">
+    <div className="h-screen w-screen bg-[#FAF9F6] text-[#37352F] flex flex-col font-sans overflow-hidden select-none">
+      {/* 1. TOPBAR - NOTION & OVERLEAF MINIMALIST THEME (CHUẨN VINH PHÁT) */}
+      <header className="h-11 bg-[#FBFBFA] border-b border-[#EAE9E5] px-4 flex items-center justify-between shrink-0 z-30 select-none">
+        <div className="flex items-center space-x-2.5">
           {onBack && (
             <button
               onClick={() => {
@@ -3021,43 +3022,47 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   onBack();
                 }
               }}
-              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 transition-all flex items-center space-x-1"
+              className="w-7 h-7 rounded-md hover:bg-[#EFEFED] text-[#787774] hover:text-[#37352F] flex items-center justify-center transition-all"
+              title="Quay lại danh sách đề thi"
             >
-              <span>← Trở lại</span>
+              <ArrowLeft className="w-4 h-4" />
             </button>
           )}
           <div className="flex items-center space-x-2">
-            <h1 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-              <span className="text-indigo-600 font-extrabold">Exam Studio</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-slate-700 truncate max-w-sm font-medium">{headerConfig.exam_name}</span>
-            </h1>
+            <span className="font-bold text-xs tracking-tight text-[#37352F] flex items-center space-x-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-[#EFEFED] text-[#37352F] font-black text-[11px]">VP</span>
+              <span>VINH PHÁT</span>
+            </span>
+            <span className="text-[#D9D7D3]">/</span>
+            <span className="text-xs font-medium text-[#37352F] truncate max-w-[280px]" title={headerConfig.exam_name}>
+              {headerConfig.exam_name}
+            </span>
             {isDirty ? (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-bold border border-amber-200 flex items-center space-x-1" title="Có thay đổi chưa biên dịch / lưu (Bấm Ctrl+S để lưu)">
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 font-semibold border border-amber-200 flex items-center space-x-1" title="Có thay đổi chưa biên dịch / lưu (Ctrl+S)">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                 <span>Chưa lưu</span>
               </span>
             ) : (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 flex items-center space-x-1" title="Đã đồng bộ và biên dịch hoàn tất">
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200 flex items-center space-x-1" title="Đã lưu và đồng bộ">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 <span>Đã lưu</span>
               </span>
             )}
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold border border-slate-200">
-              TeX Live & OMML
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#EFEFED] text-[#787774] font-mono">
+              Mã đề 101
             </span>
           </div>
         </div>
 
         {/* Center: Mode Switcher & Score Badge */}
-        <div className="flex items-center space-x-3">
-          <div className="flex bg-slate-100 p-0.5 rounded-xl text-xs font-bold border border-slate-200 shadow-inner">
+        <div className="flex items-center space-x-2.5">
+          <div className="flex bg-[#EFEFED] p-0.5 rounded-lg text-xs font-medium text-[#787774]">
             <button
               onClick={() => handleModeSwitch("EXAM")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
+              className={`px-3 py-1 rounded-md transition-all flex items-center space-x-1.5 ${
                 activeMode === "EXAM"
-                  ? "bg-white text-indigo-700 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-[#37352F] font-semibold shadow-2xs"
+                  : "hover:text-[#37352F]"
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
@@ -3065,66 +3070,62 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             </button>
             <button
               onClick={() => handleModeSwitch("RUBRIC")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
+              className={`px-3 py-1 rounded-md transition-all flex items-center space-x-1.5 ${
                 activeMode === "RUBRIC"
-                  ? "bg-white text-indigo-700 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-[#37352F] font-semibold shadow-2xs"
+                  : "hover:text-[#37352F]"
               }`}
             >
               <Scale className="w-3.5 h-3.5" />
-              <span>Barem Hướng Dẫn Chấm</span>
+              <span>Barem Chấm Điểm</span>
             </button>
             <button
               onClick={() => handleModeSwitch("OMR")}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 ${
+              className={`px-3 py-1 rounded-md transition-all flex items-center space-x-1.5 ${
                 activeMode === "OMR"
-                  ? "bg-white text-indigo-700 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-[#37352F] font-semibold shadow-2xs"
+                  : "hover:text-[#37352F]"
               }`}
             >
               <CheckSquare className="w-3.5 h-3.5" />
-              <span>Phiếu Tô Trắc Nghiệm OMR</span>
+              <span>Phiếu Tô OMR</span>
             </button>
           </div>
 
-          <div className="flex items-center space-x-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs shadow-sm">
-            <span className="text-slate-500 font-medium">Tổng điểm:</span>
-            <span
-              className={`font-black ${
-                currentTotalScore === 20.0 ? "text-emerald-600" : "text-amber-600"
-              }`}
-            >
-              {currentTotalScore.toFixed(2)} / 20.00đ
+          <div className="flex items-center space-x-1.5 bg-[#EFEFED] px-2.5 py-1 rounded-lg text-xs">
+            <span className="text-[#787774] text-[11px]">Tổng điểm:</span>
+            <span className="font-bold text-[#37352F] font-mono">
+              {currentTotalScore.toFixed(2)}/20.00đ
             </span>
           </div>
         </div>
 
         {/* Right: Actions, AI Drawer Toggle & Exports */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1.5">
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition flex items-center space-x-1.5 cursor-pointer shadow-xs"
+            className="px-2.5 py-1 text-xs font-medium text-[#37352F] hover:bg-[#EFEFED] rounded-lg transition flex items-center space-x-1 cursor-pointer"
             title="Cài đặt tiêu đề trường học và căn lề A4 chuẩn sư phạm"
           >
-            <Settings className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Cài Đặt Đề</span>
+            <Settings className="w-3.5 h-3.5 text-[#787774]" />
+            <span>Cài Đặt</span>
           </button>
           {/* AI Drawer Button */}
           <button
             onClick={() => setAiDrawerOpen((prev) => !prev)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border shadow-sm ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center space-x-1 ${
               aiDrawerOpen
-                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                ? "bg-[#EFEFED] text-[#37352F] font-bold"
+                : "text-[#37352F] hover:bg-[#EFEFED]"
             }`}
             title="Mở trợ lý AI dàn trang & dán ảnh (Ctrl+K)"
           >
-            <Bot className="w-3.5 h-3.5 text-indigo-600" />
+            <Bot className="w-3.5 h-3.5 text-[#787774]" />
             <span>Trợ Lý AI</span>
-            <kbd className="text-[9px] bg-slate-100 px-1 py-0.5 rounded text-slate-400 font-mono">⌘K</kbd>
+            <kbd className="text-[9px] bg-white border border-[#EAE9E5] px-1 py-0.2 rounded text-[#787774] font-mono">⌘K</kbd>
           </button>
 
-          {/* Quick Recompile Button */}
+          {/* Quick Recompile Button - Notion Deep Emerald Accent */}
           <button
             onClick={async () => {
               if (sidebarTab === "editor") {
@@ -3152,28 +3153,28 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               }
             }}
             disabled={compiling}
-            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50"
+            className="px-3 py-1 bg-[#0F7B6C] hover:bg-[#0B6458] active:scale-[0.98] text-white text-xs font-semibold rounded-lg transition-all flex items-center space-x-1.5 shadow-2xs disabled:opacity-50"
             title="Biên dịch lại (< 0.3s) (Ctrl+S)"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${compiling ? "animate-spin" : ""}`} />
+            <Play className={`w-3 h-3 ${compiling ? "animate-spin" : "fill-current"}`} />
             <span>{compiling ? "Đang dựng..." : "Biên dịch"}</span>
-            <kbd className="text-[9px] bg-emerald-800 text-emerald-200 px-1 py-0.5 rounded font-mono">⌘S</kbd>
+            <kbd className="text-[9px] bg-black/20 text-white/90 px-1 py-0.2 rounded font-mono">⌘S</kbd>
           </button>
 
           {/* Consolidated Menu 1: Công cụ Khảo thí */}
           <div className="relative" data-studio-dropdown>
             <button
               onClick={() => setActiveStudioDropdown(prev => prev === "exam_tools" ? null : "exam_tools")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border shadow-sm ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center space-x-1 ${
                 activeStudioDropdown === "exam_tools"
-                  ? "bg-purple-50 border-purple-300 text-purple-700 ring-2 ring-purple-100"
-                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-purple-700"
+                  ? "bg-[#EFEFED] text-[#37352F] font-bold"
+                  : "text-[#37352F] hover:bg-[#EFEFED]"
               }`}
               title="Mở menu các công cụ quản lý đề thi và nghiệp vụ khảo thí"
             >
-              <Wrench className="w-3.5 h-3.5 text-purple-600" />
+              <Wrench className="w-3.5 h-3.5 text-[#787774]" />
               <span>Công cụ Đề</span>
-              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${activeStudioDropdown === "exam_tools" ? "rotate-180" : ""}`} />
+              <ChevronDown className={`w-3 h-3 text-[#787774] transition-transform ${activeStudioDropdown === "exam_tools" ? "rotate-180" : ""}`} />
             </button>
 
             {activeStudioDropdown === "exam_tools" && (
@@ -3285,16 +3286,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           <div className="relative" data-studio-dropdown>
             <button
               onClick={() => setActiveStudioDropdown(prev => prev === "export_print" ? null : "export_print")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border shadow-sm ${
-                activeStudioDropdown === "export_print"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700 ring-2 ring-indigo-100"
-                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-indigo-700"
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center space-x-1 bg-white border border-[#EAE9E5] shadow-2xs hover:bg-[#FBFBFA] text-[#37352F] ${
+                activeStudioDropdown === "export_print" ? "bg-[#EFEFED]" : ""
               }`}
               title="Xuất file Word, PDF hoặc cấu hình in ấn A4"
             >
-              <Download className="w-3.5 h-3.5 text-indigo-600" />
+              <Download className="w-3.5 h-3.5 text-[#787774]" />
               <span>Xuất Bản & In</span>
-              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${activeStudioDropdown === "export_print" ? "rotate-180" : ""}`} />
+              <ChevronDown className={`w-3 h-3 text-[#787774] transition-transform ${activeStudioDropdown === "export_print" ? "rotate-180" : ""}`} />
             </button>
 
             {activeStudioDropdown === "export_print" && (
@@ -3461,125 +3460,170 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
       {/* 2. MAIN RESIZABLE FLUID WORKSPACE (TẬN DỤNG TOÀN BỘ MÀN HÌNH) */}
       <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
+        {/* LEFT COMPACT RAIL (NOTION & OVERLEAF STYLE) */}
+        <aside className="w-11 bg-[#FBFBFA] border-r border-[#EAE9E5] flex flex-col items-center py-2.5 space-y-1.5 text-[#787774] shrink-0 z-20 select-none">
+          <button
+            onClick={() => setSidebarTab("editor")}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+              sidebarTab === "editor"
+                ? "bg-[#EFEFED] text-[#37352F] font-bold shadow-2xs"
+                : "hover:bg-[#EFEFED] text-[#787774] hover:text-[#37352F]"
+            }`}
+            title="Mã Nguồn TeX Live (Ctrl+1)"
+          >
+            <Code2 className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setSidebarTab("items")}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all relative ${
+              sidebarTab === "items"
+                ? "bg-[#EFEFED] text-[#37352F] font-bold shadow-2xs"
+                : "hover:bg-[#EFEFED] text-[#787774] hover:text-[#37352F]"
+            }`}
+            title={`Ngân Hàng Câu Hỏi (${items.length} câu) (Ctrl+2)`}
+          >
+            <Layers className="w-4 h-4" />
+            {items.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-[#2383E2] text-white text-[9px] rounded-full flex items-center justify-center font-bold">
+                {items.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              setSidebarTab("rubric-table");
+              handleModeSwitch("RUBRIC");
+              if (!templateDoc) loadTemplateDoc();
+            }}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+              sidebarTab === "rubric-table"
+                ? "bg-[#EFEFED] text-[#37352F] font-bold shadow-2xs"
+                : "hover:bg-[#EFEFED] text-[#787774] hover:text-[#37352F]"
+            }`}
+            title="Khung Barem Thang Điểm (Ctrl+3)"
+          >
+            <Table className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setSidebarTab("matrix")}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+              sidebarTab === "matrix"
+                ? "bg-[#EFEFED] text-[#37352F] font-bold shadow-2xs"
+                : "hover:bg-[#EFEFED] text-[#787774] hover:text-[#37352F]"
+            }`}
+            title="Ma Trận Đặc Tả & Phổ Điểm (Ctrl+4)"
+          >
+            <PieChart className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setSidebarTab("knobs")}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+              sidebarTab === "knobs"
+                ? "bg-[#EFEFED] text-[#37352F] font-bold shadow-2xs"
+                : "hover:bg-[#EFEFED] text-[#787774] hover:text-[#37352F]"
+            }`}
+            title="Bố Cục Trang In & Căn Lề A4 (Ctrl+5)"
+          >
+            <Sliders className="w-4 h-4" />
+          </button>
+
+          <div className="flex-1" />
+
+          {/* Phím tắt trợ giúp */}
+          <button
+            onClick={() => setShowShortcutsModal(true)}
+            className="w-8 h-8 rounded-lg hover:bg-[#EFEFED] text-[#787774] hover:text-[#37352F] flex items-center justify-center transition-all"
+            title="Bảng Phím Tắt Khảo Thí (?)"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
+        </aside>
+
         {/* LEFT WORKSTATION (WIDTH: splitRatio% or COLLAPSED) */}
         {!isEditorCollapsed && (
           <div
             style={{ width: `${splitRatio}%` }}
-            className="bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden shrink-0"
+            className="bg-white border-r border-[#EAE9E5] flex flex-col h-full overflow-hidden shrink-0"
           >
-          {/* Workspace Tabs Header */}
-          <div className="h-11 bg-slate-50 border-b border-slate-200 px-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={() => setSidebarTab("editor")}
-                className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
-                  sidebarTab === "editor"
-                    ? "border-indigo-600 text-indigo-700 bg-white"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <Code2 className="w-3.5 h-3.5" />
-                <span>Mã Nguồn LaTeX</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setSidebarTab("rubric-table");
-                  handleModeSwitch("RUBRIC");
-                  if (!templateDoc) loadTemplateDoc();
-                }}
-                className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
-                  sidebarTab === "rubric-table"
-                    ? "border-indigo-600 text-indigo-700 bg-white"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <Table className="w-3.5 h-3.5" />
-                <span>Khung Barem (Sub-Row)</span>
-              </button>
-
-              <button
-                onClick={() => setSidebarTab("items")}
-                className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
-                  sidebarTab === "items"
-                    ? "border-indigo-600 text-indigo-700 bg-white"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Biên Tập Câu Hỏi ({items.length})</span>
-              </button>
-
-              <button
-                onClick={() => setSidebarTab("knobs")}
-                className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
-                  sidebarTab === "knobs"
-                    ? "border-indigo-600 text-indigo-700 bg-white"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>Bố Cục (Sliders)</span>
-              </button>
-
-              <button
-                onClick={() => setSidebarTab("matrix")}
-                className={`h-full px-3.5 py-2.5 text-xs font-bold border-b-2 flex items-center space-x-1.5 transition-all ${
-                  sidebarTab === "matrix"
-                    ? "border-indigo-600 text-indigo-700 bg-white"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <PieChart className="w-3.5 h-3.5" />
-                <span>Ma Trận & Phổ Điểm</span>
-              </button>
+          {/* Workspace Compact Sub-header (Notion Style) */}
+          <div className="h-8 bg-[#FBFBFA] border-b border-[#EAE9E5] px-3 flex items-center justify-between shrink-0 text-xs text-[#787774]">
+            <div className="flex items-center space-x-2">
+              <span className="font-semibold text-[#37352F] flex items-center space-x-1.5">
+                {sidebarTab === "editor" && (
+                  <>
+                    <Code2 className="w-3.5 h-3.5 text-[#787774]" />
+                    <span>exam_document.tex</span>
+                    <span className="text-[#D9D7D3]">·</span>
+                    <span className="text-[11px] text-[#787774] font-normal">XeLaTeX 2024</span>
+                  </>
+                )}
+                {sidebarTab === "items" && (
+                  <>
+                    <Layers className="w-3.5 h-3.5 text-[#787774]" />
+                    <span>Ngân Hàng Câu Hỏi ({items.length} câu)</span>
+                  </>
+                )}
+                {sidebarTab === "rubric-table" && (
+                  <>
+                    <Table className="w-3.5 h-3.5 text-[#787774]" />
+                    <span>Khung Barem Điểm Chi Tiết</span>
+                  </>
+                )}
+                {sidebarTab === "matrix" && (
+                  <>
+                    <PieChart className="w-3.5 h-3.5 text-[#787774]" />
+                    <span>Ma Trận Đặc Tả & Phổ Điểm</span>
+                  </>
+                )}
+                {sidebarTab === "knobs" && (
+                  <>
+                    <Sliders className="w-3.5 h-3.5 text-[#787774]" />
+                    <span>Cấu Hình Bố Cục & Căn Lề In</span>
+                  </>
+                )}
+              </span>
             </div>
 
             {/* Split Presets & Collapse Toggle */}
-            <div className="flex items-center space-x-1 text-[11px] text-slate-400 font-mono">
+            <div className="flex items-center space-x-1 text-[11px] text-[#787774] font-mono">
               <button
-                onClick={() => setIsEditorCollapsed(true)}
-                className="px-1.5 py-0.5 rounded hover:bg-slate-200 text-slate-600 font-sans flex items-center space-x-1 border border-slate-200"
-                title="Thu gọn Sidebar để toàn màn hình bản in A4"
-              >
-                <PanelLeftClose className="w-3 h-3 text-slate-600" />
-                <span className="text-[10px]">Thu gọn</span>
-              </button>
-              <button
-                onClick={() => {
-                  setIsEditorCollapsed(false);
-                  setSplitRatio(30);
-                }}
-                className={`px-1.5 py-0.5 rounded ${
-                  !isEditorCollapsed && splitRatio <= 35 ? "bg-slate-200 text-slate-800 font-bold" : "hover:text-slate-700"
+                onClick={() => setSplitRatio(30)}
+                className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
+                  !isEditorCollapsed && splitRatio <= 35 ? "bg-[#EFEFED] text-[#37352F] font-bold" : "hover:text-[#37352F]"
                 }`}
-                title="Thu nhỏ Editor 30%"
+                title="Tỷ lệ 30% soạn thảo - 70% xem trước"
               >
                 30%
               </button>
               <button
-                onClick={() => {
-                  setIsEditorCollapsed(false);
-                  setSplitRatio(50);
-                }}
-                className={`px-1.5 py-0.5 rounded ${
-                  !isEditorCollapsed && splitRatio >= 45 && splitRatio <= 55 ? "bg-slate-200 text-slate-800 font-bold" : "hover:text-slate-700"
+                onClick={() => setSplitRatio(50)}
+                className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
+                  !isEditorCollapsed && splitRatio >= 45 && splitRatio <= 55 ? "bg-[#EFEFED] text-[#37352F] font-bold" : "hover:text-[#37352F]"
                 }`}
-                title="Chia đôi 50/50"
+                title="Tỷ lệ 50/50 cân bằng"
               >
                 50%
               </button>
               <button
-                onClick={() => {
-                  setIsEditorCollapsed(false);
-                  setSplitRatio(70);
-                }}
-                className={`px-1.5 py-0.5 rounded ${
-                  !isEditorCollapsed && splitRatio >= 65 ? "bg-slate-200 text-slate-800 font-bold" : "hover:text-slate-700"
+                onClick={() => setSplitRatio(70)}
+                className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
+                  !isEditorCollapsed && splitRatio >= 65 ? "bg-[#EFEFED] text-[#37352F] font-bold" : "hover:text-[#37352F]"
                 }`}
-                title="Mở rộng Editor 70%"
+                title="Tỷ lệ 70% soạn thảo - 30% xem trước"
               >
                 70%
+              </button>
+              <div className="h-3 w-px bg-[#EAE9E5] mx-1" />
+              <button
+                onClick={() => setIsEditorCollapsed(true)}
+                className="p-1 rounded hover:bg-[#EFEFED] text-[#787774] hover:text-[#37352F] transition-colors"
+                title="Thu gọn khung soạn thảo để toàn màn hình bản in"
+              >
+                <PanelLeftClose className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -3588,41 +3632,36 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           {sidebarTab === "editor" && (
             <div className="flex-1 flex flex-col overflow-hidden bg-white">
               {/* Code Sub-toolbar */}
-              <div className="h-9 bg-slate-50/80 border-b border-slate-200 px-4 flex items-center justify-between text-xs text-slate-500 shrink-0">
+              <div className="h-8 bg-[#FBFBFA] border-b border-[#EAE9E5] px-3 flex items-center justify-between text-xs text-[#787774] shrink-0">
                 <div className="flex items-center space-x-2">
-                  <span className="font-mono text-slate-700 font-bold flex items-center space-x-1">
-                    <Code2 className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>exam_document.tex</span>
-                  </span>
-                  <span className="text-slate-300">|</span>
                   {/* Preamble folding toggle */}
                   <button
                     onClick={() => setIsPreambleFolded(!isPreambleFolded)}
-                    className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1 bg-indigo-50/70 hover:bg-indigo-100 px-2 py-0.5 rounded transition-all"
+                    className="text-[11px] text-[#37352F] hover:bg-[#EFEFED] font-medium flex items-center space-x-1 px-1.5 py-0.5 rounded transition-all"
                   >
                     {isPreambleFolded ? (
                       <>
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="w-3 h-3 text-[#787774]" />
                         <span>Mở Preamble</span>
                       </>
                     ) : (
                       <>
-                        <ChevronDown className="w-3 h-3" />
+                        <ChevronDown className="w-3 h-3 text-[#787774]" />
                         <span>Thu gọn Preamble</span>
                       </>
                     )}
                   </button>
 
-                  <span className="text-slate-300">|</span>
+                  <span className="text-[#D9D7D3]">|</span>
 
                   {/* Quick Math Toolbar Collapsible Toggle */}
                   <button
                     type="button"
                     onClick={() => setIsQuickMathBarVisible(prev => !prev)}
-                    className={`text-[11px] font-semibold flex items-center space-x-1 px-2 py-0.5 rounded transition-all border ${
+                    className={`text-[11px] font-medium flex items-center space-x-1 px-1.5 py-0.5 rounded transition-all border ${
                       isQuickMathBarVisible
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                        : "bg-white hover:bg-slate-100 text-slate-700 border-slate-200"
+                        ? "bg-[#2383E2] text-white border-[#2383E2] shadow-2xs"
+                        : "bg-white hover:bg-[#EFEFED] text-[#37352F] border-[#EAE9E5]"
                     }`}
                     title="Bật/Tắt thanh ký hiệu toán nhanh chèn vào văn bản"
                   >
@@ -4077,13 +4116,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               {isPreambleFolded && (
                 <div
                   onClick={() => setIsPreambleFolded(false)}
-                  className="bg-slate-100/70 border-b border-slate-200 px-4 py-1.5 text-[11px] text-slate-500 font-mono flex items-center justify-between cursor-pointer hover:bg-slate-200/50 transition-colors shrink-0"
+                  className="bg-[#F7F6F3] border-b border-[#EAE9E5] px-3.5 py-1.5 text-[11px] text-[#787774] font-mono flex items-center justify-between cursor-pointer hover:bg-[#EFEFED] transition-colors shrink-0"
                 >
                   <span className="flex items-center space-x-1.5">
-                    <span className="w-2 h-2 rounded-full bg-slate-400" />
-                    <span>% [Cấu hình hệ thống TeX Live & Tiêu chuẩn Bộ GD&ĐT (đã thu gọn) — Bấm để mở rộng]</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#9B9A97]" />
+                    <span>% ⚙️ Cấu hình TeX Live & Tiêu chuẩn Bộ GD&ĐT (42 dòng cấu hình đã thu gọn)</span>
                   </span>
-                  <span className="text-[10px] text-indigo-600 font-semibold">Xem mã preamble →</span>
+                  <span className="text-[10px] text-[#2383E2] font-medium hover:underline">Mở rộng preamble →</span>
                 </div>
               )}
 
@@ -6092,39 +6131,39 @@ export default function ExamStudioView({ examId, onBack }: Props) {
         {/* RIGHT LIVE A4 PDF CANVAS (WIDTH: remaining % or 100%) */}
         <div
           style={{ width: isEditorCollapsed ? "100%" : `${100 - splitRatio}%` }}
-          className="bg-slate-200/70 flex flex-col h-full overflow-hidden shrink-0 flex-1"
+          className="bg-[#F7F6F3] flex flex-col h-full overflow-hidden shrink-0 flex-1"
         >
           {/* Canvas Toolbar */}
-          <div className="h-11 bg-white border-b border-slate-200 px-4 flex items-center justify-between text-xs text-slate-600 shrink-0 shadow-sm">
+          <div className="h-8 bg-[#FBFBFA] border-b border-[#EAE9E5] px-3 flex items-center justify-between text-xs text-[#787774] shrink-0 select-none">
             <div className="flex items-center space-x-2">
               {isEditorCollapsed && (
                 <button
                   onClick={() => setIsEditorCollapsed(false)}
-                  className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg border border-indigo-200 transition-all flex items-center space-x-1 mr-2 shadow-sm"
+                  className="px-2 py-0.5 bg-[#EFEFED] hover:bg-[#EAE9E5] text-[#37352F] font-medium rounded transition-all flex items-center space-x-1 mr-1"
                   title="Mở lại Sidebar Biên tập"
                 >
                   <PanelLeftOpen className="w-3.5 h-3.5" />
                   <span>Hiện Biên Tập</span>
                 </button>
               )}
-              <span className="font-bold text-slate-800">Bản In Khổ Giấy A4 (Live PDF)</span>
+              <span className="font-semibold text-[#37352F]">Bản In A4 (Live PDF)</span>
               {previewData?.total_pages && (
-                <span className="text-[11px] bg-slate-100 text-indigo-700 font-bold px-2 py-0.5 rounded border border-slate-200">
+                <span className="text-[11px] bg-[#EFEFED] text-[#787774] font-medium px-1.5 py-0.2 rounded font-mono">
                   {previewData.total_pages} trang
                 </span>
               )}
               {compiling && (
-                <span className="text-[11px] text-emerald-600 flex items-center space-x-1 font-semibold ml-2">
+                <span className="text-[11px] text-[#0F7B6C] flex items-center space-x-1 font-medium ml-2">
                   <RefreshCw className="w-3 h-3 animate-spin" />
-                  <span>Đang dựng bản in TeX Live...</span>
+                  <span>Đang dựng TeX Live...</span>
                 </span>
               )}
               {!compiling && lastCompileStats && (
                 <span
-                  className="text-[11px] text-slate-500 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded border border-slate-200 flex items-center space-x-1 ml-2 font-mono transition-colors cursor-help"
+                  className="text-[10px] text-[#787774] bg-[#EFEFED] px-1.5 py-0.2 rounded flex items-center space-x-1 ml-2 font-mono transition-colors cursor-help"
                   title={`Biên dịch hoàn tất lúc ${lastCompileStats.timeStr}. Thời gian xử lý: ${lastCompileStats.durationMs}ms`}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
                   <span>{lastCompileStats.durationMs >= 1000 ? (lastCompileStats.durationMs / 1000).toFixed(1) + 's' : lastCompileStats.durationMs + 'ms'}</span>
                 </span>
               )}
@@ -6139,13 +6178,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             {/* Viewer Mode & Zoom Controls */}
             <div className="flex items-center space-x-2">
               {/* Chế độ xem: Cuộn liên tục / Trình chiếu PDF Native */}
-              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
+              <div className="flex items-center bg-[#EFEFED] p-0.5 rounded-lg text-xs text-[#787774]">
                 <button
                   onClick={() => setViewerMode("scroll")}
-                  className={`px-2.5 py-1 rounded-lg font-bold flex items-center space-x-1 transition-all ${
+                  className={`px-2 py-0.5 rounded-md font-medium flex items-center space-x-1 transition-all ${
                     viewerMode === "scroll"
-                      ? "bg-white text-indigo-700 shadow-xs"
-                      : "text-slate-500 hover:text-slate-800"
+                      ? "bg-white text-[#37352F] shadow-2xs font-semibold"
+                      : "hover:text-[#37352F]"
                   }`}
                   title="Chế độ cuộn liên tục (Continuous Scroll)"
                 >
@@ -6154,10 +6193,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </button>
                 <button
                   onClick={() => setViewerMode("pdf")}
-                  className={`px-2.5 py-1 rounded-lg font-bold flex items-center space-x-1 transition-all ${
+                  className={`px-2 py-0.5 rounded-md font-medium flex items-center space-x-1 transition-all ${
                     viewerMode === "pdf"
-                      ? "bg-white text-indigo-700 shadow-xs"
-                      : "text-slate-500 hover:text-slate-800"
+                      ? "bg-white text-[#37352F] shadow-2xs font-semibold"
+                      : "hover:text-[#37352F]"
                   }`}
                   title="Trình chiếu PDF Native (hỗ trợ cuộn mượt, in, dàn trang chuẩn)"
                 >
@@ -6166,10 +6205,10 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </button>
                 <button
                   onClick={() => setViewerMode("html")}
-                  className={`px-2.5 py-1 rounded-lg font-bold flex items-center space-x-1 transition-all ${
+                  className={`px-2 py-0.5 rounded-md font-medium flex items-center space-x-1 transition-all ${
                     viewerMode === "html"
-                      ? "bg-white text-emerald-700 shadow-xs"
-                      : "text-slate-500 hover:text-slate-800"
+                      ? "bg-white text-[#37352F] shadow-2xs font-semibold"
+                      : "hover:text-[#37352F]"
                   }`}
                   title="Chế độ DOM Sư phạm (Client Fallback an toàn, MathJax sắc nét)"
                 >
