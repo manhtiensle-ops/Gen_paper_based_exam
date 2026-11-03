@@ -76,7 +76,9 @@ import {
   FileSpreadsheet,
   Award,
   ScrollText,
-  Package
+  Package,
+  FileCode,
+  BookOpen
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -85,6 +87,53 @@ interface Props {
   examId: string;
   onBack?: () => void;
 }
+
+interface LatexFormulaItem {
+  name: string;
+  code: string;
+  category: "algebra" | "calculus" | "geometry" | "logic" | "matrix" | "greek";
+  description: string;
+}
+
+const LATEX_FORMULA_CHEAT_SHEET: LatexFormulaItem[] = [
+  // Đại số & Phương trình
+  { name: "Phân số", code: "\\dfrac{a}{b}", category: "algebra", description: "Phân số chuẩn hiển thị lớn" },
+  { name: "Căn bậc n", code: "\\sqrt[n]{x}", category: "algebra", description: "Căn thức bậc n" },
+  { name: "Hệ phương trình", code: "\\begin{cases}\n  2x + y = 5 \\\\\n  x - 3y = -1\n\\end{cases}", category: "algebra", description: "Hệ ngoặc nhọn nhiều phương trình" },
+  { name: "Tập nghiệm ngoặc vuông", code: "\\left[\\begin{array}{l}\n  x = 1 \\\\\n  x = -2\n\\end{array}\\right.", category: "algebra", description: "Ngoặc vuông hoặc phương trình" },
+  { name: "Lũy thừa & Chỉ số", code: "x^{n}_{k}", category: "algebra", description: "Số mũ trên và chỉ số dưới" },
+  
+  // Giải tích & Vi phân - Tích phân
+  { name: "Tích phân xác định", code: "\\int_{a}^{b} f(x) \\, \\mathrm{d}x", category: "calculus", description: "Tích phân từ a đến b với vi phân chuẩn" },
+  { name: "Giới hạn (Limit)", code: "\\lim_{x \\to x_0} \\dfrac{f(x)}{g(x)}", category: "calculus", description: "Giới hạn hàm số khi x tiến đến x0" },
+  { name: "Tổng chuỗi Sigma", code: "\\sum_{i=1}^{n} a_i", category: "calculus", description: "Tổng hữu hạn từ i=1 đến n" },
+  { name: "Đạo hàm cấp cao", code: "f''(x) = \\dfrac{\\mathrm{d}^2 y}{\\mathrm{d}x^2}", category: "calculus", description: "Đạo hàm bậc 2 dạng phân số" },
+  { name: "Vô cực", code: "\\pm \\infty", category: "calculus", description: "Cộng trừ vô cùng" },
+
+  // Hình học & Vector
+  { name: "Vector", code: "\\vec{u} = (x; y; z)", category: "geometry", description: "Vector có dấu mũi tên trên đầu" },
+  { name: "Đoạn thẳng / Vector AB", code: "\\overrightarrow{AB}", category: "geometry", description: "Vectơ có tên 2 điểm mút" },
+  { name: "Độ dài đoạn thẳng", code: "|\\vec{u}| = \\sqrt{x^2 + y^2}", category: "geometry", description: "Độ dài / Môđun vector" },
+  { name: "Góc toán học", code: "\\widehat{ABC} = 60^\\circ", category: "geometry", description: "Ký hiệu góc có mũ trên đỉnh" },
+  { name: "Vuông góc & Song song", code: "d_1 \\perp d_2, \\quad (P) \\parallel (Q)", category: "geometry", description: "Quan hệ vuông góc và song song" },
+  { name: "Tam giác đồng dạng", code: "\\Delta ABC \\sim \\Delta A'B'C'", category: "geometry", description: "Ký hiệu đồng dạng" },
+
+  // Logic & Tập hợp
+  { name: "Thuộc & Không thuộc", code: "x \\in A, \\quad y \\notin B", category: "logic", description: "Quan hệ phần tử với tập hợp" },
+  { name: "Tập hợp con & Giao/Hợp", code: "A \\subset B, \\quad A \\cap B, \\quad A \\cup B", category: "logic", description: "Tập con, giao tập hợp, hợp tập hợp" },
+  { name: "Với mọi & Tồn tại", code: "\\forall x \\in \\mathbb{R}, \\quad \\exists y > 0", category: "logic", description: "Lượng từ phổ dụng và lượng từ tồn tại" },
+  { name: "Tương đương & Suy ra", code: "P \\Leftrightarrow Q, \\quad A \\Rightarrow B", category: "logic", description: "Mệnh đề kéo theo và tương đương" },
+  { name: "Tập số thực, nguyên, tự nhiên", code: "\\mathbb{R}, \\; \\mathbb{Z}, \\; \\mathbb{N}, \\; \\mathbb{Q}", category: "logic", description: "Tập hợp số kiểu blackboard bold" },
+
+  // Ma trận & Bảng
+  { name: "Ma trận ngoặc tròn", code: "\\begin{pmatrix}\n  a & b \\\\\n  c & d\n\\end{pmatrix}", category: "matrix", description: "Ma trận 2x2 ngoặc tròn" },
+  { name: "Định thức (Determinant)", code: "\\begin{vmatrix}\n  a & b \\\\\n  c & d\n\\end{vmatrix}", category: "matrix", description: "Định thức dấu gạch đứng" },
+
+  // Chữ cái Hy Lạp
+  { name: "Alpha, Beta, Gamma", code: "\\alpha, \\; \\beta, \\; \\gamma, \\; \\Gamma", category: "greek", description: "Góc và tham số thường gặp" },
+  { name: "Delta, Theta, Lambda", code: "\\Delta, \\; \\theta, \\; \\lambda", category: "greek", description: "Biệt thức delta và góc theta" },
+  { name: "Pi, Sigma, Omega", code: "\\pi \\approx 3.14, \\; \\sigma, \\; \\Omega", category: "greek", description: "Số pi, sai số sigma và ohm/omega" },
+];
 
 export default function ExamStudioView({ examId, onBack }: Props) {
   const [items, setItems] = useState<any[]>([]);
@@ -142,6 +191,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isExamPassportModalOpen, setIsExamPassportModalOpen] = useState<boolean>(false);
   const [isExportPackageModalOpen, setIsExportPackageModalOpen] = useState<boolean>(false);
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState<boolean>(false);
+  const [isFormulaCheatSheetOpen, setIsFormulaCheatSheetOpen] = useState<boolean>(false);
+  const [formulaCategoryFilter, setFormulaCategoryFilter] = useState<string>("all");
+  const [formulaSearchQuery, setFormulaSearchQuery] = useState<string>("");
   const [newQuestionForm, setNewQuestionForm] = useState<{
     content: string;
     question_type: "mcq" | "short_answer" | "essay";
@@ -3132,6 +3184,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             >
               <Printer className="w-3.5 h-3.5 text-emerald-600" />
               <span>In Ngay</span>
+            </button>
+            <button
+              onClick={() => setIsFormulaCheatSheetOpen(true)}
+              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200"
+              title="Sổ tay tra cứu công thức LaTeX Toán học (Cheat Sheet)"
+            >
+              <FileCode className="w-3.5 h-3.5 text-amber-600" />
             </button>
             <button
               onClick={() => setShowShortcutsModal(true)}
@@ -6463,6 +6522,152 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LaTeX Math Formula Cheat Sheet Modal */}
+      {isFormulaCheatSheetOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 px-6 py-4 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <FileCode className="w-5 h-5 text-amber-200" />
+                <div>
+                  <h3 className="font-bold text-base tracking-wide flex items-center space-x-2">
+                    <span>Sổ Tay Tra Cứu Công Thức LaTeX Toán Học</span>
+                    <span className="text-[10px] bg-amber-500/40 text-amber-100 px-2 py-0.5 rounded-full font-normal">
+                      VINH PHÁT Studio
+                    </span>
+                  </h3>
+                  <p className="text-xs text-amber-100/80">
+                    Tra cứu và sao chép nhanh các cấu trúc cú pháp toán học thường dùng trong đề thi
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsFormulaCheatSheetOpen(false)}
+                className="text-amber-200 hover:text-white p-1 rounded-lg hover:bg-white/10 text-sm font-bold transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Search and Filters */}
+            <div className="p-4 bg-slate-50 border-b border-slate-200 space-y-3 shrink-0">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  placeholder="Tìm công thức (vd: phân số, tích phân, vector, cases, alpha)..."
+                  value={formulaSearchQuery}
+                  onChange={(e) => setFormulaSearchQuery(e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                {formulaSearchQuery && (
+                  <button
+                    onClick={() => setFormulaSearchQuery("")}
+                    className="px-2 py-1.5 text-xs text-slate-500 hover:text-slate-800 bg-slate-200 rounded-lg"
+                  >
+                    Xóa
+                  </button>
+                )}
+              </div>
+
+              {/* Category tabs */}
+              <div className="flex items-center space-x-1 overflow-x-auto pb-1 text-xs scrollbar-none">
+                {[
+                  { id: "all", label: "Tất Cả" },
+                  { id: "algebra", label: "Đại Số & PT" },
+                  { id: "calculus", label: "Giải Tích & Vi Phân" },
+                  { id: "geometry", label: "Hình Học & Vector" },
+                  { id: "logic", label: "Logic & Tập Hợp" },
+                  { id: "matrix", label: "Ma Trận & Định Thức" },
+                  { id: "greek", label: "Ký Tự Hy Lạp" },
+                ].map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setFormulaCategoryFilter(cat.id)}
+                    className={`px-2.5 py-1 rounded-md font-medium text-xs whitespace-nowrap transition-colors ${
+                      formulaCategoryFilter === cat.id
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Formula Grid */}
+            <div className="p-4 overflow-y-auto space-y-2.5 flex-1 divide-y divide-slate-100">
+              {LATEX_FORMULA_CHEAT_SHEET.filter((item) => {
+                const matchCat = formulaCategoryFilter === "all" || item.category === formulaCategoryFilter;
+                const matchQuery =
+                  !formulaSearchQuery ||
+                  item.name.toLowerCase().includes(formulaSearchQuery.toLowerCase()) ||
+                  item.description.toLowerCase().includes(formulaSearchQuery.toLowerCase()) ||
+                  item.code.toLowerCase().includes(formulaSearchQuery.toLowerCase());
+                return matchCat && matchQuery;
+              }).map((item, idx) => (
+                <div key={idx} className="pt-2.5 first:pt-0 flex items-start justify-between gap-4 group">
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-slate-800 text-xs">{item.name}</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                        {item.category}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500">{item.description}</div>
+                    <div className="bg-slate-900 text-amber-200 font-mono text-[11px] p-2 rounded-lg border border-slate-800 select-all overflow-x-auto whitespace-pre">
+                      {item.code}
+                    </div>
+                  </div>
+                  <div className="flex flex-col space-y-1.5 shrink-0 pt-1">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(item.code);
+                        showToast(`Đã sao chép cú pháp "${item.name}"!`, "success");
+                      }}
+                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-xs font-semibold flex items-center space-x-1 transition-colors"
+                      title="Sao chép vào khay nhớ tạm"
+                    >
+                      <Copy className="w-3 h-3 text-amber-600" />
+                      <span>Chép</span>
+                    </button>
+                    {sidebarTab === "editor" && (
+                      <button
+                        onClick={() => {
+                          handleInsertMathSnippet(item.code);
+                          showToast(`Đã chèn "${item.name}" vào vị trí con trỏ TeX!`, "success");
+                          setIsFormulaCheatSheetOpen(false);
+                        }}
+                        className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded text-xs font-semibold flex items-center space-x-1 transition-colors"
+                        title="Chèn trực tiếp vào vị trí con trỏ trong trình soạn thảo TeX"
+                      >
+                        <Plus className="w-3 h-3 text-indigo-600" />
+                        <span>Chèn TeX</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 shrink-0">
+              <span className="flex items-center space-x-1">
+                <BookOpen className="w-3.5 h-3.5 text-amber-600" />
+                <span>Tiêu chuẩn ký hiệu khảo thí VINH PHÁT (Tương thích Word OMML & PDF TeX Live)</span>
+              </span>
+              <button
+                onClick={() => setIsFormulaCheatSheetOpen(false)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg transition-colors text-xs"
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>
