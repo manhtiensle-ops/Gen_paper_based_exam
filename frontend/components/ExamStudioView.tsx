@@ -6099,7 +6099,32 @@ export default function ExamStudioView({ examId, onBack }: Props) {
 
           {/* Canvas Viewer Area with Smooth Continuous Scroll */}
           {viewerMode === "html" || (!previewData?.pdf_key && !previewData?.page_keys && !compiling) ? (
-            <div ref={canvasAreaRef} className="flex-1 overflow-y-auto p-8 flex flex-col items-center bg-slate-200/70">
+            <div
+              ref={canvasAreaRef}
+              onMouseMove={(e) => {
+                if (isProofreadingRulerActive && canvasAreaRef.current) {
+                  const rect = canvasAreaRef.current.getBoundingClientRect();
+                  setRulerTopY(e.clientY - rect.top);
+                }
+              }}
+              className="flex-1 overflow-y-auto p-8 flex flex-col items-center bg-slate-200/70 relative"
+            >
+              {/* Focus Reading Proofreading Ruler Guide for HTML Mode */}
+              {isProofreadingRulerActive && (
+                <div
+                  className="pointer-events-none absolute left-0 right-0 z-30 transition-all duration-75 flex items-center justify-between px-6"
+                  style={{ top: `${rulerTopY}px`, transform: "translateY(-50%)" }}
+                >
+                  <div className="w-full h-8 bg-amber-500/15 border-y-2 border-amber-500/70 backdrop-blur-[0.5px] shadow-[0_0_15px_rgba(245,158,11,0.25)] flex items-center justify-between px-4">
+                    <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded shadow-xs">
+                      🔍 THƯỚC DÒ LỖI BẢN IN
+                    </span>
+                    <span className="text-[9px] font-mono font-medium text-amber-700">
+                      Rê chuột để di chuyển thước đọc
+                    </span>
+                  </div>
+                </div>
+              )}
               <div
                 style={{
                   width: `${(595 * zoomScale) / 100}px`,
