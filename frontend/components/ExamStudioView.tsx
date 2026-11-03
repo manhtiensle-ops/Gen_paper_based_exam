@@ -84,7 +84,9 @@ import {
   Timer,
   Sigma,
   Wrench,
-  ArrowLeft
+  ArrowLeft,
+  Pin,
+  ChevronUp
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -2117,6 +2119,24 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [activeStudioDropdown, setActiveStudioDropdown] = useState<"exam_tools" | "export_print" | "editor_tools" | "editor_settings" | null>(null);
   const [isQuickMathBarVisible, setIsQuickMathBarVisible] = useState<boolean>(false);
 
+  // Sliding Ribbon Shelf state (Thanh công cụ trượt xuống theo nhóm chức năng)
+  const [isSlidingRibbonOpen, setIsSlidingRibbonOpen] = useState<boolean>(false);
+  const [isRibbonPinned, setIsRibbonPinned] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleRibbonHotkeys = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        setIsSlidingRibbonOpen(prev => !prev);
+      }
+      if (e.key === 'Escape' && isSlidingRibbonOpen && !isRibbonPinned) {
+        setIsSlidingRibbonOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleRibbonHotkeys);
+    return () => window.removeEventListener('keydown', handleRibbonHotkeys);
+  }, [isSlidingRibbonOpen, isRibbonPinned]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -3161,126 +3181,21 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             <kbd className="text-[9px] bg-black/20 text-white/90 px-1 py-0.2 rounded font-mono">⌘S</kbd>
           </button>
 
-          {/* Consolidated Menu 1: Công cụ Khảo thí */}
-          <div className="relative" data-studio-dropdown>
-            <button
-              onClick={() => setActiveStudioDropdown(prev => prev === "exam_tools" ? null : "exam_tools")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center space-x-1 ${
-                activeStudioDropdown === "exam_tools"
-                  ? "bg-[#EFEFED] text-[#37352F] font-bold"
-                  : "text-[#37352F] hover:bg-[#EFEFED]"
-              }`}
-              title="Mở menu các công cụ quản lý đề thi và nghiệp vụ khảo thí"
-            >
-              <Wrench className="w-3.5 h-3.5 text-[#787774]" />
-              <span>Công cụ Đề</span>
-              <ChevronDown className={`w-3 h-3 text-[#787774] transition-transform ${activeStudioDropdown === "exam_tools" ? "rotate-180" : ""}`} />
-            </button>
-
-            {activeStudioDropdown === "exam_tools" && (
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Nghiệp Vụ Khảo Thí
-                </div>
-                <button
-                  onClick={() => {
-                    setIsVariantsModalOpen(true);
-                    setActiveStudioDropdown(null);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-purple-50 hover:text-purple-700 flex items-center justify-between transition-colors"
-                >
-                  <span className="flex items-center space-x-2">
-                    <Shuffle className="w-4 h-4 text-purple-600" />
-                    <span className="font-medium">Trộn Đề Hoán Vị</span>
-                  </span>
-                  <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-mono">101..104</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsScaleScoreModalOpen(true);
-                    setActiveStudioDropdown(null);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between transition-colors"
-                >
-                  <span className="flex items-center space-x-2">
-                    <Scale className="w-4 h-4 text-indigo-600" />
-                    <span className="font-medium">Cân Đối / Đổi Thang Điểm</span>
-                  </span>
-                  <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">20đ / 10đ</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsTimingBudgetModalOpen(true);
-                    setActiveStudioDropdown(null);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between transition-colors"
-                >
-                  <span className="flex items-center space-x-2">
-                    <Timer className="w-4 h-4 text-indigo-600" />
-                    <span className="font-medium">Ngân Sách Thời Gian Thi</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400">Pacing</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsExamDensityMetricsModalOpen(true);
-                    setActiveStudioDropdown(null);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-700 flex items-center justify-between transition-colors"
-                >
-                  <span className="flex items-center space-x-2">
-                    <Hash className="w-4 h-4 text-teal-600" />
-                    <span className="font-medium">Chỉ Số Mật Độ Văn Bản</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400">Metrics</span>
-                </button>
-
-                <div className="h-px bg-slate-100 my-1.5" />
-                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Tiện Ích & Bảo Mật
-                </div>
-                <button
-                  onClick={() => {
-                    setIsFormulaCheatSheetOpen(true);
-                    setActiveStudioDropdown(null);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-700 flex items-center justify-between transition-colors"
-                >
-                  <span className="flex items-center space-x-2">
-                    <FileCode className="w-4 h-4 text-amber-600" />
-                    <span className="font-medium">Sổ Tay Công Thức LaTeX</span>
-                  </span>
-                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded">CheatSheet</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsExamPassportModalOpen(true);
-                    setActiveStudioDropdown(null);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-between transition-colors"
-                >
-                  <span className="flex items-center space-x-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span className="font-medium">Hộ Chiếu & Bản Quyền</span>
-                  </span>
-                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded">VINH PHÁT</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowShortcutsModal(true);
-                    setActiveStudioDropdown(null);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between transition-colors"
-                >
-                  <span className="flex items-center space-x-2">
-                    <HelpCircle className="w-4 h-4 text-slate-500" />
-                    <span className="font-medium">Phím Tắt Bàn Phím</span>
-                  </span>
-                  <kbd className="text-[10px] bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-slate-500 font-mono">?</kbd>
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Consolidated Sliding Ribbon Shelf Toggle (Thanh công cụ trượt xuống) */}
+          <button
+            onClick={() => setIsSlidingRibbonOpen(prev => !prev)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center space-x-1.5 ${
+              isSlidingRibbonOpen
+                ? "bg-[#2383E2]/15 text-[#2383E2] border border-[#2383E2]/40 shadow-2xs"
+                : "text-[#37352F] hover:bg-[#EFEFED] border border-[#EAE9E5] bg-white shadow-2xs"
+            }`}
+            title="Mở thanh công cụ khảo thí trượt xuống toàn diện (Ctrl + /)"
+          >
+            <Wrench className="w-3.5 h-3.5 text-[#2383E2]" />
+            <span>Thanh Công Cụ</span>
+            <span className="text-[9px] bg-[#EFEFED] text-[#787774] px-1 py-0.2 rounded font-mono">⌘/</span>
+            <ChevronDown className={`w-3 h-3 text-[#787774] transition-transform duration-200 ${isSlidingRibbonOpen ? "rotate-180" : ""}`} />
+          </button>
 
           {/* Consolidated Menu 2: Xuất bản & Tải về */}
           <div className="relative" data-studio-dropdown>
@@ -3390,6 +3305,199 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           </button>
         </div>
       </header>
+
+      {/* SLIDING ACTION RIBBON SHELF (THANH CÔNG CỤ TRƯỢT XUỐNG TOÀN DIỆN - KHÔNG CHE KHUẤT BẢN IN A4) */}
+      {isSlidingRibbonOpen && (
+        <div className="w-full bg-[#FFFFFF] border-b border-[#EAE9E5] shadow-md px-6 py-2.5 flex items-center justify-between z-20 shrink-0 select-none animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center space-x-8 overflow-x-auto">
+
+            {/* NHÓM 1: BIẾN THỂ & ĐIỂM SỐ */}
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center space-x-1 text-[11px] font-semibold text-[#787774] uppercase tracking-wider">
+                <Shuffle className="w-3.5 h-3.5 text-[#2383E2]" />
+                <span>Biến Thể & Điểm Số</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => {
+                    setIsVariantsModalOpen(true);
+                    if (!isRibbonPinned) setIsSlidingRibbonOpen(false);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-[#EAE9E5] bg-[#FAF9F6] hover:bg-[#EFEFED] text-xs font-medium text-[#37352F] flex items-center space-x-1.5 transition-all"
+                  title="Mở trình sinh mã đề hoán vị và bảng ma trận đáp án"
+                >
+                  <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                  <span>Trộn Đề Hoán Vị</span>
+                  <span className="text-[10px] text-[#787774] font-mono bg-white px-1 rounded border border-[#EAE9E5]">101..104</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsScaleScoreModalOpen(true);
+                    if (!isRibbonPinned) setIsSlidingRibbonOpen(false);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-[#EAE9E5] bg-[#FAF9F6] hover:bg-[#EFEFED] text-xs font-medium text-[#37352F] flex items-center space-x-1.5 transition-all"
+                  title="Cân đối tổng điểm tự luận / trắc nghiệm về thang điểm 20 hoặc 10"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>Đổi Thang Điểm</span>
+                  <span className="text-[10px] text-[#787774] font-mono bg-white px-1 rounded border border-[#EAE9E5]">20đ ⇄ 10đ</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsTimingBudgetModalOpen(true);
+                    if (!isRibbonPinned) setIsSlidingRibbonOpen(false);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-[#EAE9E5] bg-[#FAF9F6] hover:bg-[#EFEFED] text-xs font-medium text-[#37352F] flex items-center space-x-1.5 transition-all"
+                  title="Mở ngân sách thời gian làm bài thi và phân bổ nhịp độ giải"
+                >
+                  <Timer className="w-3.5 h-3.5 text-[#787774]" />
+                  <span>Ngân Sách Pacing</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsExamDensityMetricsModalOpen(true);
+                    if (!isRibbonPinned) setIsSlidingRibbonOpen(false);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-[#EAE9E5] bg-[#FAF9F6] hover:bg-[#EFEFED] text-xs font-medium text-[#37352F] flex items-center space-x-1.5 transition-all"
+                  title="Xem phân tích mật độ ký tự và khối lượng toán học trong đề thi"
+                >
+                  <Hash className="w-3.5 h-3.5 text-[#787774]" />
+                  <span>Mật Độ Metrics</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="h-9 w-px bg-[#EAE9E5]"></div>
+
+            {/* NHÓM 2: SOẠN THẢO & LATEX */}
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center space-x-1 text-[11px] font-semibold text-[#787774] uppercase tracking-wider">
+                <FileCode className="w-3.5 h-3.5 text-[#0F7B6C]" />
+                <span>Soạn Thảo & LaTeX</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => {
+                    setIsFormulaCheatSheetOpen(true);
+                    if (!isRibbonPinned) setIsSlidingRibbonOpen(false);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-[#EAE9E5] bg-[#FAF9F6] hover:bg-[#EFEFED] text-xs font-medium text-[#37352F] flex items-center space-x-1.5 transition-all"
+                  title="Mở sổ tay tra cứu nhanh công thức và ký hiệu toán học LaTeX"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Sổ Tay LaTeX CheatSheet</span>
+                </button>
+                <button
+                  onClick={() => setIsQuickMathBarVisible(prev => !prev)}
+                  className={`px-2.5 py-1 rounded-lg border text-xs font-medium flex items-center space-x-1.5 transition-all ${
+                    isQuickMathBarVisible
+                      ? "bg-[#2383E2] text-white border-[#2383E2] shadow-2xs font-semibold"
+                      : "bg-[#FAF9F6] border-[#EAE9E5] hover:bg-[#EFEFED] text-[#37352F]"
+                  }`}
+                  title="Bật / tắt dải ký hiệu toán học nhanh chèn vào văn bản"
+                >
+                  <Sigma className="w-3.5 h-3.5" />
+                  <span>Ký Hiệu Nhanh</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowShortcutsModal(true);
+                    if (!isRibbonPinned) setIsSlidingRibbonOpen(false);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-[#EAE9E5] bg-[#FAF9F6] hover:bg-[#EFEFED] text-xs font-medium text-[#37352F] flex items-center space-x-1.5 transition-all"
+                  title="Mở bảng phím tắt bàn phím (?)"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-[#787774]" />
+                  <span>Phím Tắt</span>
+                  <kbd className="text-[10px] bg-white border border-[#EAE9E5] px-1 rounded text-[#787774] font-mono">?</kbd>
+                </button>
+              </div>
+            </div>
+
+            <div className="h-9 w-px bg-[#EAE9E5]"></div>
+
+            {/* NHÓM 3: XUẤT BẢN & BẢN QUYỀN SƯ PHẠM */}
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center space-x-1 text-[11px] font-semibold text-[#787774] uppercase tracking-wider">
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                <span>Xuất Bản & Bản Quyền</span>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={async () => {
+                    handleDownload("docx");
+                    if (!isRibbonPinned) setIsSlidingRibbonOpen(false);
+                  }}
+                  disabled={isExporting !== null}
+                  className="px-2.5 py-1 rounded-lg border border-[#EAE9E5] bg-[#FAF9F6] hover:bg-[#EFEFED] text-xs font-medium text-[#37352F] flex items-center space-x-1.5 transition-all disabled:opacity-50"
+                  title="Tải tập tin Word (.docx) chứa công thức toán OMML nguyên bản không vỡ hình"
+                >
+                  <FileText className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Word (.docx OMML)</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handleDownload("pdf");
+                    if (!isRibbonPinned) setIsSlidingRibbonOpen(false);
+                  }}
+                  disabled={isExporting !== null}
+                  className="px-2.5 py-1 rounded-lg border border-[#EAE9E5] bg-[#FAF9F6] hover:bg-[#EFEFED] text-xs font-medium text-[#37352F] flex items-center space-x-1.5 transition-all disabled:opacity-50"
+                  title="Tải tập tin PDF Vector chất lượng cao sẵn sàng in ấn A4"
+                >
+                  <Download className="w-3.5 h-3.5 text-red-600" />
+                  <span>PDF Vector A4</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsExamPassportModalOpen(true);
+                    if (!isRibbonPinned) setIsSlidingRibbonOpen(false);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-[#EAE9E5] bg-[#FAF9F6] hover:bg-[#EFEFED] text-xs font-medium text-[#37352F] flex items-center space-x-1.5 transition-all"
+                  title="Mở bảng thông tin hộ chiếu kỹ thuật và chứng chỉ kiểm định VINH PHÁT"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Hộ Chiếu VINH PHÁT</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsExportPackageModalOpen(true);
+                    if (!isRibbonPinned) setIsSlidingRibbonOpen(false);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-[#EAE9E5] bg-[#FAF9F6] hover:bg-[#EFEFED] text-xs font-medium text-[#37352F] flex items-center space-x-1.5 transition-all"
+                  title="Mở hộp thoại đóng gói hồ sơ khảo thí toàn diện (Word, PDF, Barem, Đáp án)"
+                >
+                  <Package className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Gói Hồ Sơ</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          {/* CỘT PHẢI: GHIM & THU GỌN */}
+          <div className="flex items-center space-x-2 pl-4 border-l border-[#EAE9E5]">
+            <button
+              onClick={() => setIsRibbonPinned(prev => !prev)}
+              className={`p-1.5 rounded-lg transition-all ${
+                isRibbonPinned
+                  ? "bg-[#2383E2]/15 text-[#2383E2]"
+                  : "hover:bg-[#EFEFED] text-[#787774] hover:text-[#37352F]"
+              }`}
+              title={isRibbonPinned ? "Đang ghim cố định thanh công cụ (Click để tự động đóng)" : "Ghim thanh công cụ luôn mở"}
+            >
+              <Pin className={`w-3.5 h-3.5 ${isRibbonPinned ? "fill-current" : ""}`} />
+            </button>
+            <button
+              onClick={() => setIsSlidingRibbonOpen(false)}
+              className="px-2.5 py-1 rounded-lg bg-[#EFEFED] hover:bg-[#EAE9E5] text-[#37352F] text-xs font-medium flex items-center space-x-1 transition-all"
+              title="Thu gọn thanh công cụ (Esc)"
+            >
+              <span>Thu gọn</span>
+              <ChevronUp className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* TOAST NOTIFICATION FLOATING PILL */}
       {toastMessage && (
