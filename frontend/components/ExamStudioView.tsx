@@ -26,6 +26,7 @@ import {
   Maximize2,
   Minimize2,
   Sliders,
+  Glasses,
   Settings,
   Edit3,
   Layers,
@@ -2102,6 +2103,8 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [activePage, setActivePage] = useState<number>(0);
   const [zoomScale, setZoomScale] = useState<number>(100);
   const [isDualSpreadMode, setIsDualSpreadMode] = useState<boolean>(false);
+  const [isProofreadingRulerActive, setIsProofreadingRulerActive] = useState<boolean>(false);
+  const [rulerTopY, setRulerTopY] = useState<number>(150);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
 
   // Auto-fit A4 page width to viewport
@@ -6077,6 +6080,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     <Columns className="w-3 h-3" />
                     <span>{isDualSpreadMode ? "2 Trang" : "1 Trang"}</span>
                   </button>
+                  <button
+                    onClick={() => setIsProofreadingRulerActive((prev) => !prev)}
+                    className={`px-1.5 py-0.5 rounded transition-all font-sans font-bold text-[10px] border ml-1 flex items-center space-x-1 ${
+                      isProofreadingRulerActive
+                        ? "bg-amber-600 text-white border-amber-700 shadow-xs"
+                        : "bg-slate-50 text-slate-700 hover:bg-white border-slate-200"
+                    }`}
+                    title={isProofreadingRulerActive ? "Tắt thước đọc dò dòng" : "Bật thước đọc dò lỗi đề thi (Focus Reading Ruler)"}
+                  >
+                    <Glasses className="w-3 h-3" />
+                    <span>{isProofreadingRulerActive ? "Thước: Bật" : "Thước"}</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -6272,13 +6287,35 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           ) : (
             <div
               ref={canvasScrollRef}
-              className={`flex-1 overflow-y-auto overflow-x-hidden p-8 flex scroll-smooth bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] bg-slate-200/70 ${
+              onMouseMove={(e) => {
+                if (isProofreadingRulerActive && canvasScrollRef.current) {
+                  const rect = canvasScrollRef.current.getBoundingClientRect();
+                  setRulerTopY(e.clientY - rect.top);
+                }
+              }}
+              className={`flex-1 overflow-y-auto overflow-x-hidden p-8 flex scroll-smooth bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] bg-slate-200/70 relative ${
                 isDualSpreadMode
                   ? "flex-row flex-wrap justify-center items-start gap-8"
                   : "flex-col items-center space-y-8"
               }`}
               style={{ scrollBehavior: "smooth" }}
             >
+              {/* Focus Reading Proofreading Ruler Guide */}
+              {isProofreadingRulerActive && (
+                <div
+                  className="pointer-events-none absolute left-0 right-0 z-30 transition-all duration-75 flex items-center justify-between px-6"
+                  style={{ top: `${rulerTopY}px`, transform: "translateY(-50%)" }}
+                >
+                  <div className="w-full h-8 bg-amber-500/15 border-y-2 border-amber-500/70 backdrop-blur-[0.5px] shadow-[0_0_15px_rgba(245,158,11,0.25)] flex items-center justify-between px-4">
+                    <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded shadow-xs">
+                      🔍 THƯỚC DÒ LỖI BẢN IN
+                    </span>
+                    <span className="text-[9px] font-mono font-medium text-amber-700">
+                      Rê chuột để di chuyển thước đọc
+                    </span>
+                  </div>
+                </div>
+              )}
               {previewData?.page_keys && previewData.page_keys.length > 0 ? (
                 previewData.page_keys.map((pageKey: string, pIdx: number) => (
                   <div
