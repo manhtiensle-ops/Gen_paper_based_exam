@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Send,
   ZoomIn,
+  Columns,
   ZoomOut,
   Maximize2,
   Minimize2,
@@ -2100,6 +2101,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [lastCompileStats, setLastCompileStats] = useState<{ durationMs: number; timeStr: string } | null>(null);
   const [activePage, setActivePage] = useState<number>(0);
   const [zoomScale, setZoomScale] = useState<number>(100);
+  const [isDualSpreadMode, setIsDualSpreadMode] = useState<boolean>(false);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
 
   // Auto-fit A4 page width to viewport
@@ -6063,6 +6065,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   >
                     Fit Vừa
                   </button>
+                  <button
+                    onClick={() => setIsDualSpreadMode((prev) => !prev)}
+                    className={`px-1.5 py-0.5 rounded transition-all font-sans font-bold text-[10px] border ml-1 flex items-center space-x-1 ${
+                      isDualSpreadMode
+                        ? "bg-indigo-600 text-white border-indigo-700 shadow-xs"
+                        : "bg-slate-50 text-slate-700 hover:bg-white border-slate-200"
+                    }`}
+                    title={isDualSpreadMode ? "Chuyển về xem 1 trang dọc đơn" : "Xem 2 trang song song (Trang đôi A4)"}
+                  >
+                    <Columns className="w-3 h-3" />
+                    <span>{isDualSpreadMode ? "2 Trang" : "1 Trang"}</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -6258,7 +6272,11 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           ) : (
             <div
               ref={canvasScrollRef}
-              className="flex-1 overflow-y-auto overflow-x-hidden p-8 flex flex-col items-center space-y-8 scroll-smooth bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] bg-slate-200/70"
+              className={`flex-1 overflow-y-auto overflow-x-hidden p-8 flex scroll-smooth bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] bg-slate-200/70 ${
+                isDualSpreadMode
+                  ? "flex-row flex-wrap justify-center items-start gap-8"
+                  : "flex-col items-center space-y-8"
+              }`}
               style={{ scrollBehavior: "smooth" }}
             >
               {previewData?.page_keys && previewData.page_keys.length > 0 ? (
@@ -6266,7 +6284,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <div
                     key={`${pIdx}-${canvasKey}`}
                     id={`pdf-page-${pIdx + 1}`}
-                    style={{ width: `${(595 * zoomScale) / 100}px` }}
+                    style={{ width: `${(595 * zoomScale) / (isDualSpreadMode ? 140 : 100)}px` }}
                     className="bg-white rounded-[2px] overflow-hidden border border-slate-300 transition-all relative group shadow-[0_20px_40px_-10px_rgba(0,0,0,0.22)] shrink-0"
                   >
                     <img
