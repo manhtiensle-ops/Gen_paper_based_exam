@@ -88,9 +88,10 @@ def generate_latex_source(
     tex.append("\\usepackage{geometry}")
     tex.append("\\usepackage{graphicx}")
     tex.append("\\usepackage{array,longtable,tabularx}")
-    tex.append("\\usepackage{fancyhdr}")
-    tex.append("\\usepackage{lastpage}")
-    tex.append("\\usepackage{calc}")
+    tex.append(r"\usepackage{fancyhdr}")
+    # Không dùng \usepackage{lastpage} vì texlive-base tối giản không có lastpage.sty
+    # Thay vào đó đặt \label{LastPage} ở cuối tài liệu và gọi \pageref{LastPage}
+    tex.append(r"\usepackage{calc}")
 
     # Geometry & Layout knobs
     tex.append(f"\\geometry{{a4paper, top={m_top}cm, bottom={m_bottom}cm, left={m_left}cm, right={m_right}cm}}")
