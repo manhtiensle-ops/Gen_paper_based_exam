@@ -190,6 +190,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isScaleScoreModalOpen, setIsScaleScoreModalOpen] = useState<boolean>(false);
   const [isPrintConfigModalOpen, setIsPrintConfigModalOpen] = useState<boolean>(false);
   const [isTimingBudgetModalOpen, setIsTimingBudgetModalOpen] = useState<boolean>(false);
+  const [isExamDensityMetricsModalOpen, setIsExamDensityMetricsModalOpen] = useState<boolean>(false);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [isBatchActionModalOpen, setIsBatchActionModalOpen] = useState<boolean>(false);
   const [isExamPassportModalOpen, setIsExamPassportModalOpen] = useState<boolean>(false);
@@ -3198,6 +3199,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               title="Phân bổ ngân sách thời gian làm bài & Đánh giá sư phạm (Timing Budget)"
             >
               <Timer className="w-3.5 h-3.5 text-indigo-600" />
+            </button>
+            <button
+              onClick={() => setIsExamDensityMetricsModalOpen(true)}
+              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200"
+              title="Chỉ số mật độ văn bản & Thống kê khối lượng đề thi (Exam Density Metrics)"
+            >
+              <Hash className="w-3.5 h-3.5 text-indigo-600" />
             </button>
             <button
               onClick={() => setIsFormulaCheatSheetOpen(true)}
@@ -6762,6 +6770,131 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
                 >
                   Đóng Hộp Thoại
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Exam Density Metrics Modal */}
+      {isExamDensityMetricsModalOpen && (() => {
+        // Compute content metrics
+        const combinedRawText = items.map(q => `${q.title || ''} ${q.content || ''} ${q.solution || ''}`).join(' ') + ' ' + (rawLatexCode || '');
+        const plainText = combinedRawText.replace(/\\[a-zA-Z]+/g, ' ').replace(/[${}\\_#%^&]/g, ' ').replace(/\s+/g, ' ').trim();
+        
+        const totalWords = plainText ? plainText.split(/\s+/).length : 0;
+        const totalCharacters = plainText.length;
+        
+        // Count math formula occurrences
+        const inlineMathCount = (combinedRawText.match(/\$[^$]+\$/g) || []).length;
+        const displayMathCount = (combinedRawText.match(/\$\$[\s\S]*?\$\$/g) || []).length + (combinedRawText.match(/\\\[[\s\S]*?\\\]/g) || []).length;
+        const totalMathFormulas = inlineMathCount + displayMathCount;
+        
+        // Count environments & tables
+        const tableMatches = (combinedRawText.match(/\\begin\{(tabular|table|matrix|pmatrix|bmatrix)\}/g) || []).length;
+        const figureMatches = (combinedRawText.match(/\\begin\{figure\}|\\includegraphics/g) || []).length;
+        
+        // Reading speed estimates: 180 words/min normal text, 80 words/min math-dense text
+        const estimatedReadingMinutes = Math.max(1, Math.ceil(totalWords / 130));
+        
+        // Estimated pages at standard 400 words / A4 page
+        const estimatedA4Pages = Math.max(1, Math.ceil((totalWords + (totalMathFormulas * 15)) / 450));
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 px-6 py-4 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center space-x-2.5">
+                  <Hash className="w-5 h-5 text-indigo-200" />
+                  <div>
+                    <h3 className="font-bold text-base tracking-wide flex items-center space-x-2">
+                      <span>Chỉ Số Mật Độ Văn Bản Đề Thi</span>
+                      <span className="text-[10px] bg-indigo-500/40 text-indigo-100 px-2 py-0.5 rounded-full font-normal">
+                        VINH PHÁT Studio
+                      </span>
+                    </h3>
+                    <p className="text-xs text-indigo-100/80">
+                      Thống kê độ dài từ ngữ, mật độ ký hiệu toán học & dung lượng trang in A4
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsExamDensityMetricsModalOpen(false)}
+                  className="text-indigo-200 hover:text-white p-1 rounded-lg hover:bg-white/10 text-sm font-bold transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Summary Cards */}
+              <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[11px] font-medium text-slate-500 block">Tổng số từ</span>
+                  <span className="text-lg font-bold text-indigo-700 font-mono">{totalWords}</span>
+                </div>
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[11px] font-medium text-slate-500 block">Ký tự văn bản</span>
+                  <span className="text-lg font-bold text-slate-800 font-mono">{totalCharacters}</span>
+                </div>
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[11px] font-medium text-slate-500 block">Công thức Toán</span>
+                  <span className="text-lg font-bold text-amber-600 font-mono">{totalMathFormulas}</span>
+                </div>
+                <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-2xs">
+                  <span className="text-[11px] font-medium text-emerald-700 block">Ước tính số trang</span>
+                  <span className="text-lg font-bold text-emerald-700 font-mono">~{estimatedA4Pages} trang</span>
+                </div>
+              </div>
+
+              {/* Metric Breakdown Table */}
+              <div className="p-5 flex-1 overflow-y-auto space-y-4">
+                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs divide-y divide-slate-100 text-xs">
+                  <div className="p-3 flex items-center justify-between hover:bg-slate-50">
+                    <span className="text-slate-600 font-medium">Tổng số câu hỏi trong ngân hàng</span>
+                    <span className="font-bold text-slate-900 font-mono">{items.length} câu</span>
+                  </div>
+                  <div className="p-3 flex items-center justify-between hover:bg-slate-50">
+                    <span className="text-slate-600 font-medium">Công thức toán trong dòng ($...$)</span>
+                    <span className="font-bold text-indigo-700 font-mono">{inlineMathCount} biểu thức</span>
+                  </div>
+                  <div className="p-3 flex items-center justify-between hover:bg-slate-50">
+                    <span className="text-slate-600 font-medium">Khối công thức hiển thị riêng ($$...$$)</span>
+                    <span className="font-bold text-indigo-700 font-mono">{displayMathCount} khối</span>
+                  </div>
+                  <div className="p-3 flex items-center justify-between hover:bg-slate-50">
+                    <span className="text-slate-600 font-medium">Bảng biểu & Ma trận (tabular/matrix)</span>
+                    <span className="font-bold text-slate-900 font-mono">{tableMatches} bảng</span>
+                  </div>
+                  <div className="p-3 flex items-center justify-between hover:bg-slate-50">
+                    <span className="text-slate-600 font-medium">Hình vẽ minh họa (figure/includegraphics)</span>
+                    <span className="font-bold text-slate-900 font-mono">{figureMatches} hình</span>
+                  </div>
+                  <div className="p-3 flex items-center justify-between hover:bg-slate-50">
+                    <span className="text-slate-600 font-medium">Thời gian đọc hiểu sơ bộ (Reading Pace)</span>
+                    <span className="font-bold text-emerald-700 font-mono">~{estimatedReadingMinutes} phút</span>
+                  </div>
+                </div>
+
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-xs text-indigo-900 flex items-start space-x-2">
+                  <span className="text-base">💡</span>
+                  <p className="leading-relaxed">
+                    <strong>Khuyến nghị sư phạm VINH PHÁT:</strong> Với đề thi có mật độ công thức toán cao (&gt; 50 công thức), giáo viên nên chọn cỡ chữ 10.5pt hoặc 11pt và canh dòng dãn 1.15 để trang in A4 thông thoáng, học sinh dễ theo dõi và tính toán nháp.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+                <span className="text-xs text-slate-500">
+                  Phân tích tự động theo thời gian thực từ mã nguồn đề thi
+                </span>
+                <button
+                  onClick={() => setIsExamDensityMetricsModalOpen(false)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                >
+                  Đóng Bảng Thống Kê
                 </button>
               </div>
             </div>
