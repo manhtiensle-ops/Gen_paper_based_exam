@@ -104,14 +104,17 @@ def generate_latex_source(
     tex.append(f"\\setlength{{\\abovedisplayskip}}{{{math_skip}pt plus 2pt minus 2pt}}")
     tex.append(f"\\setlength{{\\belowdisplayskip}}{{{math_skip}pt plus 2pt minus 2pt}}")
 
-    # Watermark Support
+    # Watermark Support via eso-pic (chuẩn TeX Live, không phụ thuộc draftwatermark.sty)
     watermark_text = str(header_config.get("watermark_text") or "").strip()
     if watermark_text:
         safe_watermark = escape_latex_text(watermark_text)
-        tex.append("\\usepackage{draftwatermark}")
-        tex.append(f"\\SetWatermarkText{{{safe_watermark}}}")
-        tex.append("\\SetWatermarkScale{0.6}")
-        tex.append("\\SetWatermarkColor[gray]{0.92}")
+        tex.append(r"\usepackage{xcolor}")
+        tex.append(r"\usepackage{eso-pic}")
+        tex.append(r"\AddToShipoutPictureBG{")
+        tex.append(r"  \AtPageCenter{")
+        tex.append(f"    \\makebox(0,0){{\\rotatebox{{45}}{{\\fontsize{{50}}{{60}}\\selectfont\\color{{black!10}}\\textbf{{{safe_watermark}}}}}}}")
+        tex.append(r"  }")
+        tex.append(r"}")
 
     # Macro Telemetry
     tex.append("\\newcommand{\\LogLayoutTelemetry}[2]{%")
@@ -272,7 +275,8 @@ def generate_latex_source(
 
         tex.append(r"\end{longtable}")
 
-    tex.append("\\end{document}")
+    tex.append(r"\label{LastPage}")
+    tex.append(r"\end{document}")
     return "\n".join(tex)
 
 

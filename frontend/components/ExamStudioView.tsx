@@ -2379,7 +2379,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
     setPreviewError(null);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
 
       const res = await fetch(`/api/studio/exams/${examId}/preview`, {
         method: "POST",
@@ -6182,7 +6182,9 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   <h1 className="text-sm font-black text-slate-900 tracking-tight pt-1">
                     {(headerConfig.exam_name || "KỲ THI CHỌN HỌC SINH GIỎI").toUpperCase()}
                   </h1>
-                  <p className="text-[11px] font-bold text-slate-700">MÔN THI: {headerConfig.subject_title || "TOÁN 9"}</p>
+                  <p className="text-[11px] font-bold text-slate-700">
+                    MÔN THI: {String(headerConfig.subject_title || "TOÁN 9").replace(/^môn\s*thi:\s*/i, "").toUpperCase()}
+                  </p>
                   {activeMode === "EXAM" && headerConfig.show_sbd_box && (
                     <div className="mt-2 p-1.5 border border-dashed border-slate-300 rounded flex justify-between text-[10px] text-slate-600 font-medium">
                       <span>Họ và tên thí sinh: ................................................................</span>
