@@ -5297,6 +5297,84 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           {/* TAB 3: LAYOUT SLIDERS & KNOBS */}
           {sidebarTab === "knobs" && (
             <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs bg-slate-50/50">
+              {/* Quick Pedagogical Presets for Layout */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <h4 className="font-bold text-slate-800 flex items-center justify-between">
+                  <span>Mẫu Bố Cục Nhanh (Layout Presets)</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Tự động cấu hình</span>
+                </h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      id: "standard",
+                      title: "Chuẩn Bộ GD",
+                      desc: "12pt, lề 2cm, Times",
+                      color: "hover:border-indigo-500 hover:bg-indigo-50/50",
+                      knobs: {
+                        font_family: "times" as const,
+                        font_size_pt: 12,
+                        line_spread: 1.15,
+                        item_gap_pt: 8,
+                        margin_top_cm: 2.0,
+                        margin_bottom_cm: 2.0,
+                        margin_left_cm: 2.5,
+                        margin_right_cm: 2.0,
+                      },
+                    },
+                    {
+                      id: "compact",
+                      title: "Tiết Kiệm Giấy",
+                      desc: "11pt, lề hẹp 1.5cm",
+                      color: "hover:border-emerald-500 hover:bg-emerald-50/50",
+                      knobs: {
+                        font_family: "times" as const,
+                        font_size_pt: 11,
+                        line_spread: 1.05,
+                        item_gap_pt: 5,
+                        margin_top_cm: 1.5,
+                        margin_bottom_cm: 1.5,
+                        margin_left_cm: 1.8,
+                        margin_right_cm: 1.5,
+                      },
+                    },
+                    {
+                      id: "spacious",
+                      title: "Thoáng / Tự Luận",
+                      desc: "12pt, giãn 1.25x, lề rộng",
+                      color: "hover:border-amber-500 hover:bg-amber-50/50",
+                      knobs: {
+                        font_family: "times" as const,
+                        font_size_pt: 12,
+                        line_spread: 1.25,
+                        item_gap_pt: 12,
+                        margin_top_cm: 2.2,
+                        margin_bottom_cm: 2.2,
+                        margin_left_cm: 2.8,
+                        margin_right_cm: 2.0,
+                      },
+                    },
+                  ].map((preset) => (
+                    <button
+                      key={preset.id}
+                      onClick={() => {
+                        const updated = { ...layoutKnobs, ...preset.knobs };
+                        setLayoutKnobs(updated);
+                        compileLivePreview(items, updated, activeMode);
+                        showToast(`Đã áp dụng mẫu bố cục: ${preset.title}`, "info");
+                      }}
+                      className={`p-2.5 rounded-xl border border-slate-200 text-left transition-all ${preset.color} group`}
+                    >
+                      <span className="font-bold text-slate-800 text-[11px] block group-hover:text-indigo-700">
+                        {preset.title}
+                      </span>
+                      <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">
+                        {preset.desc}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <h4 className="font-bold text-slate-800 flex items-center justify-between">
                   <span>Thông số cỡ chữ & khoảng cách</span>
