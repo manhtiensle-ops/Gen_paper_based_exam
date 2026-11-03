@@ -5481,6 +5481,83 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
               </div>
 
+              {/* Watermark & Security Stamping Knobs */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-800 text-xs flex items-center space-x-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Dấu Bản Quyền / Chống Sao Chép</span>
+                  </h4>
+                  {headerConfig.watermark_text && headerConfig.watermark_text.trim() && (
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Đang bật
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <label className="text-slate-600 block mb-1 text-[11px]">Nội dung Watermark (chữ in chìm nghiêng 35°):</label>
+                  <div className="flex space-x-1.5">
+                    <input
+                      type="text"
+                      placeholder="VD: TRƯỜNG THCS CHUYÊN LÊ QUÝ ĐÔN"
+                      value={headerConfig.watermark_text || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setHeaderConfig((prev: any) => ({ ...prev, watermark_text: val }));
+                        setIsDirty(true);
+                      }}
+                      className="flex-1 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 text-slate-900 text-xs focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                    {headerConfig.watermark_text && (
+                      <button
+                        onClick={() => {
+                          setHeaderConfig((prev: any) => ({ ...prev, watermark_text: "" }));
+                          setIsDirty(true);
+                          showToast("Đã tắt dấu bản quyền Watermark!", "info");
+                        }}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-lg font-bold"
+                        title="Xóa watermark"
+                      >
+                        Tắt
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-[10px] text-slate-500">Mẫu nhanh:</span>
+                  <button
+                    onClick={() => {
+                      setHeaderConfig((prev: any) => ({ ...prev, watermark_text: "TRUNG TÂM GIÁO DỤC VINH PHÁT" }));
+                      setIsDirty(true);
+                      showToast("Đã chọn watermark: TRUNG TÂM GIÁO DỤC VINH PHÁT", "success");
+                    }}
+                    className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-md border border-slate-200 font-medium"
+                  >
+                    VINH PHÁT
+                  </button>
+                  <button
+                    onClick={() => {
+                      setHeaderConfig((prev: any) => ({ ...prev, watermark_text: "ĐỀ THI THỬ - LƯU HÀNH NỘI BỘ" }));
+                      setIsDirty(true);
+                      showToast("Đã chọn watermark: ĐỀ THI THỬ - LƯU HÀNH NỘI BỘ", "success");
+                    }}
+                    className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 rounded-md border border-slate-200 font-medium"
+                  >
+                    Nội Bộ
+                  </button>
+                  <button
+                    onClick={() => {
+                      setHeaderConfig((prev: any) => ({ ...prev, watermark_text: "BẢN GỐC - CHÍNH THỨC" }));
+                      setIsDirty(true);
+                      showToast("Đã chọn watermark: BẢN GỐC - CHÍNH THỨC", "success");
+                    }}
+                    className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-md border border-slate-200 font-medium"
+                  >
+                    Chính Thức
+                  </button>
+                </div>
+              </div>
+
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <h4 className="font-bold text-slate-800 flex items-center justify-between">
                   <span>Thông số cỡ chữ & khoảng cách</span>
