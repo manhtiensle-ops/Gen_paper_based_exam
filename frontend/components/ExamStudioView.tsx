@@ -141,6 +141,29 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isBatchActionModalOpen, setIsBatchActionModalOpen] = useState<boolean>(false);
   const [isExamPassportModalOpen, setIsExamPassportModalOpen] = useState<boolean>(false);
   const [isExportPackageModalOpen, setIsExportPackageModalOpen] = useState<boolean>(false);
+  const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState<boolean>(false);
+  const [newQuestionForm, setNewQuestionForm] = useState<{
+    content: string;
+    question_type: "mcq" | "short_answer" | "essay";
+    options: { key: string; text: string }[];
+    correct_key: string;
+    difficulty: "nb" | "th" | "vd" | "vdc";
+    points: number;
+    solution: string;
+  }>({
+    content: "",
+    question_type: "mcq",
+    options: [
+      { key: "A", text: "" },
+      { key: "B", text: "" },
+      { key: "C", text: "" },
+      { key: "D", text: "" },
+    ],
+    correct_key: "A",
+    difficulty: "nb",
+    points: 0.25,
+    solution: "",
+  });
   const [exportPackageOptions, setExportPackageOptions] = useState<{
     includeDocx: boolean;
     includePdf: boolean;
@@ -1624,6 +1647,58 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   };
 
   // Helper: Rescale and rebalance exam score distribution
+  const handleCreateCustomQuestion = () => {
+    if (!newQuestionForm.content.trim()) {
+      showToast("Vui lòng nhập nội dung câu hỏi!", "warning");
+      return;
+    }
+    const newId = `custom_${Date.now()}`;
+    const nextOrder = items.length + 1;
+    const newItem: any = {
+      id: newId,
+      exam_id: examId,
+      order_index: nextOrder,
+      display_label: `Câu ${nextOrder}`,
+      difficulty: newQuestionForm.difficulty,
+      points: Number(newQuestionForm.points) || 0.25,
+      max_points: Number(newQuestionForm.points) || 0.25,
+      problem_snapshot: {
+        id: newId,
+        content: newQuestionForm.content.trim(),
+        question_type: newQuestionForm.question_type,
+        options: newQuestionForm.question_type === "mcq" ? newQuestionForm.options : [],
+        correct_answer: newQuestionForm.correct_key,
+        difficulty: newQuestionForm.difficulty,
+        cognitive_level: newQuestionForm.difficulty,
+        solution: newQuestionForm.solution.trim(),
+      },
+      rubric_data: {
+        steps: newQuestionForm.solution.trim() ? [
+          { step_order: 1, description: newQuestionForm.solution.trim(), points: Number(newQuestionForm.points) || 0.25 }
+        ] : []
+      }
+    };
+    setItems([...items, newItem]);
+    setIsDirty(true);
+    setIsAddQuestionModalOpen(false);
+    // Reset form
+    setNewQuestionForm({
+      content: "",
+      question_type: "mcq",
+      options: [
+        { key: "A", text: "" },
+        { key: "B", text: "" },
+        { key: "C", text: "" },
+        { key: "D", text: "" },
+      ],
+      correct_key: "A",
+      difficulty: "nb",
+      points: 0.25,
+      solution: "",
+    });
+    showToast(`Đã thêm thành công Câu ${nextOrder} vào đề thi!`, "success");
+  };
+
   const handleApplyScoreRescaling = () => {
     if (items.length === 0) {
       showToast("Không có câu hỏi nào để quy đổi điểm!", "warning");
@@ -5180,14 +5255,24 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     )}
                   </div>
 
-                  {selectedItemIds.length > 0 && (
+                  <div className="flex items-center space-x-1.5">
+                    {selectedItemIds.length > 0 && (
+                      <button
+                        onClick={() => setIsBatchActionModalOpen(true)}
+                        className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-all shadow-xs flex items-center space-x-1"
+                      >
+                        <span>⚡ Tác vụ hàng loạt</span>
+                      </button>
+                    )}
                     <button
-                      onClick={() => setIsBatchActionModalOpen(true)}
-                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-all shadow-xs flex items-center space-x-1"
+                      onClick={() => setIsAddQuestionModalOpen(true)}
+                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold transition-all shadow-xs flex items-center space-x-1 text-[11px]"
+                      title="Thêm câu hỏi mới vào đề thi"
                     >
-                      <span>⚡ Tác vụ hàng loạt</span>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Thêm Câu</span>
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
 
@@ -6826,6 +6911,147 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center space-x-1"
               >
                 <span>Áp dụng quy đổi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Custom Question Modal */}
+      {isAddQuestionModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-800 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Plus className="w-5 h-5 text-emerald-200" />
+                <h3 className="font-bold text-sm">Thêm Câu Hỏi Mới Vào Đề Thi</h3>
+              </div>
+              <button
+                onClick={() => setIsAddQuestionModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-white/20 text-white/80 hover:text-white transition-all text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 overflow-y-auto space-y-4 text-xs">
+              {/* Question Type & Difficulty & Points */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Dạng câu hỏi</label>
+                  <select
+                    value={newQuestionForm.question_type}
+                    onChange={(e: any) => setNewQuestionForm({ ...newQuestionForm, question_type: e.target.value })}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white font-medium focus:ring-emerald-500 focus:border-emerald-500 text-xs"
+                  >
+                    <option value="mcq">Trắc nghiệm 4 lựa chọn</option>
+                    <option value="short_answer">Điền khuyết / Trả lời ngắn</option>
+                    <option value="essay">Tự luận / Trình bày giải</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Cấp độ nhận thức</label>
+                  <select
+                    value={newQuestionForm.difficulty}
+                    onChange={(e: any) => setNewQuestionForm({ ...newQuestionForm, difficulty: e.target.value })}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white font-medium focus:ring-emerald-500 focus:border-emerald-500 text-xs"
+                  >
+                    <option value="nb">Nhận biết (NB)</option>
+                    <option value="th">Thông hiểu (TH)</option>
+                    <option value="vd">Vận dụng (VD)</option>
+                    <option value="vdc">Vận dụng cao (VDC)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Điểm số</label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0.05"
+                    max="10"
+                    value={newQuestionForm.points}
+                    onChange={(e) => setNewQuestionForm({ ...newQuestionForm, points: parseFloat(e.target.value) || 0.25 })}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-medium focus:ring-emerald-500 focus:border-emerald-500 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Question Content */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Nội dung câu hỏi (hỗ trợ LaTeX $...$ và $$...$$)</label>
+                <textarea
+                  rows={4}
+                  value={newQuestionForm.content}
+                  onChange={(e) => setNewQuestionForm({ ...newQuestionForm, content: e.target.value })}
+                  placeholder="Ví dụ: Cho hàm số $y = f(x)$ liên tục trên $\mathbb{R}$..."
+                  className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-mono text-xs"
+                />
+              </div>
+
+              {/* MCQ Options */}
+              {newQuestionForm.question_type === "mcq" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700">Các phương án lựa chọn (A, B, C, D)</label>
+                    <span className="text-[11px] text-slate-500">Tích chọn đáp án đúng</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {newQuestionForm.options.map((opt, idx) => (
+                      <div key={opt.key} className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          name="correct_answer_choice"
+                          checked={newQuestionForm.correct_key === opt.key}
+                          onChange={() => setNewQuestionForm({ ...newQuestionForm, correct_key: opt.key })}
+                          className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span className="font-bold text-xs text-slate-700 w-4">{opt.key}.</span>
+                        <input
+                          type="text"
+                          value={opt.text}
+                          onChange={(e) => {
+                            const newOpts = [...newQuestionForm.options];
+                            newOpts[idx].text = e.target.value;
+                            setNewQuestionForm({ ...newQuestionForm, options: newOpts });
+                          }}
+                          placeholder={`Nội dung phương án ${opt.key}`}
+                          className="flex-1 px-2.5 py-1.5 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-xs font-mono"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Solution / Explanation */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Lời giải chi tiết / Hướng dẫn chấm (Tùy chọn)</label>
+                <textarea
+                  rows={2}
+                  value={newQuestionForm.solution}
+                  onChange={(e) => setNewQuestionForm({ ...newQuestionForm, solution: e.target.value })}
+                  placeholder="Hướng dẫn giải chi tiết phục vụ barem đáp án..."
+                  className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end items-center space-x-2">
+              <button
+                onClick={() => setIsAddQuestionModalOpen(false)}
+                className="px-4 py-2 border border-slate-300 hover:bg-white text-slate-700 font-bold rounded-xl text-xs transition-all"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleCreateCustomQuestion}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-200 flex items-center space-x-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Thêm Vào Đề Thi</span>
               </button>
             </div>
           </div>
