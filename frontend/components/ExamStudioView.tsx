@@ -80,7 +80,8 @@ import {
   ScrollText,
   Package,
   FileCode,
-  BookOpen
+  BookOpen,
+  Timer
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -188,6 +189,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isEditorAnswerKeyOpen, setIsEditorAnswerKeyOpen] = useState<boolean>(false);
   const [isScaleScoreModalOpen, setIsScaleScoreModalOpen] = useState<boolean>(false);
   const [isPrintConfigModalOpen, setIsPrintConfigModalOpen] = useState<boolean>(false);
+  const [isTimingBudgetModalOpen, setIsTimingBudgetModalOpen] = useState<boolean>(false);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [isBatchActionModalOpen, setIsBatchActionModalOpen] = useState<boolean>(false);
   const [isExamPassportModalOpen, setIsExamPassportModalOpen] = useState<boolean>(false);
@@ -3189,6 +3191,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             >
               <Printer className="w-3.5 h-3.5 text-emerald-600" />
               <span>In Ngay</span>
+            </button>
+            <button
+              onClick={() => setIsTimingBudgetModalOpen(true)}
+              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200"
+              title="Phân bổ ngân sách thời gian làm bài & Đánh giá sư phạm (Timing Budget)"
+            >
+              <Timer className="w-3.5 h-3.5 text-indigo-600" />
             </button>
             <button
               onClick={() => setIsFormulaCheatSheetOpen(true)}
@@ -6606,6 +6615,159 @@ export default function ExamStudioView({ examId, onBack }: Props) {
           </div>
         </div>
       )}
+
+      {/* Timing Budget Estimation Modal */}
+      {isTimingBudgetModalOpen && (() => {
+        const totalDuration = parseInt(String(headerConfig.duration_minutes || "90"), 10) || 90;
+        
+        // Calculate recommended time per question based on points and cognitive level
+        const timingDetails = items.map((q, idx) => {
+          const pts = parseFloat(String(q.points || "1")) || 1;
+          const level = (q.level || "vd").toLowerCase();
+          
+          // Weight factors per cognitive level
+          let weight = 1.0;
+          if (level === "nb") weight = 0.6;
+          else if (level === "th") weight = 0.9;
+          else if (level === "vd") weight = 1.3;
+          else if (level === "vdc") weight = 1.8;
+          
+          const rawScore = pts * weight;
+          return {
+            id: q.id,
+            index: idx + 1,
+            title: q.title || `Câu ${idx + 1}`,
+            points: pts,
+            level: level.toUpperCase(),
+            rawScore
+          };
+        });
+        
+        const sumRawScore = timingDetails.reduce((sum, d) => sum + d.rawScore, 0) || 1;
+        // Allocate buffer (10% of total time for review and checking answers)
+        const reviewBufferMinutes = Math.max(5, Math.round(totalDuration * 0.1));
+        const availableExamMinutes = Math.max(10, totalDuration - reviewBufferMinutes);
+        
+        const allocatedDetails = timingDetails.map(d => {
+          const estimatedMinutes = Math.max(1, Math.round((d.rawScore / sumRawScore) * availableExamMinutes));
+          return {
+            ...d,
+            estimatedMinutes
+          };
+        });
+        
+        const totalEstimatedTime = allocatedDetails.reduce((sum, d) => sum + d.estimatedMinutes, 0) + reviewBufferMinutes;
+        
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 px-6 py-4 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center space-x-2.5">
+                  <Timer className="w-5 h-5 text-indigo-200" />
+                  <div>
+                    <h3 className="font-bold text-base tracking-wide flex items-center space-x-2">
+                      <span>Phân Bổ Ngân Sách Thời Gian Làm Bài</span>
+                      <span className="text-[10px] bg-indigo-500/40 text-indigo-100 px-2 py-0.5 rounded-full font-normal">
+                        VINH PHÁT Studio
+                      </span>
+                    </h3>
+                    <p className="text-xs text-indigo-100/80">
+                      Tính toán thời lượng làm bài tối ưu theo điểm số & độ khó sư phạm (Tổng: {totalDuration} phút)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsTimingBudgetModalOpen(false)}
+                  className="text-indigo-200 hover:text-white p-1 rounded-lg hover:bg-white/10 text-sm font-bold transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* KPI Summary Cards */}
+              <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-3 gap-3 text-center">
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[11px] font-medium text-slate-500 block">Tổng thời lượng đề</span>
+                  <span className="text-lg font-bold text-indigo-700 font-mono">{totalDuration} phút</span>
+                </div>
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[11px] font-medium text-slate-500 block">Thời gian giải đề</span>
+                  <span className="text-lg font-bold text-slate-800 font-mono">{availableExamMinutes} phút</span>
+                </div>
+                <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-2xs">
+                  <span className="text-[11px] font-medium text-emerald-600 block">Dự phòng soát bài</span>
+                  <span className="text-lg font-bold text-emerald-700 font-mono">{reviewBufferMinutes} phút</span>
+                </div>
+              </div>
+
+              {/* Table list */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                <div className="text-xs font-semibold text-slate-600 mb-1 flex items-center justify-between">
+                  <span>Khuyến nghị thời gian cho từng câu hỏi:</span>
+                  <span className="text-[10px] text-slate-400">Trọng số: NB (0.6x) • TH (0.9x) • VD (1.3x) • VDC (1.8x)</span>
+                </div>
+
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                  {allocatedDetails.map((q) => {
+                    let badgeColor = "bg-slate-100 text-slate-700";
+                    if (q.level === "NB") badgeColor = "bg-emerald-50 text-emerald-700 border border-emerald-200";
+                    else if (q.level === "TH") badgeColor = "bg-blue-50 text-blue-700 border border-blue-200";
+                    else if (q.level === "VD") badgeColor = "bg-amber-50 text-amber-700 border border-amber-200";
+                    else if (q.level === "VDC") badgeColor = "bg-rose-50 text-rose-700 border border-rose-200";
+
+                    const percentageOfTotal = Math.round((q.estimatedMinutes / totalDuration) * 100);
+
+                    return (
+                      <div key={q.id} className="p-3 flex items-center justify-between hover:bg-slate-50/80 transition-colors">
+                        <div className="flex items-center space-x-3">
+                          <span className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center font-mono">
+                            {q.index}
+                          </span>
+                          <div>
+                            <span className="font-semibold text-xs text-slate-800 block line-clamp-1">{q.title}</span>
+                            <div className="flex items-center space-x-2 mt-0.5">
+                              <span className="text-[10px] text-slate-500 font-mono">{q.points} điểm</span>
+                              <span className={`text-[9px] px-1.5 py-0.2 rounded font-medium ${badgeColor}`}>
+                                {q.level}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="flex items-center space-x-1.5 justify-end">
+                            <span className="font-bold text-sm text-indigo-900 font-mono">
+                              ~{q.estimatedMinutes}
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-medium">phút</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            ({percentageOfTotal}% quỹ thời gian)
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+                <span className="text-xs text-slate-500 italic">
+                  💡 Giúp giáo viên in barem có hướng dẫn phân bổ thời gian cho học sinh làm bài thi hiệu quả.
+                </span>
+                <button
+                  onClick={() => setIsTimingBudgetModalOpen(false)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                >
+                  Đóng Hộp Thoại
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* LaTeX Math Formula Cheat Sheet Modal */}
       {isFormulaCheatSheetOpen && (
