@@ -81,7 +81,9 @@ import {
   Package,
   FileCode,
   BookOpen,
-  Timer
+  Timer,
+  Sigma,
+  Wrench
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -2110,6 +2112,23 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [rulerTopY, setRulerTopY] = useState<number>(150);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
 
+  // Studio Dropdown Menus & Collapsible Math Bar state
+  const [activeStudioDropdown, setActiveStudioDropdown] = useState<"exam_tools" | "export_print" | "editor_tools" | "editor_settings" | null>(null);
+  const [isQuickMathBarVisible, setIsQuickMathBarVisible] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest("[data-studio-dropdown]")) {
+        setActiveStudioDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   // Auto-fit A4 page width to viewport
   const handleAutoFitWidth = () => {
     const el = canvasAreaRef.current || canvasScrollRef.current;
@@ -3133,7 +3152,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
               }
             }}
             disabled={compiling}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50"
+            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center space-x-1.5 shadow-sm disabled:opacity-50"
             title="Biên dịch lại (< 0.3s) (Ctrl+S)"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${compiling ? "animate-spin" : ""}`} />
@@ -3141,98 +3160,235 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             <kbd className="text-[9px] bg-emerald-800 text-emerald-200 px-1 py-0.5 rounded font-mono">⌘S</kbd>
           </button>
 
-          {/* Export Buttons */}
-          <div className="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+          {/* Consolidated Menu 1: Công cụ Khảo thí */}
+          <div className="relative" data-studio-dropdown>
             <button
-              onClick={() => setIsVariantsModalOpen(true)}
-              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-purple-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
-              title="Tạo nhiều mã đề thi hoán vị câu hỏi & đáp án (101, 102, 103, 104...)"
-            >
-              <Shuffle className="w-3.5 h-3.5 text-purple-600" />
-              <span>Trộn Đề</span>
-            </button>
-            <button
-              onClick={() => setIsExportPackageModalOpen(true)}
-              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-indigo-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
-              title="Xuất trọn gói hồ sơ đề thi (Word OMML, PDF in ấn, Đáp án & Bàn giao)"
-            >
-              <Package className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Gói Khảo Thí</span>
-            </button>
-            <button
-              onClick={() => handleDownload("docx")}
-              disabled={isExporting !== null}
-              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center space-x-1 ${
-                isExporting === "docx"
-                  ? "bg-blue-100 text-blue-700 cursor-wait"
-                  : "text-slate-700 hover:bg-white hover:text-indigo-700"
+              onClick={() => setActiveStudioDropdown(prev => prev === "exam_tools" ? null : "exam_tools")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border shadow-sm ${
+                activeStudioDropdown === "exam_tools"
+                  ? "bg-purple-50 border-purple-300 text-purple-700 ring-2 ring-purple-100"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-purple-700"
               }`}
-              title="Xuất file Word OMML chuẩn Bộ GD&ĐT (không vỡ bảng, sửa công thức tự nhiên)"
+              title="Mở menu các công cụ quản lý đề thi và nghiệp vụ khảo thí"
             >
-              <Download className={`w-3.5 h-3.5 text-blue-600 ${isExporting === "docx" ? "animate-bounce" : ""}`} />
-              <span>{isExporting === "docx" ? "Đang xuất..." : "Word"}</span>
+              <Wrench className="w-3.5 h-3.5 text-purple-600" />
+              <span>Công cụ Đề</span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${activeStudioDropdown === "exam_tools" ? "rotate-180" : ""}`} />
             </button>
-            <button
-              onClick={() => handleDownload("pdf")}
-              disabled={isExporting !== null}
-              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center space-x-1 ${
-                isExporting === "pdf"
-                  ? "bg-rose-100 text-rose-700 cursor-wait"
-                  : "text-slate-700 hover:bg-white hover:text-rose-700"
-              }`}
-              title="Tải bản in PDF TeX Live gốc"
-            >
-              <Download className={`w-3.5 h-3.5 text-rose-600 ${isExporting === "pdf" ? "animate-bounce" : ""}`} />
-              <span>{isExporting === "pdf" ? "Đang tạo..." : "PDF In"}</span>
-            </button>
-            <button
-              onClick={() => setIsPrintConfigModalOpen(true)}
-              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-emerald-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
-              title="Cấu hình thiết lập in A4 sư phạm & In trực tiếp (Ctrl + P)"
-            >
-              <Printer className="w-3.5 h-3.5 text-emerald-600" />
-              <span>In Ngay</span>
-            </button>
-            <button
-              onClick={() => setIsTimingBudgetModalOpen(true)}
-              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200"
-              title="Phân bổ ngân sách thời gian làm bài & Đánh giá sư phạm (Timing Budget)"
-            >
-              <Timer className="w-3.5 h-3.5 text-indigo-600" />
-            </button>
-            <button
-              onClick={() => setIsExamDensityMetricsModalOpen(true)}
-              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200"
-              title="Chỉ số mật độ văn bản & Thống kê khối lượng đề thi (Exam Density Metrics)"
-            >
-              <Hash className="w-3.5 h-3.5 text-indigo-600" />
-            </button>
-            <button
-              onClick={() => setIsFormulaCheatSheetOpen(true)}
-              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200"
-              title="Sổ tay tra cứu công thức LaTeX Toán học (Cheat Sheet)"
-            >
-              <FileCode className="w-3.5 h-3.5 text-amber-600" />
-            </button>
-            <button
-              onClick={() => setShowShortcutsModal(true)}
-              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200"
-              title="Hướng dẫn phím tắt bàn phím (Bấm ?)"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={toggleFullscreen}
-              className={`p-1.5 rounded-lg transition-colors border ${
-                isFullscreen
-                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                  : "text-slate-500 hover:text-indigo-600 hover:bg-white border-transparent hover:border-slate-200"
-              }`}
-              title={isFullscreen ? "Thoát toàn màn hình (Esc / F11)" : "Toàn màn hình Studio (F11)"}
-            >
-              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            </button>
+
+            {activeStudioDropdown === "exam_tools" && (
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Nghiệp Vụ Khảo Thí
+                </div>
+                <button
+                  onClick={() => {
+                    setIsVariantsModalOpen(true);
+                    setActiveStudioDropdown(null);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-purple-50 hover:text-purple-700 flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center space-x-2">
+                    <Shuffle className="w-4 h-4 text-purple-600" />
+                    <span className="font-medium">Trộn Đề Hoán Vị</span>
+                  </span>
+                  <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-mono">101..104</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsScaleScoreModalOpen(true);
+                    setActiveStudioDropdown(null);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center space-x-2">
+                    <Scale className="w-4 h-4 text-indigo-600" />
+                    <span className="font-medium">Cân Đối / Đổi Thang Điểm</span>
+                  </span>
+                  <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">20đ / 10đ</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsTimingBudgetModalOpen(true);
+                    setActiveStudioDropdown(null);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center space-x-2">
+                    <Timer className="w-4 h-4 text-indigo-600" />
+                    <span className="font-medium">Ngân Sách Thời Gian Thi</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">Pacing</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsExamDensityMetricsModalOpen(true);
+                    setActiveStudioDropdown(null);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-700 flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center space-x-2">
+                    <Hash className="w-4 h-4 text-teal-600" />
+                    <span className="font-medium">Chỉ Số Mật Độ Văn Bản</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">Metrics</span>
+                </button>
+
+                <div className="h-px bg-slate-100 my-1.5" />
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Tiện Ích & Bảo Mật
+                </div>
+                <button
+                  onClick={() => {
+                    setIsFormulaCheatSheetOpen(true);
+                    setActiveStudioDropdown(null);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-700 flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center space-x-2">
+                    <FileCode className="w-4 h-4 text-amber-600" />
+                    <span className="font-medium">Sổ Tay Công Thức LaTeX</span>
+                  </span>
+                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded">CheatSheet</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsExamPassportModalOpen(true);
+                    setActiveStudioDropdown(null);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center space-x-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span className="font-medium">Hộ Chiếu & Bản Quyền</span>
+                  </span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded">VINH PHÁT</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowShortcutsModal(true);
+                    setActiveStudioDropdown(null);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center space-x-2">
+                    <HelpCircle className="w-4 h-4 text-slate-500" />
+                    <span className="font-medium">Phím Tắt Bàn Phím</span>
+                  </span>
+                  <kbd className="text-[10px] bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-slate-500 font-mono">?</kbd>
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* Consolidated Menu 2: Xuất bản & Tải về */}
+          <div className="relative" data-studio-dropdown>
+            <button
+              onClick={() => setActiveStudioDropdown(prev => prev === "export_print" ? null : "export_print")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 border shadow-sm ${
+                activeStudioDropdown === "export_print"
+                  ? "bg-indigo-50 border-indigo-300 text-indigo-700 ring-2 ring-indigo-100"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-indigo-700"
+              }`}
+              title="Xuất file Word, PDF hoặc cấu hình in ấn A4"
+            >
+              <Download className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Xuất Bản & In</span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${activeStudioDropdown === "export_print" ? "rotate-180" : ""}`} />
+            </button>
+
+            {activeStudioDropdown === "export_print" && (
+              <div className="absolute right-0 mt-2 w-68 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Tải Xuống Định Dạng
+                </div>
+                <button
+                  onClick={() => {
+                    handleDownload("docx");
+                    setActiveStudioDropdown(null);
+                  }}
+                  disabled={isExporting !== null}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-between transition-colors disabled:opacity-50"
+                >
+                  <span className="flex items-center space-x-2">
+                    <Download className={`w-4 h-4 text-blue-600 ${isExporting === "docx" ? "animate-bounce" : ""}`} />
+                    <div>
+                      <div className="font-semibold text-slate-800">Word Chuẩn OMML (.docx)</div>
+                      <div className="text-[10px] text-slate-400">Không vỡ bảng, sửa công thức tự nhiên</div>
+                    </div>
+                  </span>
+                  <span className="text-[10px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded font-bold shrink-0">BGD</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handleDownload("pdf");
+                    setActiveStudioDropdown(null);
+                  }}
+                  disabled={isExporting !== null}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-rose-50 hover:text-rose-700 flex items-center justify-between transition-colors disabled:opacity-50"
+                >
+                  <span className="flex items-center space-x-2">
+                    <Download className={`w-4 h-4 text-rose-600 ${isExporting === "pdf" ? "animate-bounce" : ""}`} />
+                    <div>
+                      <div className="font-semibold text-slate-800">Bản In PDF Gốc (.pdf)</div>
+                      <div className="text-[10px] text-slate-400">TeX Live Vector sắc nét chuẩn A4</div>
+                    </div>
+                  </span>
+                  <span className="text-[10px] bg-rose-100 text-rose-700 px-1 py-0.5 rounded font-bold shrink-0">PDF</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsExportPackageModalOpen(true);
+                    setActiveStudioDropdown(null);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-purple-50 hover:text-purple-700 flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center space-x-2">
+                    <Package className="w-4 h-4 text-purple-600" />
+                    <div>
+                      <div className="font-semibold text-slate-800">Gói Hồ Sơ Khảo Thí</div>
+                      <div className="text-[10px] text-slate-400">Trọn bộ Word, PDF, Đáp án & Barem</div>
+                    </div>
+                  </span>
+                  <span className="text-[10px] bg-purple-100 text-purple-700 px-1 py-0.5 rounded font-bold shrink-0">ZIP</span>
+                </button>
+
+                <div className="h-px bg-slate-100 my-1.5" />
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Trực Tiếp Tại Phòng Thi
+                </div>
+                <button
+                  onClick={() => {
+                    setIsPrintConfigModalOpen(true);
+                    setActiveStudioDropdown(null);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center space-x-2">
+                    <Printer className="w-4 h-4 text-emerald-600" />
+                    <div>
+                      <div className="font-semibold text-slate-800">Cấu Hình In & In Ngay A4</div>
+                      <div className="text-[10px] text-slate-400">Phân trang 2 mặt, số báo danh & mã đề</div>
+                    </div>
+                  </span>
+                  <kbd className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-mono">⌘P</kbd>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Fullscreen Button */}
+          <button
+            onClick={toggleFullscreen}
+            className={`p-1.5 rounded-xl transition-colors border shadow-xs ${
+              isFullscreen
+                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                : "bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:bg-slate-50"
+            }`}
+            title={isFullscreen ? "Thoát toàn màn hình (Esc / F11)" : "Toàn màn hình Studio (F11)"}
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </header>
 
@@ -3447,7 +3603,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     {isPreambleFolded ? (
                       <>
                         <ChevronRight className="w-3 h-3" />
-                        <span>Mở cấu hình TeX (Preamble)</span>
+                        <span>Mở Preamble</span>
                       </>
                     ) : (
                       <>
@@ -3455,6 +3611,23 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                         <span>Thu gọn Preamble</span>
                       </>
                     )}
+                  </button>
+
+                  <span className="text-slate-300">|</span>
+
+                  {/* Quick Math Toolbar Collapsible Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickMathBarVisible(prev => !prev)}
+                    className={`text-[11px] font-semibold flex items-center space-x-1 px-2 py-0.5 rounded transition-all border ${
+                      isQuickMathBarVisible
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                        : "bg-white hover:bg-slate-100 text-slate-700 border-slate-200"
+                    }`}
+                    title="Bật/Tắt thanh ký hiệu toán nhanh chèn vào văn bản"
+                  >
+                    <Sigma className="w-3.5 h-3.5" />
+                    <span>Toán nhanh</span>
                   </button>
                 </div>
 
@@ -3477,7 +3650,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                         ? "hover:bg-slate-100 text-purple-700 border-purple-200 bg-purple-50/50"
                         : "hover:bg-slate-100 text-slate-600 border-slate-200"
                     }`}
-                    title="Kiểm định chất lượng xuất bản & Sư phạm BGD 2025 (Ctrl+Alt+P / Preflight QA)"
+                    title="Kiểm định chất lượng xuất bản & Sư phạm BGD 2025 (Preflight QA)"
                   >
                     <CheckSquare className="w-3 h-3 text-purple-600" />
                     <span>Nghiệm thu: {examPreflightAudit.score}%</span>
@@ -3490,418 +3663,50 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     />
                   </button>
 
-                  {/* Editor Bookmarks Quick Manager Button */}
-                  <div className="flex items-center rounded border border-slate-200 bg-slate-100 p-0.5 space-x-0.5">
+                  {/* Bookmark Quick Control */}
+                  <div className="flex items-center space-x-0.5 bg-slate-100 rounded border border-slate-200 p-0.5">
                     <button
+                      type="button"
                       onClick={handleToggleCurrentLineBookmark}
-                      className="flex items-center space-x-1 px-1.5 py-0.5 rounded hover:bg-slate-200 text-slate-700 font-medium transition-colors"
-                      title="Đánh dấu / Gỡ Bookmark tại dòng hiện tại (Ctrl+B / Cmd+B)"
+                      className={`p-0.5 rounded transition-colors ${
+                        editorBookmarks.length > 0
+                          ? "text-sky-600 hover:bg-white"
+                          : "text-slate-400 hover:text-slate-600 hover:bg-white"
+                      }`}
+                      title={`Đánh dấu dòng hiện tại (${editorBookmarks.length} bookmark) (Ctrl+B)`}
                     >
-                      {editorBookmarks.length > 0 ? (
-                        <BookmarkCheck className="w-3 h-3 text-sky-600" />
-                      ) : (
-                        <BookmarkPlus className="w-3 h-3 text-slate-500" />
-                      )}
-                      <span>Bookmark ({editorBookmarks.length})</span>
+                      {editorBookmarks.length > 0 ? <BookmarkCheck className="w-3.5 h-3.5" /> : <BookmarkPlus className="w-3.5 h-3.5" />}
                     </button>
                     {editorBookmarks.length > 0 && (
                       <>
                         <button
+                          type="button"
                           onClick={() => handleJumpToBookmark("prev")}
-                          className="px-1 py-0.5 rounded hover:bg-slate-200 text-slate-600 text-[10px] font-bold"
-                          title="Nhảy đến Bookmark trước đó (Shift+F2)"
+                          className="px-1 text-[10px] text-slate-500 hover:text-sky-700 hover:bg-white rounded font-mono"
+                          title="Đến bookmark trước (Shift+F2)"
                         >
                           ▲
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleJumpToBookmark("next")}
-                          className="px-1 py-0.5 rounded hover:bg-slate-200 text-slate-600 text-[10px] font-bold"
-                          title="Nhảy đến Bookmark kế tiếp (F2)"
+                          className="px-1 text-[10px] text-slate-500 hover:text-sky-700 hover:bg-white rounded font-mono"
+                          title="Đến bookmark tiếp theo (F2)"
                         >
                           ▼
                         </button>
-                        <button
-                          onClick={() => {
-                            setIsEditorBookmarksOpen((prev) => !prev);
-                            if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
-                            if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
-                            if (isEditorStatsOpen) setIsEditorStatsOpen(false);
-                            if (isEditorLinterOpen) setIsEditorLinterOpen(false);
-                            if (isEditorSymbolsOpen) setIsEditorSymbolsOpen(false);
-                          }}
-                          className={`px-1 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                            isEditorBookmarksOpen
-                              ? "bg-sky-200 text-sky-900 font-bold"
-                              : "hover:bg-slate-200 text-slate-600"
-                          }`}
-                          title="Danh sách tất cả Bookmark"
-                        >
-                          Xem
-                        </button>
                       </>
                     )}
                   </div>
 
-                  {/* Quick Mathematical Symbols & Greek Operators Palette Button */}
-                  <button
-                    onClick={() => {
-                      setIsEditorSymbolsOpen((prev) => !prev);
-                      if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
-                      if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
-                      if (isEditorStatsOpen) setIsEditorStatsOpen(false);
-                      if (isEditorLinterOpen) setIsEditorLinterOpen(false);
-                      if (isEditorWrapEnvOpen) setIsEditorWrapEnvOpen(false);
-                    }}
-                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
-                      isEditorSymbolsOpen
-                        ? "border-indigo-300 bg-indigo-50 text-indigo-800 font-semibold"
-                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium"
-                    }`}
-                    title="Bảng ký tự toán học & ký hiệu Hy Lạp chèn nhanh (Ctrl+K / Cmd+K)"
-                  >
-                    <Binary className="w-3 h-3 text-indigo-600" />
-                    <span>Ký hiệu toán (Ω)</span>
-                  </button>
-
-                  {/* Quick LaTeX Environment Wrapper Button */}
-                  <button
-                    onClick={() => {
-                      setIsEditorWrapEnvOpen((prev) => !prev);
-                      if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
-                      if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
-                      if (isEditorStatsOpen) setIsEditorStatsOpen(false);
-                      if (isEditorLinterOpen) setIsEditorLinterOpen(false);
-                      if (isEditorSymbolsOpen) setIsEditorSymbolsOpen(false);
-                      if (isEditorBookmarksOpen) setIsEditorBookmarksOpen(false);
-                      if (isEditorPreflightOpen) setIsEditorPreflightOpen(false);
-                      if (isEditorHistoryDrawerOpen) setIsEditorHistoryDrawerOpen(false);
-                      if (isEditorAnswerKeyOpen) setIsEditorAnswerKeyOpen(false);
-                    }}
-                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
-                      isEditorWrapEnvOpen
-                        ? "border-emerald-400 bg-emerald-50 text-emerald-800 font-semibold"
-                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium"
-                    }`}
-                    title="Bọc vùng chọn trong môi trường LaTeX (\\begin{env}...\\end{env}) (Ctrl+Shift+E)"
-                  >
-                    <Boxes className="w-3 h-3 text-emerald-600" />
-                    <span>Bọc môi trường (Env)</span>
-                  </button>
-
-                  {/* Answer Key Matrix Inspector Button */}
-                  <button
-                    onClick={() => {
-                      setIsEditorAnswerKeyOpen((prev) => !prev);
-                      if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
-                      if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
-                      if (isEditorStatsOpen) setIsEditorStatsOpen(false);
-                      if (isEditorLinterOpen) setIsEditorLinterOpen(false);
-                      if (isEditorSymbolsOpen) setIsEditorSymbolsOpen(false);
-                      if (isEditorBookmarksOpen) setIsEditorBookmarksOpen(false);
-                      if (isEditorPreflightOpen) setIsEditorPreflightOpen(false);
-                      if (isEditorHistoryDrawerOpen) setIsEditorHistoryDrawerOpen(false);
-                      if (isEditorWrapEnvOpen) setIsEditorWrapEnvOpen(false);
-                    }}
-                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
-                      isEditorAnswerKeyOpen
-                        ? "border-teal-400 bg-teal-50 text-teal-800 font-semibold"
-                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium"
-                    }`}
-                    title="Trích xuất ma trận đáp án đúng và lời giải câu hỏi (Ctrl+Shift+A)"
-                  >
-                    <CheckCircle className="w-3 h-3 text-teal-600" />
-                    <span>Ma trận đáp án</span>
-                  </button>
-
-                  {/* Real-time LaTeX Syntax & Environment Linter Drawer Button */}
-                  <button
-                    onClick={() => {
-                      setIsEditorLinterOpen((prev) => !prev);
-                      if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
-                      if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
-                      if (isEditorStatsOpen) setIsEditorStatsOpen(false);
-                    }}
-                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
-                      isEditorLinterOpen
-                        ? "border-rose-300 bg-rose-50 text-rose-800 font-semibold"
-                        : examLatexDiagnostics.length > 0
-                        ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-medium"
-                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700"
-                    }`}
-                    title="Kiểm tra cú pháp & tính toàn vẹn môi trường LaTeX thời gian thực (Ctrl+L / Cmd+L)"
-                  >
-                    {examLatexDiagnostics.length > 0 ? (
-                      <>
-                        <AlertTriangle className="w-3 h-3 text-amber-600 animate-pulse" />
-                        <span>Cú pháp ({examLatexDiagnostics.length} cảnh báo)</span>
-                      </>
-                    ) : (
-                      <>
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        <span>Cú pháp: Chuẩn</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Pedagogical Document Analytics & Stats Drawer Button */}
-                  <button
-                    onClick={() => {
-                      setIsEditorStatsOpen((prev) => !prev);
-                      if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
-                      if (isEditorSnippetsOpen) setIsEditorSnippetsOpen(false);
-                    }}
-                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
-                      isEditorStatsOpen
-                        ? "border-teal-300 bg-teal-50 text-teal-800 font-semibold"
-                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700"
-                    }`}
-                    title="Phân tích định lượng sư phạm: số câu, trắc nghiệm, đồ thị TikZ, thời gian làm bài (Ctrl+I / Cmd+I)"
-                  >
-                    <BarChart3 className="w-3 h-3 text-teal-600" />
-                    <span>Thống kê ({examPedagogicalStats.totalQuestions} câu)</span>
-                  </button>
-
-                  {/* Exam Snippets & Template Blocks Drawer Button */}
-                  <button
-                    onClick={() => {
-                      setIsEditorSnippetsOpen((prev) => !prev);
-                      if (isEditorOutlineOpen) setIsEditorOutlineOpen(false);
-                    }}
-                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
-                      isEditorSnippetsOpen
-                        ? "border-amber-300 bg-amber-50 text-amber-800 font-semibold"
-                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700"
-                    }`}
-                    title="Mở thư viện mẫu đề thi khảo thí & khối LaTeX sư phạm (Ctrl+M / Cmd+M)"
-                  >
-                    <LayoutTemplate className="w-3 h-3 text-amber-600" />
-                    <span>Mẫu đề ({PEDAGOGICAL_SNIPPET_TEMPLATES.length})</span>
-                  </button>
-
-                  {/* Outline Tree Navigator */}
-                  <button
-                    onClick={() => setIsEditorOutlineOpen((prev) => !prev)}
-                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
-                      isEditorOutlineOpen
-                        ? "border-sky-300 bg-sky-50 text-sky-800 font-semibold"
-                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700"
-                    }`}
-                    title="Cây cấu trúc đề thi & định hướng nhanh các phần/câu hỏi (Outline Navigator)"
-                  >
-                    <ListTree className="w-3 h-3 text-sky-600" />
-                    <span>Mục lục ({extractLatexOutline().length})</span>
-                  </button>
-
-                  {/* Compare Diff */}
-                  <button
-                    onClick={() => setIsEditorDiffOpen(true)}
-                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
-                      isDirty
-                        ? "border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold animate-pulse"
-                        : "border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700"
-                    }`}
-                    title="So sánh thay đổi với bản lưu/biên dịch gần nhất (Diff Inspector)"
-                  >
-                    <GitCompare className="w-3 h-3 text-indigo-600" />
-                    <span>So sánh {isDirty ? "(Có sửa)" : ""}</span>
-                  </button>
-
-                  {/* Toggle Comment */}
-                  <button
-                    onClick={handleToggleCommentInEditor}
-                    className="flex items-center space-x-1 px-2 py-0.5 rounded border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-                    title="Bật / Tắt chú thích dòng % (Ctrl+/)"
-                  >
-                    <MessageSquareCode className="w-3 h-3 text-emerald-600" />
-                    <span>Chú thích</span>
-                  </button>
-
-                  {/* Format LaTeX Code */}
-                  <button
-                    onClick={handleFormatLatexCode}
-                    className="flex items-center space-x-1 px-2 py-0.5 rounded border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-                    title="Định dạng và căn lề thụt đầu dòng chuẩn mã LaTeX (Ctrl+Alt+F)"
-                  >
-                    <Sparkles className="w-3 h-3 text-amber-500" />
-                    <span>Định dạng</span>
-                  </button>
-
-                  {/* Duplicate Line Down */}
-                  <button
-                    onClick={() => handleDuplicateLinesInEditor("down")}
-                    className="flex items-center space-x-1 px-2 py-0.5 rounded border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-                    title="Nhân đôi dòng hiện tại hoặc khối đang chọn xuống dưới (Shift+Alt+Down)"
-                  >
-                    <CopyPlus className="w-3 h-3 text-purple-600" />
-                    <span>Nhân đôi</span>
-                  </button>
-
-                  {/* Move Line Up / Down */}
+                  {/* Undo / Redo / History */}
                   <div className="flex items-center space-x-0.5 bg-slate-100 rounded border border-slate-200 p-0.5">
-                    <button
-                      onClick={() => handleMoveLinesInEditor("up")}
-                      className="p-0.5 hover:bg-white rounded text-slate-700 transition-colors"
-                      title="Dịch dòng lên trên (Alt+Up)"
-                    >
-                      <ArrowUp className="w-3 h-3 text-slate-600" />
-                    </button>
-                    <button
-                      onClick={() => handleMoveLinesInEditor("down")}
-                      className="p-0.5 hover:bg-white rounded text-slate-700 transition-colors"
-                      title="Dịch dòng xuống dưới (Alt+Down)"
-                    >
-                      <ArrowDown className="w-3 h-3 text-slate-600" />
-                    </button>
-                  </div>
-
-                  {/* Go to Line Toggle */}
-                  <button
-                    onClick={() => {
-                      setIsEditorGotoLineOpen(!isEditorGotoLineOpen);
-                      setIsEditorSearchOpen(false);
-                    }}
-                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
-                      isEditorGotoLineOpen
-                        ? "bg-indigo-100 border-indigo-300 text-indigo-700 font-semibold"
-                        : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700"
-                    }`}
-                    title="Nhảy đến dòng chỉ định trong mã nguồn LaTeX (Ctrl+G)"
-                  >
-                    <Hash className="w-3 h-3 text-slate-500" />
-                    <span>Dòng (Ctrl+G)</span>
-                  </button>
-
-                  {/* Find in Code Toggle */}
-                  <button
-                    onClick={() => setIsEditorSearchOpen(!isEditorSearchOpen)}
-                    className={`flex items-center space-x-1 px-2 py-0.5 rounded border transition-colors ${
-                      isEditorSearchOpen
-                        ? "bg-indigo-100 border-indigo-300 text-indigo-700 font-semibold"
-                        : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700"
-                    }`}
-                    title="Tìm kiếm từ khóa trong mã nguồn LaTeX (Ctrl+F)"
-                  >
-                    <Search className="w-3 h-3 text-slate-500" />
-                    <span>Tìm (Ctrl+F)</span>
-                  </button>
-
-                  <button
-                    onClick={async () => {
-                      if (!rawLatexCode) return;
-                      try {
-                        await navigator.clipboard.writeText(rawLatexCode);
-                      } catch (_) {
-                        // Fallback textarea copy for headless / restricted environments
-                        const ta = document.createElement("textarea");
-                        ta.value = rawLatexCode;
-                        ta.style.position = "fixed";
-                        ta.style.opacity = "0";
-                        document.body.appendChild(ta);
-                        ta.focus();
-                        ta.select();
-                        document.execCommand("copy");
-                        document.body.removeChild(ta);
-                      }
-                      setCopiedTex(true);
-                      showToast("Đã sao chép toàn bộ mã nguồn LaTeX vào bộ nhớ tạm!", "info");
-                      setTimeout(() => setCopiedTex(false), 2000);
-                    }}
-                    className="flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
-                    title="Sao chép toàn bộ mã nguồn LaTeX vào bộ nhớ tạm"
-                  >
-                    {copiedTex ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        <span className="text-emerald-700 font-semibold">Đã chép</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3 text-slate-500" />
-                        <span>Sao chép TeX</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!rawLatexCode) return;
-                      const blob = new Blob([rawLatexCode], { type: "text/plain;charset=utf-8" });
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = `${headerConfig.exam_name || "de_thi"}.tex`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      URL.revokeObjectURL(url);
-                      showToast("Đã tải tệp .tex mã nguồn thành công!", "success");
-                    }}
-                    className="flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
-                    title="Tải tập tin nguồn .tex về máy để mở bằng Overleaf / TeXStudio"
-                  >
-                    <Download className="w-3 h-3 text-slate-500" />
-                    <span>Tải .tex</span>
-                  </button>
-
-                  <span className="text-slate-300">|</span>
-
-                  {/* Font size adjustments */}
-                  <div className="flex items-center bg-slate-100 border border-slate-200 rounded px-1 space-x-1" title="Cỡ chữ soạn thảo LaTeX">
-                    <button
-                      onClick={() => setEditorFontSize((prev) => Math.max(10, prev - 1))}
-                      className="px-1 text-slate-600 hover:text-slate-900 font-bold hover:bg-white rounded"
-                    >
-                      -
-                    </button>
-                    <span className="font-mono text-[10px] text-slate-700 font-bold min-w-[24px] text-center">{editorFontSize}pt</span>
-                    <button
-                      onClick={() => setEditorFontSize((prev) => Math.min(20, prev + 1))}
-                      className="px-1 text-slate-600 hover:text-slate-900 font-bold hover:bg-white rounded"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  {/* Word wrap toggle */}
-                  <button
-                    onClick={() => setIsWordWrap(!isWordWrap)}
-                    className={`px-2 py-0.5 rounded border transition-colors text-[10px] font-medium ${
-                      isWordWrap
-                        ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-semibold"
-                        : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
-                    }`}
-                    title="Bật/Tắt ngắt dòng tự động (Word Wrap)"
-                  >
-                    {isWordWrap ? "Wrap: Bật" : "Wrap: Tắt"}
-                  </button>
-
-                  {/* Auto Close Bracket Pairs toggle */}
-                  <button
-                    onClick={() => {
-                      setIsAutoClosePairs(!isAutoClosePairs);
-                      showToast(!isAutoClosePairs ? "Đã bật tự động đóng ngoặc và bọc cặp ký tự" : "Đã tắt tự động đóng ngoặc", "info");
-                    }}
-                    className={`px-2 py-0.5 rounded border transition-colors text-[10px] font-medium ${
-                      isAutoClosePairs
-                        ? "bg-emerald-50 border-emerald-200 text-emerald-700 font-semibold"
-                        : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
-                    }`}
-                    title="Tự động đóng cặp ngoặc {}, [], (), $$, và bọc khối chọn khi gõ ký tự mở"
-                  >
-                    {isAutoClosePairs ? "Tự đóng ngoặc: Bật" : "Tự đóng ngoặc: Tắt"}
-                  </button>
-
-                  <span className="text-slate-300">|</span>
-
-                  {/* Undo / Redo Buttons */}
-                  <div className="flex items-center space-x-1">
                     <button
                       type="button"
                       onClick={handleEditorUndo}
                       disabled={historyIndex <= 0}
-                      className={`p-1 rounded border transition-colors ${
-                        historyIndex > 0
-                          ? "bg-white hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-indigo-600 shadow-2xs"
-                          : "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
+                      className={`p-0.5 rounded transition-colors ${
+                        historyIndex > 0 ? "hover:bg-white text-slate-700" : "text-slate-300 cursor-not-allowed"
                       }`}
                       title="Hoàn tác (Ctrl+Z)"
                     >
@@ -3911,16 +3716,13 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                       type="button"
                       onClick={handleEditorRedo}
                       disabled={historyIndex >= latexHistory.length - 1}
-                      className={`p-1 rounded border transition-colors ${
-                        historyIndex < latexHistory.length - 1
-                          ? "bg-white hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-indigo-600 shadow-2xs"
-                          : "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
+                      className={`p-0.5 rounded transition-colors ${
+                        historyIndex < latexHistory.length - 1 ? "hover:bg-white text-slate-700" : "text-slate-300 cursor-not-allowed"
                       }`}
-                      title="Làm lại (Ctrl+Y / Ctrl+Shift+Z)"
+                      title="Làm lại (Ctrl+Y)"
                     >
                       <Redo2 className="w-3.5 h-3.5" />
                     </button>
-                    {/* History Snapshots Drawer Toggle */}
                     <button
                       type="button"
                       onClick={() => {
@@ -3934,20 +3736,340 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                           setIsEditorPreflightOpen(false);
                         }
                       }}
-                      className={`px-1.5 py-0.5 rounded border text-[10px] font-medium flex items-center space-x-1 transition-colors ${
+                      className={`px-1 py-0.5 rounded text-[10px] font-medium flex items-center space-x-1 transition-colors ${
                         isEditorHistoryDrawerOpen
-                          ? "bg-amber-100 border-amber-300 text-amber-800 font-bold"
-                          : "bg-white hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-amber-700 shadow-2xs"
+                          ? "bg-amber-100 text-amber-800 font-bold"
+                          : "hover:bg-white text-slate-600 hover:text-amber-700"
                       }`}
-                      title="Xem toàn bộ lịch sử hoàn tác & các mốc snapshot (Ctrl+Shift+H)"
+                      title="Xem lịch sử hoàn tác & snapshots (Ctrl+Shift+H)"
                     >
                       <History className="w-3 h-3 text-amber-600" />
-                      <span>Lịch sử ({latexHistory.length > 0 ? historyIndex + 1 : 0}/{latexHistory.length})</span>
+                      <span>{latexHistory.length > 0 ? historyIndex + 1 : 0}/{latexHistory.length}</span>
                     </button>
                   </div>
 
+                  {/* Consolidated Menu: Tiện ích Soạn thảo */}
+                  <div className="relative" data-studio-dropdown>
+                    <button
+                      type="button"
+                      onClick={() => setActiveStudioDropdown(prev => prev === "editor_tools" ? null : "editor_tools")}
+                      className={`px-2 py-0.5 rounded border text-[11px] font-semibold flex items-center space-x-1 transition-all ${
+                        activeStudioDropdown === "editor_tools"
+                          ? "bg-indigo-50 border-indigo-300 text-indigo-700 ring-2 ring-indigo-100"
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-indigo-700 shadow-2xs"
+                      }`}
+                      title="Mở các công cụ soạn thảo LaTeX, Linter, Outline, Tìm kiếm..."
+                    >
+                      <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Tiện ích</span>
+                      <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${activeStudioDropdown === "editor_tools" ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {activeStudioDropdown === "editor_tools" && (
+                      <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                        <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Điều Hướng & Tìm Kiếm
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsEditorSearchOpen(!isEditorSearchOpen);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <Search className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Tìm & Thay thế</span>
+                          </span>
+                          <kbd className="text-[10px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded font-mono">Ctrl+F</kbd>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditorGotoLineOpen(!isEditorGotoLineOpen);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <Hash className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Đi đến dòng...</span>
+                          </span>
+                          <kbd className="text-[10px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded font-mono">Ctrl+G</kbd>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditorOutlineOpen(prev => !prev);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <ListTree className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Cây mục lục đề (Outline)</span>
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditorBookmarksOpen(prev => !prev);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <Bookmark className="w-3.5 h-3.5 text-sky-600" />
+                            <span>Danh sách Bookmarks</span>
+                          </span>
+                          <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.2 rounded font-bold font-mono">
+                            {editorBookmarks.length}
+                          </span>
+                        </button>
+
+                        <div className="h-px bg-slate-100 my-1" />
+                        <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Kiểm Tra & Phân Tích
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsEditorLinterOpen(prev => !prev);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Kiểm tra cú pháp (Linter)</span>
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${examLatexDiagnostics.length > 0 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
+                            {examLatexDiagnostics.length > 0 ? `${examLatexDiagnostics.length} lỗi` : "0 lỗi"}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditorStatsOpen(prev => !prev);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <BarChart3 className="w-3.5 h-3.5 text-teal-600" />
+                            <span>Thống kê từ & câu hỏi</span>
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditorAnswerKeyOpen(prev => !prev);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Ma trận đáp án & Lời giải</span>
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditorDiffOpen(true);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <GitCompare className="w-3.5 h-3.5 text-purple-600" />
+                            <span>So sánh thay đổi (Diff)</span>
+                          </span>
+                        </button>
+
+                        <div className="h-px bg-slate-100 my-1" />
+                        <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Mẫu & Thao Tác Soạn Thảo
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsEditorSnippetsOpen(prev => !prev);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <LayoutTemplate className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Thư viện mẫu câu hỏi (Snippets)</span>
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditorWrapEnvOpen(prev => !prev);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <Boxes className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Bọc môi trường \begin...\end</span>
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditorSymbolsOpen(prev => !prev);
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <span className="font-serif font-bold text-xs text-indigo-600 w-3.5 text-center">Ω</span>
+                            <span>Bảng ký hiệu toán học</span>
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleFormatLatexCode();
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                            <span>Định dạng chuẩn LaTeX</span>
+                          </span>
+                          <kbd className="text-[10px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded font-mono">Ctrl+Alt+F</kbd>
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleToggleCommentInEditor();
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <span className="font-mono font-bold text-xs text-slate-500 w-3.5 text-center">%</span>
+                            <span>Bật/Tắt chú thích dòng</span>
+                          </span>
+                          <kbd className="text-[10px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded font-mono">Ctrl+/</kbd>
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleDuplicateLinesInEditor("down");
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <Copy className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Nhân đôi dòng xuống</span>
+                          </span>
+                          <kbd className="text-[10px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded font-mono">⇧⌥↓</kbd>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Consolidated Menu: Cài đặt & Tùy chọn Editor */}
+                  <div className="relative" data-studio-dropdown>
+                    <button
+                      type="button"
+                      onClick={() => setActiveStudioDropdown(prev => prev === "editor_settings" ? null : "editor_settings")}
+                      className={`px-2 py-0.5 rounded border text-[11px] font-semibold flex items-center space-x-1 transition-all ${
+                        activeStudioDropdown === "editor_settings"
+                          ? "bg-slate-200 border-slate-300 text-slate-800 ring-2 ring-slate-100"
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs"
+                      }`}
+                      title="Cỡ chữ, ngắt dòng, auto-pairs, copy mã TeX..."
+                    >
+                      <Settings className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Tùy chọn</span>
+                      <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${activeStudioDropdown === "editor_settings" ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {activeStudioDropdown === "editor_settings" && (
+                      <div className="absolute right-0 mt-1.5 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                        <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Giao Diện Soạn Thảo
+                        </div>
+                        <div className="px-3 py-1.5 flex items-center justify-between text-slate-700">
+                          <span>Cỡ chữ</span>
+                          <div className="flex items-center space-x-1 bg-slate-100 rounded border border-slate-200 px-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditorFontSize(Math.max(10, editorFontSize - 1))}
+                              className="text-slate-500 hover:text-slate-900 px-1 py-0.5 font-bold"
+                            >
+                              -
+                            </button>
+                            <span className="font-mono text-[10px] px-1 font-semibold">{editorFontSize}pt</span>
+                            <button
+                              type="button"
+                              onClick={() => setEditorFontSize(Math.min(20, editorFontSize + 1))}
+                              className="text-slate-500 hover:text-slate-900 px-1 py-0.5 font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setIsWordWrap(!isWordWrap)}
+                          className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span>Tự động xuống dòng</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isWordWrap ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500"}`}>
+                            {isWordWrap ? "Bật" : "Tắt"}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => setIsAutoClosePairs(!isAutoClosePairs)}
+                          className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span>Tự đóng ngoặc () {} []</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isAutoClosePairs ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500"}`}>
+                            {isAutoClosePairs ? "Bật" : "Tắt"}
+                          </span>
+                        </button>
+
+                        <div className="h-px bg-slate-100 my-1" />
+                        <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Tập Tin Mã Nguồn
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(rawLatexCode);
+                            showToast("Đã sao chép mã nguồn LaTeX!", "success");
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <Copy className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Sao chép toàn bộ TeX</span>
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            const blob = new Blob([rawLatexCode], { type: "text/plain;charset=utf-8" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${(headerConfig.exam_name || "de_thi").replace(/[/\\?%*:|"<>]/g, "_")}.tex`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            showToast("Đã tải tệp .tex thành công!", "success");
+                            setActiveStudioDropdown(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center space-x-2">
+                            <Download className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Tải tệp .tex về máy</span>
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <span className="text-slate-300">|</span>
-                  <span>Nhấn <kbd className="bg-slate-200 text-slate-700 px-1 py-0.5 rounded font-mono">Ctrl+S</kbd> để biên dịch</span>
+                  <span className="text-[11px] text-slate-400 hidden xl:inline">
+                    <kbd className="bg-slate-200 text-slate-700 px-1 py-0.5 rounded font-mono">⌘S</kbd> để dựng
+                  </span>
                 </div>
               </div>
 
@@ -5035,7 +5157,8 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 </div>
               )}
 
-              {/* Fast Math Snippets & Formulas Quick Toolbar */}
+              {/* Fast Math Snippets & Formulas Quick Toolbar (Collapsible) */}
+              {isQuickMathBarVisible && (
               <div className="bg-slate-100/90 border-b border-slate-200 px-3 py-1.5 flex items-center space-x-1.5 overflow-x-auto text-xs shrink-0 select-none scrollbar-thin">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1 flex items-center space-x-1">
                   <span>Toán nhanh:</span>
@@ -5201,6 +5324,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                   $$...$$
                 </button>
               </div>
+              )}
 
               {/* Code Editor Body */}
               <div className="flex-1 flex overflow-hidden">
