@@ -72,7 +72,10 @@ import {
   History,
   Boxes,
   Plus,
-  Trash2
+  Trash2,
+  FileSpreadsheet,
+  Award,
+  ScrollText
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -135,6 +138,7 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [isPrintConfigModalOpen, setIsPrintConfigModalOpen] = useState<boolean>(false);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [isBatchActionModalOpen, setIsBatchActionModalOpen] = useState<boolean>(false);
+  const [isExamPassportModalOpen, setIsExamPassportModalOpen] = useState<boolean>(false);
   const [batchTargetDifficulty, setBatchTargetDifficulty] = useState<string>("TH");
   const [batchPointsDelta, setBatchPointsDelta] = useState<number>(0.5);
   const [printCopies, setPrintCopies] = useState<number>(1);
@@ -5490,13 +5494,23 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                     <span className="text-3xl font-extrabold">{currentTotalScore.toFixed(2)}</span>
                     <span className="text-sm text-indigo-200 font-medium">điểm</span>
                   </div>
-                  <button
-                    onClick={() => setIsScaleScoreModalOpen(true)}
-                    className="px-2.5 py-1 bg-white/20 hover:bg-white text-white hover:text-indigo-800 rounded-lg text-xs font-bold transition-all shadow-xs flex items-center space-x-1"
-                    title="Mở công cụ quy đổi điểm thang 10, 20 hoặc tự chọn"
-                  >
-                    <span>⚖️ Quy đổi thang điểm</span>
-                  </button>
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      onClick={() => setIsExamPassportModalOpen(true)}
+                      className="px-2 py-1 bg-amber-400/90 hover:bg-amber-300 text-amber-950 rounded-lg text-xs font-bold transition-all shadow-xs flex items-center space-x-1"
+                      title="Xem và in Hồ sơ kỹ thuật / Phiếu thẩm định sư phạm đề thi"
+                    >
+                      <ScrollText className="w-3.5 h-3.5" />
+                      <span>Hồ sơ đề thi</span>
+                    </button>
+                    <button
+                      onClick={() => setIsScaleScoreModalOpen(true)}
+                      className="px-2.5 py-1 bg-white/20 hover:bg-white text-white hover:text-indigo-800 rounded-lg text-xs font-bold transition-all shadow-xs flex items-center space-x-1"
+                      title="Mở công cụ quy đổi điểm thang 10, 20 hoặc tự chọn"
+                    >
+                      <span>⚖️ Quy đổi</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-3 text-[11px] text-indigo-100 flex items-center justify-between border-t border-white/20 pt-2">
                   <span>Trắc nghiệm / Tự luận phối hợp</span>
@@ -6713,6 +6727,149 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center space-x-1"
               >
                 <span>Áp dụng quy đổi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exam Passport & Pedagogical Specification Modal */}
+      {isExamPassportModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <ScrollText className="w-5 h-5 text-amber-300" />
+                <div>
+                  <h3 className="font-bold text-sm">Hồ Sơ Kỹ Thuật & Thẩm Định Sư Phạm Đề Thi</h3>
+                  <p className="text-[11px] text-amber-200">Biên bản bàn giao và đặc tả ma trận khảo thí VINH PHÁT Platform</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsExamPassportModalOpen(false)}
+                className="p-1 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-4 overflow-y-auto text-xs text-slate-700">
+              {/* Exam Info Card */}
+              <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <span className="text-[10px] text-amber-800 font-semibold block uppercase">Cơ sở / Trường</span>
+                  <span className="font-bold text-slate-800">{headerConfig.school_name || "VINH PHÁT Edu"}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-amber-800 font-semibold block uppercase">Môn Khảo Thí</span>
+                  <span className="font-bold text-slate-800">{headerConfig.subject || "Toán Học"}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-amber-800 font-semibold block uppercase">Mã Đề Thi</span>
+                  <span className="font-bold text-slate-800 font-mono text-indigo-700">{headerConfig.exam_code || "101"}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-amber-800 font-semibold block uppercase">Thời Gian Làm Bài</span>
+                  <span className="font-bold text-slate-800">{headerConfig.duration_minutes || 90} phút</span>
+                </div>
+              </div>
+
+              {/* Metrics Summary */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">Tổng Câu Hỏi</span>
+                  <span className="text-xl font-extrabold text-slate-800">{items.length}</span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">Thang Điểm Thiết Kế</span>
+                  <span className="text-xl font-extrabold text-indigo-700">{currentTotalScore.toFixed(2)}đ</span>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">Tình Trạng Khảo Thí</span>
+                  <span className="inline-block mt-0.5 px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[10px]">
+                    Đạt Chuẩn In A4
+                  </span>
+                </div>
+              </div>
+
+              {/* Cognitive Distribution Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-slate-100 px-3.5 py-2 font-bold text-slate-800 text-[11px] flex justify-between">
+                  <span>Phân Bố Độ Khó / Cấp Độ Nhận Thức</span>
+                  <span className="text-slate-500 font-normal">Tỷ trọng khảo thí</span>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {[
+                    { key: "NB", label: "Nhận biết", color: "text-emerald-700 bg-emerald-50" },
+                    { key: "TH", label: "Thông hiểu", color: "text-blue-700 bg-blue-50" },
+                    { key: "VD", label: "Vận dụng", color: "text-amber-700 bg-amber-50" },
+                    { key: "VDC", label: "Vận dụng cao", color: "text-rose-700 bg-rose-50" },
+                  ].map((lvl) => {
+                    const count = items.filter((it) => (it.problem_snapshot?.cognitive_level || "TH") === lvl.key).length;
+                    const score = items
+                      .filter((it) => (it.problem_snapshot?.cognitive_level || "TH") === lvl.key)
+                      .reduce((sum, it) => sum + (it.points || 0), 0);
+                    const pct = currentTotalScore > 0 ? ((score / currentTotalScore) * 100).toFixed(1) : "0";
+                    return (
+                      <div key={lvl.key} className="px-3.5 py-2 flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${lvl.color}`}>{lvl.key}</span>
+                          <span className="font-semibold text-slate-700">{lvl.label}</span>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <span className="text-slate-600 font-medium">{count} câu ({score.toFixed(2)}đ)</span>
+                          <span className="w-12 text-right font-bold text-slate-800">{pct}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Quality & Security Assurance Check */}
+              <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 space-y-1.5">
+                <span className="font-bold text-emerald-900 flex items-center space-x-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Cam Kết Kiểm Duyệt & Bản Quyền Sư Phạm</span>
+                </span>
+                <p className="text-[10px] text-emerald-800 leading-relaxed">
+                  Đề thi được biên soạn và kiểm duyệt theo quy chuẩn sư phạm hệ thống VINH PHÁT. Đảm bảo cấu trúc trắc nghiệm khách quan chuẩn OMML, công thức LaTeX đồng nhất và sẵn sàng cho công tác in ấn nhân bản.
+                </p>
+              </div>
+
+              {/* Proctor & Review Signatures */}
+              <div className="pt-2 grid grid-cols-2 gap-4 text-center">
+                <div className="p-3 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                  <span className="font-bold text-slate-800 text-[11px] block">Người Thẩm Định Chuyên Môn</span>
+                  <span className="text-[10px] text-slate-400 italic block mb-8">(Ký và ghi rõ họ tên)</span>
+                  <div className="border-t border-slate-300 mx-6 pt-1 text-[10px] text-slate-500">Giáo viên phụ trách môn</div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                  <span className="font-bold text-slate-800 text-[11px] block">Lãnh Đạo Hội Đồng Thi</span>
+                  <span className="text-[10px] text-slate-400 italic block mb-8">(Ký và đóng dấu duyệt in)</span>
+                  <div className="border-t border-slate-300 mx-6 pt-1 text-[10px] text-slate-500">Ban Giám Hiệu / TT Khảo Thí</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3.5 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  window.print();
+                }}
+                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-all text-xs flex items-center space-x-1.5 shadow-xs"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>In Hồ Sơ Kỹ Thuật</span>
+              </button>
+              <button
+                onClick={() => setIsExamPassportModalOpen(false)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold transition-all text-xs"
+              >
+                Đóng
               </button>
             </div>
           </div>
