@@ -75,7 +75,8 @@ import {
   Trash2,
   FileSpreadsheet,
   Award,
-  ScrollText
+  ScrollText,
+  Package
 } from "lucide-react";
 
 import ExamSettingsModal, { LayoutKnobs } from "./ExamSettingsModal";
@@ -139,6 +140,18 @@ export default function ExamStudioView({ examId, onBack }: Props) {
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [isBatchActionModalOpen, setIsBatchActionModalOpen] = useState<boolean>(false);
   const [isExamPassportModalOpen, setIsExamPassportModalOpen] = useState<boolean>(false);
+  const [isExportPackageModalOpen, setIsExportPackageModalOpen] = useState<boolean>(false);
+  const [exportPackageOptions, setExportPackageOptions] = useState<{
+    includeDocx: boolean;
+    includePdf: boolean;
+    includeAnswerKeyDocx: boolean;
+    includePassportDocx: boolean;
+  }>({
+    includeDocx: true,
+    includePdf: true,
+    includeAnswerKeyDocx: true,
+    includePassportDocx: true,
+  });
   const [batchTargetDifficulty, setBatchTargetDifficulty] = useState<string>("TH");
   const [batchPointsDelta, setBatchPointsDelta] = useState<number>(0.5);
   const [printCopies, setPrintCopies] = useState<number>(1);
@@ -3002,6 +3015,14 @@ export default function ExamStudioView({ examId, onBack }: Props) {
             >
               <Shuffle className="w-3.5 h-3.5 text-purple-600" />
               <span>Trộn Đề</span>
+            </button>
+            <button
+              onClick={() => setIsExportPackageModalOpen(true)}
+              className="px-2.5 py-1 text-slate-700 hover:bg-white hover:text-indigo-700 text-xs font-bold rounded-lg transition-all flex items-center space-x-1"
+              title="Xuất trọn gói hồ sơ đề thi (Word OMML, PDF in ấn, Đáp án & Bàn giao)"
+            >
+              <Package className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Gói Khảo Thí</span>
             </button>
             <button
               onClick={() => handleDownload("docx")}
@@ -6805,6 +6826,132 @@ export default function ExamStudioView({ examId, onBack }: Props) {
                 className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center space-x-1"
               >
                 <span>Áp dụng quy đổi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exam Export Package Modal */}
+      {isExportPackageModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-700 via-indigo-800 to-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <Package className="w-5 h-5 text-indigo-300" />
+                <div>
+                  <h3 className="font-bold text-sm">Xuất Bản Trọn Gói Hồ Sơ Khảo Thí (Exam Package)</h3>
+                  <p className="text-[11px] text-indigo-200">Bộ tài liệu hoàn chỉnh cho Hội đồng thi & Giáo viên</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsExportPackageModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-white/20 text-white/80 hover:text-white transition-all text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4 text-xs">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-slate-800 block text-xs">{headerConfig.exam_name || "Đề Thi Khảo Thí"}</span>
+                  <span className="text-[11px] text-slate-500">Mã đề: {headerConfig.exam_code || "101"} • {items.length} câu • {currentTotalScore.toFixed(2)} điểm</span>
+                </div>
+                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-bold text-[10px]">VINH PHÁT Edu</span>
+              </div>
+
+              <div className="space-y-2.5">
+                <label className="font-bold text-slate-700 block">Chọn các tài liệu thành phần cần xuất bản:</label>
+                
+                <label className="flex items-start space-x-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50/80 cursor-pointer transition-all">
+                  <input
+                    type="checkbox"
+                    checked={exportPackageOptions.includeDocx}
+                    onChange={(e) => setExportPackageOptions({ ...exportPackageOptions, includeDocx: e.target.checked })}
+                    className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <span className="font-bold text-slate-800 block">1. Đề thi Word (.docx) chuẩn OMML</span>
+                    <span className="text-slate-500 text-[11px]">Công thức toán tự nhiên Office Math, không vỡ bảng, sẵn sàng chỉnh sửa.</span>
+                  </div>
+                </label>
+
+                <label className="flex items-start space-x-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50/80 cursor-pointer transition-all">
+                  <input
+                    type="checkbox"
+                    checked={exportPackageOptions.includePdf}
+                    onChange={(e) => setExportPackageOptions({ ...exportPackageOptions, includePdf: e.target.checked })}
+                    className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <span className="font-bold text-slate-800 block">2. Đề thi PDF in ấn chuẩn A4 (TeX Live)</span>
+                    <span className="text-slate-500 text-[11px]">Bản in độ phân giải cao, ngắt trang sư phạm, không phụ thuộc font máy in.</span>
+                  </div>
+                </label>
+
+                <label className="flex items-start space-x-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50/80 cursor-pointer transition-all">
+                  <input
+                    type="checkbox"
+                    checked={exportPackageOptions.includeAnswerKeyDocx}
+                    onChange={(e) => setExportPackageOptions({ ...exportPackageOptions, includeAnswerKeyDocx: e.target.checked })}
+                    className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <span className="font-bold text-slate-800 block">3. Bảng đáp án & Lời giải chi tiết (Hướng dẫn chấm)</span>
+                    <span className="text-slate-500 text-[11px]">Bảng ma trận phương án đúng và thang điểm từng bước cho giám khảo.</span>
+                  </div>
+                </label>
+
+                <label className="flex items-start space-x-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50/80 cursor-pointer transition-all">
+                  <input
+                    type="checkbox"
+                    checked={exportPackageOptions.includePassportDocx}
+                    onChange={(e) => setExportPackageOptions({ ...exportPackageOptions, includePassportDocx: e.target.checked })}
+                    className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <span className="font-bold text-slate-800 block">4. Hồ sơ kỹ thuật & Phiếu thẩm định sư phạm</span>
+                    <span className="text-slate-500 text-[11px]">Biên bản bàn giao chữ ký giám thị và ma trận phân bố 4 cấp độ nhận thức.</span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] flex items-center space-x-2">
+                <span>💡</span>
+                <span>Hệ thống tự động đóng gói các tệp được chọn và kích hoạt tải lần lượt về máy của thầy cô.</span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end items-center space-x-2">
+              <button
+                onClick={() => setIsExportPackageModalOpen(false)}
+                className="px-4 py-2 border border-slate-300 hover:bg-white text-slate-700 font-bold rounded-xl text-xs transition-all"
+              >
+                Đóng
+              </button>
+              <button
+                onClick={async () => {
+                  setIsExportPackageModalOpen(false);
+                  showToast("Đang chuẩn bị gói khảo thí...", "info");
+                  if (exportPackageOptions.includeDocx) {
+                    await handleDownload("docx");
+                  }
+                  if (exportPackageOptions.includePdf) {
+                    await handleDownload("pdf");
+                  }
+                  if (exportPackageOptions.includePassportDocx) {
+                    setIsExamPassportModalOpen(true);
+                  }
+                }}
+                disabled={isExporting !== null || (!exportPackageOptions.includeDocx && !exportPackageOptions.includePdf && !exportPackageOptions.includeAnswerKeyDocx && !exportPackageOptions.includePassportDocx)}
+                className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-indigo-200 flex items-center space-x-1.5 disabled:opacity-50"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Bắt Đầu Xuất Trọn Gói</span>
               </button>
             </div>
           </div>
