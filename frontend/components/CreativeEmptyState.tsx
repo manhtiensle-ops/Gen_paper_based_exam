@@ -171,15 +171,15 @@ export default function CreativeEmptyState({ onSelectPreset, isGenerating }: Pro
       </div>
 
       {/* 3. Footer Guidance Notice */}
-      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs text-slate-500 shrink-0">
-        <div className="flex items-center space-x-2">
-          <Layers className="w-4 h-4 text-indigo-500 shrink-0" />
-          <span>
+      <div className="p-3.5 rounded-xl bg-[#FAF6F0] border border-[#E8DFD5] flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 text-xs text-[#716B64] shrink-0">
+        <div className="flex items-center space-x-2 min-w-0">
+          <Layers className="w-4 h-4 text-[#3F6212] shrink-0" />
+          <span className="truncate sm:whitespace-normal">
             Hoặc tùy chỉnh tiêu đề và chọn khung ma trận riêng ở bảng điều khiển bên trái, sau đó nhấn nút{" "}
-            <strong className="text-slate-800">Tổ hợp Đề thi Mới</strong>.
+            <strong className="text-[#2D2926]">Tổ hợp Đề thi Mới</strong>.
           </span>
         </div>
-        <span className="text-[11px] font-mono text-indigo-600 font-bold shrink-0 hidden sm:inline">
+        <span className="text-[11px] font-mono text-[#3F6212] font-bold shrink-0 bg-[#EBF3ED] px-2 py-0.5 rounded border border-[#BBF7D0]">
           100% Zero-Hallucination
         </span>
       </div>
