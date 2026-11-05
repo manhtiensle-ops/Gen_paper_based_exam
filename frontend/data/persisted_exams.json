@@ -1,0 +1,94 @@
+{
+  "c729ee5b-97ba-4004-b7af-bd2114ed80b3": {
+    "id": "c729ee5b-97ba-4004-b7af-bd2114ed80b3",
+    "title": "Đề Thi Khảo Sát Đội Tuyển HSG Toán 9 Cấp Tỉnh",
+    "blueprint_id": "09934e65-349f-4f32-bb24-a9a1c7821113",
+    "folder_id": null,
+    "slots_state": [
+      {
+        "slot_index": 1,
+        "section_type": "ESSAY",
+        "main_topic": "ALGEBRA",
+        "difficulty": "MEDIUM",
+        "points": 4,
+        "question": {
+          "id": "q-slot-1",
+          "content_latex": "Giải phương trình: $(x + 3)(x - 3) = \\sqrt{x + 9}$.",
+          "solution_latex": "Điều kiện $x \\ge -9$.",
+          "default_points": 4,
+          "main_topic": "ALGEBRA",
+          "difficulty": "MEDIUM"
+        }
+      },
+      {
+        "slot_index": 2,
+        "section_type": "ESSAY",
+        "main_topic": "ALGEBRA",
+        "difficulty": "HARD",
+        "points": 4,
+        "question": {
+          "id": "q-slot-2",
+          "content_latex": "Giải hệ phương trình: $\\begin{cases} x^2 + y^2 = 5 \\\\ xy + x + y = 5 \\end{cases}$.",
+          "solution_latex": "Đặt $S = x + y, P = xy$.",
+          "default_points": 4,
+          "main_topic": "ALGEBRA",
+          "difficulty": "HARD"
+        }
+      },
+      {
+        "slot_index": 3,
+        "section_type": "ESSAY",
+        "main_topic": "NUMBER_THEORY",
+        "difficulty": "VERY_HARD",
+        "points": 3,
+        "question": {
+          "id": "q-slot-3",
+          "content_latex": "Tìm tất cả các cặp số nguyên dương $(n, k)$ sao cho $n^4 + 4^{2k+1}$ là số nguyên tố.",
+          "solution_latex": "Đồng nhất thức Sophie Germain...",
+          "default_points": 3,
+          "main_topic": "NUMBER_THEORY",
+          "difficulty": "VERY_HARD"
+        }
+      },
+      {
+        "slot_index": 4,
+        "section_type": "ESSAY",
+        "main_topic": "GEOMETRY",
+        "difficulty": "HARD",
+        "points": 6,
+        "question": {
+          "id": "q-slot-4",
+          "content_latex": "Cho tam giác nhọn $ABC$ nội tiếp đường tròn $(O)$ có $AB < AC$. Các đường cao $BE, CF$ cắt nhau tại trực tâm $H$. Gọi $M$ là trung điểm $BC$...",
+          "solution_latex": "Xét các tứ giác nội tiếp...",
+          "default_points": 6,
+          "main_topic": "GEOMETRY",
+          "difficulty": "HARD",
+          "has_figure": true
+        }
+      },
+      {
+        "slot_index": 5,
+        "section_type": "ESSAY",
+        "main_topic": "INEQUALITY",
+        "difficulty": "VERY_HARD",
+        "points": 3,
+        "question": {
+          "id": "q-slot-5",
+          "content_latex": "Cho các số thực dương $a, b, c$ thỏa mãn $ab + bc + ca = 3$. Tìm giá trị nhỏ nhất của $P = \\frac{1}{a^2 + 1} + \\frac{1}{b^2 + 1} + \\frac{1}{c^2 + 1}$.",
+          "solution_latex": "Cauchy ngược dấu...",
+          "default_points": 3,
+          "main_topic": "INEQUALITY",
+          "difficulty": "VERY_HARD"
+        }
+      }
+    ],
+    "header_config": {},
+    "health_check_report": null,
+    "total_target_score": 20,
+    "exported_docx_key": null,
+    "exported_pdf_key": null,
+    "template_document": null,
+    "created_at": "2026-11-05T05:49:09.304751Z",
+    "updated_at": "2026-11-05T09:36:40.710Z"
+  }
+}

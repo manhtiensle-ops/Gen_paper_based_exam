@@ -89,16 +89,41 @@ export default function Dashboard() {
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState<"docx" | "pdf" | null>(null);
 
+  // Save exam slots permanently to backend storage & sync with Exam Studio
+  const saveExamSlotsToBackend = async (examId: string, updatedSlots: any[], currentExam?: any) => {
+    try {
+      await fetch(`/api/generator/exams/${examId}/slots`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slots_state: updatedSlots,
+          title: currentExam?.title,
+          header_config: currentExam?.header_config,
+          layout_knobs: currentExam?.layout_knobs,
+        }),
+      });
+      console.log("[DataSync] Successfully saved slots to backend for exam:", examId);
+    } catch (err) {
+      console.error("[DataSync] Failed to persist exam slots to backend:", err);
+    }
+  };
+
   // Handle tab navigation with URL Query string & Session persistence
-  const handleTabChange = (tab: "generator" | "questions" | "ingestion" | "review" | "studio") => {
-    setActiveTab(tab);
+  const handleTabChange = async (tab: "generator" | "questions" | "ingestion" | "review" | "studio") => {
     const examId = generatedExam?.id;
     saveWorkspaceSession(tab, examId, generatedExam);
 
-    if (examId && (tab === "generator" || tab === "studio")) {
-      // Làm mới dữ liệu từ server để đồng bộ 2 chiều Generator <-> Exam Studio
+    if (examId && tab === "studio") {
+      // Khi chuyển sang Studio: Lưu vĩnh viễn trạng thái slot mới nhất xuống backend TRƯỚC KHI chuyển tab
+      if (generatedExam && Array.isArray(generatedExam.slots_state)) {
+        await saveExamSlotsToBackend(examId, generatedExam.slots_state, generatedExam);
+      }
+    } else if (examId && tab === "generator") {
+      // Làm mới dữ liệu từ server khi quay về generator
       fetchExamById(examId, tab);
     }
+
+    setActiveTab(tab);
 
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -743,6 +768,8 @@ export default function Dashboard() {
       const updatedExam = { ...generatedExam, slots_state: updatedSlots };
       setGeneratedExam(updatedExam);
       saveWorkspaceSession(activeTab, updatedExam.id, updatedExam);
+      // Ghi vĩnh viễn cấu trúc slot vào backend CSDL
+      saveExamSlotsToBackend(updatedExam.id, updatedSlots, updatedExam);
     }
     setSwapModalOpen(false);
   };
@@ -1831,7 +1858,9 @@ export default function Dashboard() {
                 ? { ...s, question: updatedQ }
                 : s
             );
-            setGeneratedExam({ ...generatedExam, slots_state: updatedSlots });
+            const updatedExam = { ...generatedExam, slots_state: updatedSlots };
+            setGeneratedExam(updatedExam);
+            saveExamSlotsToBackend(updatedExam.id, updatedSlots, updatedExam);
           }
         }}
       />
