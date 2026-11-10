@@ -52,6 +52,7 @@ export default function QuestionEditModal({
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrResult, setOcrResult] = useState<{ solution_latex: string; final_answer: string } | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [aiSolving, setAiSolving] = useState(false);
 
   // Sync when question changes
   useEffect(() => {
@@ -199,6 +200,32 @@ export default function QuestionEditModal({
       alert("Lỗi kết nối bóc tách lời giải");
     } finally {
       setOcrLoading(false);
+    }
+  };
+
+  const handleAiGenerateSolution = async () => {
+    setAiSolving(true);
+    try {
+      const res = await fetch(`/api/questions/${question.id}/generate-solution`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: true }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.solution_latex) setSolutionLatex(data.solution_latex);
+        if (data.final_answer) setFinalAnswer(data.final_answer);
+        if (Array.isArray(data.sub_questions) && data.sub_questions.length > 0) {
+          setSubQuestions(data.sub_questions);
+        }
+        alert("⚡ AI đã giải chi tiết bài toán và chuẩn hóa LaTeX thành công!");
+      } else {
+        alert(`Lỗi khi tạo lời giải AI: ${data.error || "Không rõ nguyên nhân"}`);
+      }
+    } catch (err: any) {
+      alert("Lỗi kết nối khi gọi AI giải toán");
+    } finally {
+      setAiSolving(false);
     }
   };
 
@@ -415,9 +442,21 @@ export default function QuestionEditModal({
                 {/* Solution & Final Answer */}
                 <div className="space-y-3 pt-2">
                   <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Lời giải chi tiết (LaTeX)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-800">
+                        Lời giải chi tiết (LaTeX)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAiGenerateSolution}
+                        disabled={aiSolving}
+                        className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-indigo-600 text-white shadow-sm hover:from-amber-600 hover:to-indigo-700 transition-all disabled:opacity-50"
+                        title="Tự động triệu hồi AI chuyên gia giải toán để sinh lời giải chuẩn sư phạm THCS"
+                      >
+                        <Sparkles className={`w-3.5 h-3.5 ${aiSolving ? "animate-spin" : ""}`} />
+                        <span>{aiSolving ? "AI đang giải toán..." : "⚡ AI Giải Tự Động"}</span>
+                      </button>
+                    </div>
                     <textarea
                       rows={4}
                       value={solutionLatex}
@@ -516,20 +555,44 @@ export default function QuestionEditModal({
               </div>
             </div>
           ) : (
-            /* TAB 2: AI SOLUTION IMPORTER */
-            <div className="max-w-2xl mx-auto py-8 space-y-6">
+            /* TAB 2: AI SOLUTION IMPORTER & GENERATOR */
+            <div className="max-w-3xl mx-auto py-6 space-y-6">
               <div className="text-center space-y-1">
                 <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-sm">
                   <Sparkles className="w-6 h-6" />
                 </div>
-                <h3 className="font-bold text-slate-900 text-base">Bổ Sung Lời Giải Bằng Trí Tuệ Nhân Tạo</h3>
+                <h3 className="font-bold text-slate-900 text-base">Bổ Sung Lời Giải Bằng Trí Tuệ Nhân Tạo (AI)</h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Tải lên ảnh chụp bài giải viết tay, file Word, hoặc PDF đáp án. Gemini Flash sẽ tự động nhận diện và chuyển hóa thành mã LaTeX chuẩn mực.
+                  Tự động giải toán theo chuẩn sư phạm Việt Nam bằng AI hoặc bóc tách từ ảnh chụp bài giải/PDF đáp án.
                 </p>
               </div>
 
+              {/* OPTION 1: 1-CLICK AI AUTO SOLVE */}
+              <div className="p-6 bg-gradient-to-br from-indigo-50/80 via-white to-amber-50/50 border border-indigo-200 rounded-2xl shadow-sm text-center space-y-4">
+                <div className="max-w-md mx-auto text-center space-y-1">
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-wider">
+                    Khuyên dùng
+                  </span>
+                  <h4 className="font-bold text-slate-900 text-sm">⚡ 1-Click AI Tự Động Giải Chi Tiết</h4>
+                  <p className="text-xs text-slate-500">
+                    Sử dụng mô hình AI chuyên sâu khảo thí để lập luận, giải từng bước và biên soạn mã LaTeX chuẩn XeLaTeX.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAiGenerateSolution}
+                  disabled={aiSolving}
+                  className="px-6 py-3 bg-gradient-to-r from-amber-500 via-indigo-600 to-indigo-700 hover:opacity-90 text-white font-bold rounded-xl text-xs shadow-md transition-all disabled:opacity-50 flex items-center justify-center space-x-2 mx-auto"
+                >
+                  <Sparkles className={`w-4 h-4 ${aiSolving ? "animate-spin" : ""}`} />
+                  <span>{aiSolving ? "AI đang tính toán lời giải chi tiết..." : "Bắt Đầu Giải Bằng AI Ngay"}</span>
+                </button>
+              </div>
+
+              {/* OPTION 2: OCR FROM IMAGE */}
               <div className="p-6 bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl text-center space-y-3">
-                <UploadCloud className="w-10 h-10 text-slate-400 mx-auto" />
+                <h4 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Hoặc: Quét ảnh chụp bài giải viết tay (OCR)</h4>
+                <UploadCloud className="w-8 h-8 text-slate-400 mx-auto" />
                 <div>
                   <label className="cursor-pointer font-bold text-xs text-indigo-600 hover:text-indigo-800">
                     <span>Chọn tệp ảnh hoặc PDF lời giải</span>
@@ -551,17 +614,17 @@ export default function QuestionEditModal({
                   type="button"
                   onClick={handleOcrSolution}
                   disabled={!solutionFile || ocrLoading}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all disabled:opacity-50 flex items-center justify-center space-x-2 mx-auto"
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs shadow-sm transition-all disabled:opacity-50 flex items-center justify-center space-x-2 mx-auto"
                 >
                   {ocrLoading ? (
                     <>
                       <Sparkles className="w-4 h-4 animate-spin" />
-                      <span>Đang bóc tách LaTeX bằng Gemini Flash...</span>
+                      <span>Đang bóc tách LaTeX bằng AI...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4" />
-                      <span>Bắt đầu Bóc Tách Lời Giải</span>
+                      <UploadCloud className="w-4 h-4" />
+                      <span>Bóc Tách Từ File Đã Chọn</span>
                     </>
                   )}
                 </button>
