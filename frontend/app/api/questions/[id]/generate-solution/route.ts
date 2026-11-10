@@ -5,7 +5,57 @@ const OMNIROUTE_URL = process.env.OMNIROUTE_BASE_URL
   ? `${process.env.OMNIROUTE_BASE_URL}/chat/completions`
   : "http://127.0.0.1:20128/v1/chat/completions";
 const OMNIROUTE_KEY = process.env.OMNIROUTE_API_KEY || "";
-const DEFAULT_MODEL = "antigravity/gemini-3.8-flash-tiered";
+const MODELS_CASCADE = ["antigravity/gemini-3.8-flash-tiered", "ddgw/gpt-5.4-mini", "antigravity/gemini-3.1-flash-lite"];
+
+async function callAiWithFallback(promptText: string, preferredModel?: string) {
+  const models = preferredModel
+    ? [preferredModel, ...MODELS_CASCADE.filter((m) => m !== preferredModel)]
+    : MODELS_CASCADE;
+
+  let lastError: any = null;
+  for (const model of models) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+      const aiResp = await fetch(OMNIROUTE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OMNIROUTE_KEY}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "system",
+              content:
+                "Bạn là hệ thống AI Chuyên gia Khảo thí Toán học. Luôn trả về định dạng JSON hợp lệ theo yêu cầu, không kèm markdown code block hoặc lời giải thích bên ngoài.",
+            },
+            {
+              role: "user",
+              content: promptText,
+            },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (aiResp.ok) {
+        const aiData = await aiResp.json();
+        const contentStr = aiData.choices?.[0]?.message?.content || "{}";
+        return JSON.parse(contentStr);
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("Mọi mô hình AI đều không phản hồi");
+}
 
 export async function POST(
   req: NextRequest,
@@ -21,7 +71,7 @@ export async function POST(
     }
 
     const force = Boolean(body.force);
-    const model = body.model || DEFAULT_MODEL;
+    const model = body.model || MODELS_CASCADE[0];
 
     // 1. Fetch question from DB
     const res = await pool.query(
@@ -79,42 +129,8 @@ export async function POST(
       promptText += `}\n`;
     }
 
-    // 3. Call OmniRoute AI
-    const aiResp = await fetch(OMNIROUTE_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OMNIROUTE_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "Bạn là hệ thống AI Chuyên gia Khảo thí Toán học. Luôn trả về định dạng JSON hợp lệ theo yêu cầu, không kèm markdown code block hoặc lời giải thích bên ngoài.",
-          },
-          {
-            role: "user",
-            content: promptText,
-          },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-      }),
-    });
-
-    if (!aiResp.ok) {
-      const errText = await aiResp.text();
-      return NextResponse.json(
-        { error: `OmniRoute AI error: ${aiResp.statusText} - ${errText}` },
-        { status: 502 }
-      );
-    }
-
-    const aiData = await aiResp.json();
-    const contentStr = aiData.choices?.[0]?.message?.content || "{}";
-    const parsed = JSON.parse(contentStr);
+    // 3. Call OmniRoute AI with Fallback Cascade
+    const parsed = await callAiWithFallback(promptText, model);
 
     const newSolutionLatex = parsed.solution_latex || "";
     const newFinalAnswer = parsed.final_answer || "";

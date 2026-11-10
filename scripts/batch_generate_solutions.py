@@ -12,6 +12,7 @@ import os
 import sys
 import time
 import json
+import re
 import urllib.request
 import urllib.error
 import psycopg2
@@ -21,13 +22,39 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@192.168.1.229:5432/hsg_math")
 OMNIROUTE_URL = os.getenv("OMNIROUTE_BASE_URL", "http://127.0.0.1:20128/v1/chat/completions")
 OMNIROUTE_KEY = (os.getenv("OMNIROUTE_API_KEY") or "").strip(' "\'')
-MODEL_NAME = os.getenv("OMNIROUTE_MODEL", "antigravity/gemini-3.8-flash-tiered")
+MODELS_CASCADE = ["ddgw/gpt-5.4-mini", "antigravity/gemini-3.1-flash-lite", "antigravity/gemini-3.8-flash-tiered"]
 MAX_WORKERS = int(os.getenv("MAX_WORKERS", "4"))
 
 def get_db_connection():
     return psycopg2.connect(DB_URL)
 
-def solve_question(q, attempt=1):
+def clean_and_parse_json(text):
+    text = text.strip()
+    if text.startswith('```json'):
+        text = text[7:]
+    if text.startswith('```'):
+        text = text[3:]
+    if text.endswith('```'):
+        text = text[:-3]
+    text = text.strip()
+    try:
+        return json.loads(text, strict=False)
+    except Exception:
+        pass
+    # Replace single backslashes not followed by valid JSON escape chars
+    pattern = re.compile(r'\\(?![/"\\bfnrtu])')
+    fixed = pattern.sub(r'\\\\', text)
+    try:
+        return json.loads(fixed, strict=False)
+    except Exception:
+        sol_match = re.search(r'"solution_latex"\s*:\s*"(.*?)"(?:,\s*"final_answer"|\s*})', text, re.DOTALL)
+        ans_match = re.search(r'"final_answer"\s*:\s*"(.*?)"', text, re.DOTALL)
+        return {
+            'solution_latex': sol_match.group(1) if sol_match else '',
+            'final_answer': ans_match.group(1) if ans_match else ''
+        }
+
+def solve_question(q, attempt=0):
     qid = str(q['id'])
     content = q.get('content_latex') or ''
     topic = q.get('main_topic') or 'TOÁN HỌC'
@@ -38,6 +65,8 @@ def solve_question(q, attempt=1):
             subs = json.loads(subs)
         except Exception:
             subs = []
+
+    model_name = MODELS_CASCADE[min(attempt, len(MODELS_CASCADE) - 1)]
 
     prompt = (
         "Bạn là Chuyên gia Khảo thí và Giáo viên Chuyên Toán THCS Việt Nam phụ trách đề thi Học sinh giỏi.\n"
@@ -76,7 +105,7 @@ def solve_question(q, attempt=1):
         )
 
     payload = {
-        "model": MODEL_NAME,
+        "model": model_name,
         "messages": [
             {
                 "role": "system",
@@ -99,11 +128,11 @@ def solve_question(q, attempt=1):
 
     t0 = time.time()
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=50) as resp:
             data = json.loads(resp.read().decode('utf-8'))
             t1 = time.time()
             content_str = data['choices'][0]['message']['content']
-            parsed = json.loads(content_str)
+            parsed = clean_and_parse_json(content_str)
             sol = parsed.get("solution_latex", "")
             ans = parsed.get("final_answer", "")
             sub_sols = parsed.get("sub_solutions", [])
@@ -130,11 +159,12 @@ def solve_question(q, attempt=1):
                 "final_answer": ans,
                 "sub_questions": updated_subs,
                 "duration": t1 - t0,
-                "topic": topic
+                "topic": topic,
+                "model": model_name
             }
     except Exception as e:
-        if attempt < 3:
-            time.sleep(2 * attempt)
+        if attempt < len(MODELS_CASCADE) - 1:
+            time.sleep(1)
             return solve_question(q, attempt + 1)
         return {
             "success": False,
